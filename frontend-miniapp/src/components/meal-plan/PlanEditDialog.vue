@@ -107,7 +107,7 @@
             }}</text>
             <view v-for="dish in selectedDishes" :key="dish.id" class="plan-selected-dish">
               <view class="plan-dish-copy"
-                ><text class="plan-dish-name">{{ dish.name }}</text
+                ><text class="plan-dish-name">{{ localizedDishName(dish) }}</text
                 ><text class="plan-hint"
                   >{{ dish.canteenName || t('common.plan.noCanteen')
                   }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
@@ -115,7 +115,7 @@
               /></view>
               <button
                 class="plan-button plan-remove"
-                :aria-label="t('common.plan.removeDish', { name: dish.name })"
+                :aria-label="t('common.plan.removeDish', { name: localizedDishName(dish) })"
                 @tap="removeDish(dish.id)"
               >
                 {{ t('common.plan.remove') }}
@@ -254,7 +254,7 @@
               @tap="toggleDishSelection(dish)"
             >
               <view class="plan-dish-copy"
-                ><text class="plan-dish-name">{{ dish.name }}</text
+                ><text class="plan-dish-name">{{ localizedDishName(dish) }}</text
                 ><text class="plan-hint"
                   >{{ dish.canteenName || t('common.plan.noCanteen')
                   }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
@@ -309,6 +309,7 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 
 import { ref, watch, computed, onMounted, onScopeDispose } from 'vue';

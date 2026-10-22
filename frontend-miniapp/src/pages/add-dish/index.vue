@@ -94,6 +94,27 @@
           />
           <text v-if="fieldErrors.name" class="field-error">{{ fieldErrors.name }}</text>
         </view>
+        <view class="form-field"
+          ><label for="dish-name-en" class="field-label">{{ t('food.englishName') }}</label
+          ><input
+            id="dish-name-en"
+            v-model="formData.nameEn"
+            class="form-input"
+            maxlength="200"
+            :disabled="formLocked"
+        /></view>
+        <view class="form-field"
+          ><label for="dish-description-en" class="field-label">{{
+            t('food.englishDescription')
+          }}</label
+          ><textarea
+            id="dish-description-en"
+            v-model="formData.descriptionEn"
+            class="form-input description-input"
+            maxlength="4000"
+            :disabled="formLocked"
+          />
+        </view>
         <view id="field-price" class="form-field">
           <label for="dish-price" class="field-label"
             >{{ t('food.price') }}<text class="required-marker" aria-hidden="true">*</text></label

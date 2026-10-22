@@ -18,6 +18,7 @@
             :dish="{
               id: item.dishId,
               name: item.dishName,
+              nameEn: item.dishNameEn,
               images: item.dishImages,
               price: item.dishPrice,
               priceUnit: item.priceUnit,

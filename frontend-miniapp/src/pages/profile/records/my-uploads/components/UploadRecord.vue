@@ -3,7 +3,7 @@
     <view class="upload-main">
       <view class="upload-details">
         <view class="upload-title-row">
-          <text class="upload-title">{{ item.name }}</text>
+          <text class="upload-title">{{ localizedDishName(item) }}</text>
           <view class="upload-status" :class="'upload-status-' + item.status">
             <UiIcon :name="status.icon" :tone="status.tone" :size="14" />
             <text>{{ status.label }}</text>
@@ -25,7 +25,7 @@
         :key="imageSource"
         class="upload-photo"
         :src="imageSource"
-        :alt="item.name"
+        :alt="localizedDishName(item)"
         mode="aspectFill"
         @error="imageFailed = true"
       />
@@ -69,6 +69,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';

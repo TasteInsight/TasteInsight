@@ -4,7 +4,11 @@
     hover-class="list-row-pressed"
     role="button"
     tabindex="0"
-    :aria-label="t('account.profile.reviewOfDish', { dish: review.dishName })"
+    :aria-label="
+      t('account.profile.reviewOfDish', {
+        dish: localizedDishName({ name: review.dishName, nameEn: review.dishNameEn }),
+      })
+    "
     @click="activate"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -12,7 +16,9 @@
   >
     <view class="my-review-heading">
       <view class="my-review-title-block">
-        <text class="my-review-title">{{ review.dishName }}</text>
+        <text class="my-review-title">{{
+          localizedDishName({ name: review.dishName, nameEn: review.dishNameEn })
+        }}</text>
         <view class="my-review-meta">
           <view
             class="my-review-stars"
@@ -55,6 +61,7 @@
   </button>
 </template>
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import type { MyReviewItem } from '@/types/api';

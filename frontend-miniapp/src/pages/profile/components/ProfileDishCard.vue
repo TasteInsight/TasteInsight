@@ -4,7 +4,7 @@
     <view v-if="showFavorite" class="profile-dish__actions">
       <button
         class="profile-dish__unfavorite"
-        :aria-label="t('account.profile.removeFavoriteDish', { dish: dish.name })"
+        :aria-label="t('account.profile.removeFavoriteDish', { dish: localizedDishName(dish) })"
         :class="{ 'is-disabled': favoriteDisabled }"
         :disabled="favoriteDisabled"
         @click="emit('unfavorite')"
@@ -16,6 +16,7 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import DishSummaryCard from '@/components/DishSummaryCard.vue';
 import type { Dish } from '@/types/api';

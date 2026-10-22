@@ -9,7 +9,10 @@
       }}</label>
       <textarea
         id="allergens-input"
-        v-model="form.allergens"
+        v-model="displayAllergens"
+        @focus="editAllergens"
+        @input="inputAllergens"
+        @blur="finishAllergens"
         class="settings-field allergens-input"
         :disabled="!canEdit"
         :aria-disabled="!canEdit"
@@ -47,6 +50,10 @@ import SettingsPage from './SettingsPage.vue';
 const state = useAllergens();
 const {
   form,
+  displayAllergens,
+  editAllergens,
+  inputAllergens,
+  finishAllergens,
   canEdit,
   canSave,
   loadProfile,

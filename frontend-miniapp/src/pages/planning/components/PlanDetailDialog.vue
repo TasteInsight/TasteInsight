@@ -46,7 +46,7 @@
             />
             <view class="meal-detail-copy"
               ><view class="meal-detail-name-row"
-                ><text class="meal-detail-name">{{ dish.name }}</text
+                ><text class="meal-detail-name">{{ localizedDishName(dish) }}</text
                 ><TagBadge
                   v-if="dish.status === 'offline'"
                   :label="t('social.unavailable')"
@@ -76,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';

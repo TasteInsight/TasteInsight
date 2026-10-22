@@ -75,6 +75,7 @@
 
 <script setup lang="ts">
 import { t } from '@/i18n';
+import { allergenLabel, loadAllergenCatalog } from '@/utils/allergen-catalog';
 import { computed, ref } from 'vue';
 import type { PreferenceDraftCard } from '@/store/modules/use-chat-store';
 
@@ -108,6 +109,13 @@ const statusText = computed(() => {
   return '';
 });
 
+void loadAllergenCatalog();
+const allergenText = (value: unknown) =>
+  listText(
+    Array.isArray(value) && value.every(item => typeof item === 'string')
+      ? value.map(allergenLabel)
+      : value
+  );
 const listText = (value: unknown) =>
   Array.isArray(value) && value.every(item => typeof item === 'string')
     ? value.length
@@ -191,8 +199,8 @@ const rows = computed(() => {
     changes.push({
       key: 'allergens',
       label: t('social.allergens'),
-      before: listText(before?.allergens),
-      after: listText(after.allergens),
+      before: allergenText(before?.allergens),
+      after: allergenText(after.allergens),
     });
   return changes;
 });

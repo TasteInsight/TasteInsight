@@ -5,7 +5,7 @@
     :hover-stay-time="80"
     role="button"
     tabindex="0"
-    :aria-label="t('social.viewDish', { p0: dish.dish.name })"
+    :aria-label="t('social.viewDish', { p0: localizedDishName(dish.dish) })"
     @click="goToDishDetail"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -14,7 +14,7 @@
     <view class="dish-recommendation-main">
       <view class="dish-recommendation-info">
         <view class="dish-recommendation-heading"
-          ><text class="dish-recommendation-name">{{ dish.dish.name }}</text
+          ><text class="dish-recommendation-name">{{ localizedDishName(dish.dish) }}</text
           ><TagBadge
             v-if="dish.dish.status === 'offline'"
             :label="t('social.unavailable')"
@@ -52,6 +52,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import TagBadge from '@/components/TagBadge.vue';

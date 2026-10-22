@@ -198,7 +198,7 @@ it('keeps tag and allergen input, selection, icon removal and disabled behavior 
   expect((wrapper.vm as any).formData.tags).toContain('辣');
   for (const [inputLabel, value, removeLabel, field] of [
     ['自定义标签', '手作', '移除标签 手作', 'tags'],
-    ['自定义过敏原', '芒果', '移除过敏原 芒果', 'allergens'],
+    ['自定义过敏原', 'Pine nuts', '移除过敏原 Pine nuts', 'allergens'],
   ]) {
     const input = wrapper.get('[aria-label="' + inputLabel + '"]');
     await input.setValue(value);
@@ -214,13 +214,13 @@ it('keeps tag and allergen input, selection, icon removal and disabled behavior 
   }
   (wrapper.vm as any).readOnly = true;
   await flushPromises();
-  for (const label of ['移除标签 手作', '移除过敏原 芒果']) {
+  for (const label of ['移除标签 手作', '移除过敏原 Pine nuts']) {
     const remove = wrapper.get('[aria-label="' + label + '"]');
     expect(remove.attributes('disabled')).toBeDefined();
     await remove.trigger('tap');
   }
   expect((wrapper.vm as any).formData.tags).toContain('手作');
-  expect((wrapper.vm as any).formData.allergens).toContain('芒果');
+  expect((wrapper.vm as any).formData.allergens).toContain('Pine nuts');
   wrapper.unmount();
 });
 

@@ -387,6 +387,8 @@ export const zhHans = {
   viewMyUploads: '查看我的上传',
   submissionStatusIsPendingRetrySafelyToConfirm: '提交结果待确认。重试不会重复创建记录。',
   dishName: '菜品名称',
+  englishName: '英文名称（选填）',
+  englishDescription: '英文描述（选填）',
   forExampleTomatoAndScrambledEggs: '例如：番茄炒蛋',
   dishPrice: '菜品价格',
   priceUnit: '价格单位',
@@ -896,6 +898,8 @@ export const en = {
   submissionStatusIsPendingRetrySafelyToConfirm:
     'Submission status is pending. Retry safely to confirm.',
   dishName: 'Dish name',
+  englishName: 'English name (optional)',
+  englishDescription: 'English description (optional)',
   forExampleTomatoAndScrambledEggs: 'For example: tomato and scrambled eggs',
   dishPrice: 'Dish price',
   priceUnit: 'Price unit',

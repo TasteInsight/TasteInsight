@@ -113,7 +113,7 @@
               @error="failedImages[dish.images[0]] = true"
             /><view class="public-dish-text"
               ><view class="public-dish-heading"
-                ><text class="public-dish-name">{{ dish.name }}</text
+                ><text class="public-dish-name">{{ localizedDishName(dish) }}</text
                 ><TagBadge
                   v-if="dish.status === 'offline'"
                   :label="t('account.profile.unavailable')"
@@ -140,6 +140,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';

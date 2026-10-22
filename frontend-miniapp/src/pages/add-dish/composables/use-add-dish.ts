@@ -1,3 +1,4 @@
+import { allergenOptions, loadAllergenCatalog } from '@/utils/allergen-catalog';
 import { t } from '@/i18n';
 import { ref, reactive, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -73,6 +74,8 @@ type SavedDraft = {
 };
 const fields: DishContributionField[] = [
   'name',
+  'nameEn',
+  'descriptionEn',
   'tags',
   'price',
   'priceUnit',
@@ -99,6 +102,8 @@ const requestId = () =>
   });
 const blankForm = (): FormData => ({
   name: '',
+  nameEn: '',
+  descriptionEn: '',
   calories: '',
   protein: '',
   carbohydrate: '',
@@ -362,74 +367,14 @@ export function useAddDish() {
       },
     },
   ];
-  const commonAllergens = [
-    {
-      value: '花生',
-      get label() {
-        return t('food.peanuts');
-      },
-    },
-    {
-      value: '牛奶',
-      get label() {
-        return t('food.milk');
-      },
-    },
-    {
-      value: '鸡蛋',
-      get label() {
-        return t('food.eggs');
-      },
-    },
-    {
-      value: '大豆',
-      get label() {
-        return t('food.soy');
-      },
-    },
-    {
-      value: '小麦',
-      get label() {
-        return t('food.wheat');
-      },
-    },
-    {
-      value: '海鲜',
-      get label() {
-        return t('food.seafood');
-      },
-    },
-    {
-      value: '坚果',
-      get label() {
-        return t('food.treeNuts');
-      },
-    },
-    {
-      value: '芝麻',
-      get label() {
-        return t('food.sesame');
-      },
-    },
-    {
-      value: '虾',
-      get label() {
-        return t('food.shrimp');
-      },
-    },
-    {
-      value: '蟹',
-      get label() {
-        return t('food.crab');
-      },
-    },
-  ];
+  const commonAllergens = allergenOptions;
+  void loadAllergenCatalog();
   const updateCustomChoices = () => {
     customTags.value = (formData.tags || []).filter(
       tag => !commonTags.some(option => option.value === tag)
     );
     customAllergens.value = (formData.allergens || []).filter(
-      tag => !commonAllergens.some(option => option.value === tag)
+      tag => !commonAllergens.value.some(option => option.value === tag)
     );
   };
   const syncLocation = () => {
@@ -813,7 +758,8 @@ export function useAddDish() {
       navigationTimer = null;
       if (isCurrent())
         uni.redirectTo({
-          url: '/pages/profile/records/my-uploads/index' + (id ? '?id=' + encodeURIComponent(id) : ''),
+          url:
+            '/pages/profile/records/my-uploads/index' + (id ? '?id=' + encodeURIComponent(id) : ''),
         });
     }, 1500);
   };

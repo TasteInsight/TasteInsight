@@ -1,5 +1,12 @@
-import { t } from '@/i18n';
-import { reactive, onMounted } from 'vue';
+import { locale } from '@/i18n';
+import {
+  allergenOptions,
+  loadAllergenCatalog,
+  parseAllergenList,
+  allergenLabel,
+  allergenValue,
+} from '@/utils/allergen-catalog';
+import { ref, watch, reactive, onMounted } from 'vue';
 import { useSettingsProfile } from './use-settings-profile';
 import type { UserProfileUpdateRequest } from '@/types/api';
 
@@ -7,59 +14,54 @@ export interface AllergensForm {
   allergens: string;
 }
 
-// 常见过敏原列表
-export const COMMON_ALLERGENS = [
-  ['花生', 'food.peanuts'],
-  ['牛奶', 'food.milk'],
-  ['鸡蛋', 'food.eggs'],
-  ['海鲜', 'food.seafood'],
-  ['大豆', 'food.soy'],
-  ['小麦', 'food.wheat'],
-  ['坚果', 'food.treeNuts'],
-  ['芝麻', 'food.sesame'],
-  ['芒果', 'food.mango'],
-  ['菠萝', 'food.pineapple'],
-  ['猕猴桃', 'food.kiwi'],
-  ['桃子', 'food.peach'],
-  ['蚕豆', 'food.broadBeans'],
-].map(([value, labelKey]) => ({
-  value,
-  get label() {
-    return t(labelKey);
-  },
-}));
+export const COMMON_ALLERGENS = allergenOptions.value;
 
 export function useAllergens() {
   const form = reactive<AllergensForm>({
     allergens: '',
   });
 
+  const displayAllergens = ref('');
+  let editing = false;
   const profile = useSettingsProfile(
     userInfo => {
+      editing = false;
       form.allergens = userInfo?.allergens?.join(', ') || '';
+      formatEditor();
     },
     form,
     'allergens'
   );
   const { loadProfile, saveProfile } = profile;
+  function formatEditor() {
+    if (!editing)
+      displayAllergens.value = parseAllergenList(form.allergens).map(allergenLabel).join(', ');
+  }
+  watch([() => form.allergens, locale, allergenOptions], formatEditor, { immediate: true });
+  const editAllergens = () => {
+    editing = true;
+  };
+  const inputAllergens = (event: any) => {
+    form.allergens = event.detail?.value ?? event.target.value;
+  };
+  const finishAllergens = () => {
+    editing = false;
+    formatEditor();
+  };
 
   /**
    * 判断过敏原是否已选中
    */
   function isSelected(allergen: string): boolean {
-    return form.allergens
-      .split(/[,，]/)
-      .map(a => a.trim())
-      .includes(allergen);
+    return parseAllergenList(form.allergens).map(allergenValue).includes(allergen);
   }
 
   /**
    * 切换过敏原选中状态
    */
   function toggleAllergen(allergen: string) {
-    const allergenList = form.allergens
-      .split(/[,，]/)
-      .map(a => a.trim())
+    const allergenList = parseAllergenList(form.allergens)
+      .map(allergenValue)
       .filter(a => a);
 
     const index = allergenList.indexOf(allergen);
@@ -74,21 +76,11 @@ export function useAllergens() {
   }
 
   /**
-   * 解析过敏原列表
-   */
-  function parseAllergenList(text: string): string[] {
-    return text
-      .split(/[,，;；\n\r\s]+/)
-      .map(item => item.trim())
-      .filter(Boolean);
-  }
-
-  /**
    * 保存设置
    */
   async function handleSave(): Promise<boolean> {
     const payload: UserProfileUpdateRequest = {
-      allergens: parseAllergenList(form.allergens),
+      allergens: parseAllergenList(form.allergens).map(allergenValue),
     };
     return saveProfile(payload);
   }
@@ -96,6 +88,7 @@ export function useAllergens() {
   // 组件挂载时加载数据
   onMounted(() => {
     loadProfile();
+    void loadAllergenCatalog();
   });
 
   return {
@@ -104,7 +97,11 @@ export function useAllergens() {
     ...profile,
 
     // 常量
-    commonAllergens: COMMON_ALLERGENS,
+    commonAllergens: allergenOptions,
+    displayAllergens,
+    editAllergens,
+    inputAllergens,
+    finishAllergens,
 
     // 方法
     isSelected,

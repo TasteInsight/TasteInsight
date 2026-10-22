@@ -46,7 +46,7 @@
         <view v-for="dish in preview.dishes" :key="dish.id" class="planning-dish">
           <view class="planning-dish-info">
             <view class="planning-dish-heading">
-              <text class="planning-dish-name">{{ dish.name }}</text>
+              <text class="planning-dish-name">{{ localizedDishName(dish) }}</text>
               <TagBadge
                 v-if="dishStatusLabel(dish)"
                 :label="dishStatusLabel(dish)"
@@ -133,6 +133,7 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
@@ -219,7 +220,9 @@ const dishSupplyNotices = (dish: Dish) => [
   ]),
 ];
 const changeSummary = computed(() => {
-  const names = new Map((preview.value?.dishes || []).map(dish => [dish.id, dish.name]));
+  const names = new Map(
+    (preview.value?.dishes || []).map(dish => [dish.id, localizedDishName(dish)])
+  );
   const groups = new Map<string, string[]>();
   for (const notice of props.plan.changeNotices || []) {
     const name = notice.dishId ? names.get(notice.dishId) || '' : '';

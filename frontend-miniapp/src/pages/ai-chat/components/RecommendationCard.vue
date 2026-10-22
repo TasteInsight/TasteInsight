@@ -3,7 +3,7 @@
     <view class="flex">
       <image :src="recommendation.dish.images?.[0]" class="dish-image" mode="aspectFill" />
       <view class="flex-grow ml-3">
-        <view class="dish-name">{{ recommendation.dish.name }}</view>
+        <view class="dish-name">{{ localizedDishName(recommendation.dish) }}</view>
         <view class="dish-location"
           >{{ recommendation.dish.canteenName }} {{ recommendation.dish.windowName }}</view
         >
@@ -35,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import type { RecommendationItem } from '@/types/api';

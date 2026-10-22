@@ -6,7 +6,7 @@
     tabindex="0"
     :aria-label="
       t(dish.status === 'offline' ? 'common.dish.offlineView' : 'common.dish.view', {
-        name: dish.name,
+        name: localizedDishName(dish),
       })
     "
     @click="selectDish"
@@ -16,7 +16,7 @@
   >
     <view class="dish-card__body">
       <view class="dish-card__heading">
-        <text class="dish-card__name">{{ dish.name }}</text>
+        <text class="dish-card__name">{{ localizedDishName(dish) }}</text>
         <TagBadge
           v-if="dish.status === 'offline'"
           :label="t('common.dish.offline')"
@@ -58,7 +58,7 @@
       <image
         :key="imageSource"
         :src="imageSource"
-        :alt="dish.name"
+        :alt="localizedDishName(dish)"
         class="dish-card__image"
         mode="aspectFill"
         @error="imageFailed = true"
@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 
 import { computed, ref, watch } from 'vue';

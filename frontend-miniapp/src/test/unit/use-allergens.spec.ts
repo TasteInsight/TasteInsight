@@ -134,4 +134,21 @@ describe('useAllergens', () => {
       allergens: ['Peanut', 'Milk', 'Egg', 'Soy'],
     });
   });
+  it('keeps a typed multiword phrase intact until save', async () => {
+    const state = useAllergens();
+    await new Promise(process.nextTick);
+    state.editAllergens();
+    for (const value of ['Pine', 'Pine ', 'Pine nuts', 'Pine nuts, Milk protein']) {
+      state.displayAllergens.value = value;
+      state.inputAllergens({ detail: { value } });
+      expect(state.displayAllergens.value).toBe(value);
+    }
+    state.finishAllergens();
+    (updateUserProfile as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { allergens: ['Pine nuts', 'Milk protein'] },
+    });
+    await state.handleSave();
+    expect(updateUserProfile).toHaveBeenCalledWith({ allergens: ['Pine nuts', 'Milk protein'] });
+  });
 });

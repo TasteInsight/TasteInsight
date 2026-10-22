@@ -24,7 +24,11 @@
           :class="{ 'notification-unread': !item.readAt }"
           :disabled="!!opening[item.id]"
           :aria-label="
-            [notificationText(item), item.subject, !item.readAt ? t('social.unread') : '']
+            [
+              notificationText(item),
+              localizedDishName({ name: item.subject, nameEn: item.subjectEn }),
+              !item.readAt ? t('social.unread') : '',
+            ]
               .filter(Boolean)
               .join('，')
           "
@@ -46,7 +50,9 @@
                 <view v-if="!item.readAt" class="notification-dot" aria-hidden="true" />
               </view>
             </view>
-            <text v-if="item.subject" class="notification-subject">{{ item.subject }}</text>
+            <text v-if="item.subject" class="notification-subject">{{
+              localizedDishName({ name: item.subject, nameEn: item.subjectEn })
+            }}</text>
           </view>
         </button>
       </view>
@@ -70,6 +76,7 @@
 </template>
 <script setup lang="ts">
 import { t } from '@/i18n';
+import { localizedDishName } from '@/utils/dish-localization';
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import UserAvatar from '@/components/UserAvatar.vue';

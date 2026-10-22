@@ -260,6 +260,8 @@ export enum Status {
  * Dish
  */
 export interface Dish {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -422,6 +424,7 @@ export interface Favorite {
   dishId: string;
   addedAt: string;
   dishName: string;
+  dishNameEn?: string | null;
   dishImages: string[];
   dishPrice: number;
   priceUnit?: string | null;
@@ -619,6 +622,8 @@ export interface GetDishesRequest {
  * 用户上传菜品请求
  */
 export interface DishUserCreateRequest {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -659,6 +664,8 @@ export interface DishUserCreateRequest {
  * 管理员创建菜品请求
  */
 export interface DishCreateRequest {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -690,6 +697,8 @@ export interface DishCreateRequest {
  * 管理员更新菜品请求
  */
 export interface DishUpdateRequest {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -911,6 +920,8 @@ export interface AdminLoginData {
  * 菜品上传响应数据
  */
 export interface DishUploadData {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   id: string;
   status: DishContributionStatus;
   revision: number;
@@ -922,6 +933,8 @@ export type DishContributionField =
   | 'tags'
   | 'price'
   | 'priceUnit'
+  | 'nameEn'
+  | 'descriptionEn'
   | 'description'
   | 'images'
   | 'ingredients'
@@ -956,6 +969,7 @@ export interface ReviewListData extends PaginatedData<Review> {
  */
 export interface MyReviewItem extends Review {
   dishName: string;
+  dishNameEn?: string | null;
   dishImage: string;
   reply?: string;
   replyTime?: string;
@@ -965,6 +979,8 @@ export interface MyReviewItem extends Review {
  * 我的上传列表项
  */
 export interface MyUploadItem {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -987,6 +1003,8 @@ export interface MyUploadItem {
 }
 
 export interface MyUploadDetail extends Omit<DishUserCreateRequest, 'status' | 'targetDishId'> {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   id: string;
   name: string;
   status: DishContributionStatus;
@@ -1008,6 +1026,7 @@ export interface BrowseHistoryItem {
   dishId: string;
   viewedAt: string;
   dishName: string;
+  dishNameEn?: string | null;
   dishImages: string[];
   dishPrice: number;
   priceUnit?: string | null;
@@ -1060,6 +1079,7 @@ export interface ImageUploadData {
 export interface PendingCommentItem extends Comment {
   reviewContent: string;
   dishName: string;
+  dishNameEn?: string | null;
 }
 
 /**
@@ -1067,6 +1087,7 @@ export interface PendingCommentItem extends Comment {
  */
 export interface PendingReviewItem extends Review {
   dishName: string;
+  dishNameEn?: string | null;
   dishImage: string;
   updatedAt: string;
 }
@@ -1215,6 +1236,7 @@ export interface ComponentDishCard {
     carbohydrate?: number | null;
     fat?: number | null;
     name: string;
+    nameEn?: string | null;
     image: string;
     rating: string;
     tags: string[];

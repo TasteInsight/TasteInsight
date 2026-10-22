@@ -31,7 +31,7 @@
 
       <view class="dish-summary">
         <view class="dish-title-row">
-          <text class="dish-title">{{ dish.name }}</text>
+          <text class="dish-title">{{ localizedDishName(dish) }}</text>
           <text class="dish-price"
             >¥{{ dish.price
             }}<text v-if="priceUnitSuffix(dish.priceUnit)" class="dish-price-unit">{{
@@ -93,13 +93,13 @@
               ><text class="decision-label">{{ t('food.knownAllergens') }}</text
               ><text class="decision-value">{{
                 dish.allergens?.length
-                  ? dish.allergens.join(t('food.listSeparator'))
+                  ? dish.allergens.map(allergenLabel).join(t('food.listSeparator'))
                   : t('food.notProvidedYet')
               }}</text></view
             >
           </view>
           <text class="dish-description">{{
-            dish.description || t('food.noDishDescriptionYet')
+            localizedDishDescription(dish) || t('food.noDishDescriptionYet')
           }}</text>
           <text v-if="dish.ingredients?.length" class="dish-description">{{
             t('food.ingredientsList', {
@@ -108,7 +108,7 @@
           }}</text>
           <button v-if="parentDish" class="dish-related" @click="goToParentDish">
             <text>{{ t('food.parentDish') }}</text
-            ><text>{{ parentDish.name }}</text>
+            ><text>{{ localizedDishName(parentDish) }}</text>
           </button>
           <view v-if="subDishes.length" class="dish-related-list">
             <text class="dish-related-heading">{{ t('food.otherOptions') }}</text>
@@ -328,7 +328,10 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName, localizedDishDescription } from '@/utils/dish-localization';
 import { t } from '@/i18n';
+import { allergenLabel, loadAllergenCatalog } from '@/utils/allergen-catalog';
+void loadAllergenCatalog();
 import AsyncState from '@/components/AsyncState.vue';
 import { requireStudent } from '@/utils/student-access';
 import DishNutrition from '@/components/DishNutrition.vue';
