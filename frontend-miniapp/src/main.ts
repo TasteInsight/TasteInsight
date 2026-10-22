@@ -12,7 +12,7 @@ export function createApp() {
   console.log('Base URL:', config.baseUrl);
   app.use(pinia);
   app.use(i18n);
-  app.mixin({ onShow: syncNativeNavigation });
+  app.mixin({ onShow: syncNativeNavigation, onReady: syncNativeNavigation });
   return {
     app,
   };
