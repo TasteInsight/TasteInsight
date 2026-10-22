@@ -46,6 +46,8 @@ type NormalizedExcelRow = {
   windowName?: string;
   windowNumber?: string;
   dishName?: string;
+  nameEn?: string;
+  descriptionEn?: string;
   subDishRaw?: string;
   priceRaw?: any;
   supplyTime?: string;
@@ -91,6 +93,11 @@ export class AdminDishesService {
     窗口编号: 'windowNumber',
     窗口号: 'windowNumber',
     菜品名: 'dishName',
+    菜品英文名: 'nameEn',
+    英文名称: 'nameEn',
+    nameEn: 'nameEn',
+    英文描述: 'descriptionEn',
+    descriptionEn: 'descriptionEn',
     菜品子项: 'subDishRaw',
     价格: 'priceRaw',
     供应时间: 'supplyTime',
@@ -185,6 +192,7 @@ export class AdminDishesService {
     if (keyword) {
       where.OR = [
         { name: { contains: keyword, mode: 'insensitive' } },
+        { nameEn: { contains: keyword, mode: 'insensitive' } },
         { description: { contains: keyword, mode: 'insensitive' } },
         { canteen: { name: { contains: keyword, mode: 'insensitive' } } },
         { window: { name: { contains: keyword, mode: 'insensitive' } } },
@@ -410,6 +418,8 @@ export class AdminDishesService {
     return {
       adminId: adminInfo.id,
       name: createDto.name,
+      nameEn: createDto.nameEn ?? null,
+      descriptionEn: createDto.descriptionEn ?? null,
       tags: createDto.tags || [],
       price: createDto.price,
       calories: createDto.calories ?? null,
@@ -515,6 +525,9 @@ export class AdminDishesService {
 
     // 基本信息
     if (updateDto.name !== undefined) updateData.name = updateDto.name;
+    if (updateDto.nameEn !== undefined) updateData.nameEn = updateDto.nameEn;
+    if (updateDto.descriptionEn !== undefined)
+      updateData.descriptionEn = updateDto.descriptionEn;
     if (updateDto.tags !== undefined) updateData.tags = updateDto.tags;
     if (updateDto.price !== undefined) updateData.price = updateDto.price;
     if (updateDto.calories !== undefined)
@@ -901,6 +914,8 @@ export class AdminDishesService {
         'Tags',
         '主辅料',
         '过敏原',
+        '菜品英文名',
+        '英文描述',
       ],
       [
         '示例食堂',
@@ -916,11 +931,13 @@ export class AdminDishesService {
         '家常菜',
         '番茄,鸡蛋',
         '蛋',
+        'Stir-fried tomatoes and eggs',
+        'Tomatoes stir-fried with eggs',
       ],
     ]);
-    data['!cols'] = [18, 12, 18, 12, 20, 24, 14, 24, 20, 36, 24, 24, 24].map(
-      (wch) => ({ wch }),
-    );
+    data['!cols'] = [
+      18, 12, 18, 12, 20, 24, 14, 24, 20, 36, 24, 24, 24, 36, 50,
+    ].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(workbook, data, '菜品导入');
     const instructions = XLSX.utils.aoa_to_sheet([
       ['项目', '填写说明'],
@@ -1198,6 +1215,8 @@ export class AdminDishesService {
     return {
       id: dish.id,
       name: dish.name,
+      nameEn: dish.nameEn ?? null,
+      descriptionEn: dish.descriptionEn ?? null,
       tags: dish.tags,
       price: dish.price,
       calories: dish.calories ?? null,
@@ -1246,6 +1265,8 @@ export class AdminDishesService {
     return {
       id: dishUpload.id,
       name: dishUpload.name,
+      nameEn: dishUpload.nameEn ?? null,
+      descriptionEn: dishUpload.descriptionEn ?? null,
       tags: dishUpload.tags,
       price: dishUpload.price,
       calories: dishUpload.calories ?? null,
@@ -1475,6 +1496,12 @@ export class AdminDishesService {
     const description = item.description?.trim() || '';
     const dishData: AdminCreateDishDto = {
       name: dishName,
+      nameEn:
+        item.nameEn === undefined ? undefined : item.nameEn?.trim() || null,
+      descriptionEn:
+        item.descriptionEn === undefined
+          ? undefined
+          : item.descriptionEn?.trim() || null,
       price,
       priceUnit,
       description,
@@ -1504,6 +1531,8 @@ export class AdminDishesService {
           {
             ...dishData,
             name: subDishName,
+            nameEn: undefined,
+            descriptionEn: undefined,
             ...(parent.uploadId
               ? { parentUploadId: parent.uploadId }
               : { parentDishId: parent.dishId }),
@@ -2028,6 +2057,10 @@ export class AdminDishesService {
     return {
       tempId: randomUUID(),
       name: dishName,
+      nameEn: row.nameEn ? String(row.nameEn).trim() : undefined,
+      descriptionEn: row.descriptionEn
+        ? String(row.descriptionEn).trim()
+        : undefined,
       description: row.description ? String(row.description).trim() : undefined,
       price,
       priceUnit: unit,

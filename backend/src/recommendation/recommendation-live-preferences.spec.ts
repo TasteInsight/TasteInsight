@@ -35,6 +35,7 @@ describe('Recommendation current preference boundary', () => {
       null as any,
       null as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     const result = await service.getUserFeaturesWithCache('user');
     expect(result.allergens).toEqual(['花生', '虾']);
@@ -68,6 +69,7 @@ describe('Recommendation current preference boundary', () => {
         null as any,
         null as any,
         null as any,
+        { expandValues: async (values: string[]) => values } as any,
       );
       const result =
         kind === 'personalized'

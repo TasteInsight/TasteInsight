@@ -1,3 +1,4 @@
+import { AllergensService } from '@/allergens/allergens.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -78,6 +79,7 @@ export class RecommendationService {
     private experimentService: ExperimentService,
     private embeddingService: EmbeddingService,
     private tokenizerService: TokenizerService,
+    private readonly allergensService: AllergensService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════
@@ -334,7 +336,7 @@ export class RecommendationService {
     );
 
     // 2. 构建筛选条件（排除已看过的菜品）
-    const filterConditions = this.buildFilterConditions(
+    const filterConditions = await this.buildFilterConditions(
       {
         ...dto.filter,
         avoidIngredients: [
@@ -1300,12 +1302,12 @@ export class RecommendationService {
    * @param search 搜索条件
    * @param userContext 用户上下文（可能包含位置、时间等动态条件）
    */
-  private buildFilterConditions(
+  private async buildFilterConditions(
     filter: RecommendationFilterDto,
     allergens?: string[],
     search?: RecommendationSearchDto,
     userContext?: Record<string, any>,
-  ): Prisma.DishWhereInput[] {
+  ): Promise<Prisma.DishWhereInput[]> {
     const conditions: Prisma.DishWhereInput[] = [];
 
     // 状态筛选：默认只显示 online 的菜品
@@ -1318,7 +1320,10 @@ export class RecommendationService {
     }
 
     conditions.push(
-      ...this.buildDietaryFilterConditions(allergens, filter.avoidIngredients),
+      ...(await this.buildDietaryFilterConditions(
+        allergens,
+        filter.avoidIngredients,
+      )),
     );
 
     // 评分筛选
@@ -1457,12 +1462,20 @@ export class RecommendationService {
 
       if (searchFields.includes('name')) {
         orConditions.push({
-          name: { contains: search.keyword, mode: 'insensitive' },
+          OR: [
+            { name: { contains: search.keyword, mode: 'insensitive' } },
+            { nameEn: { contains: search.keyword, mode: 'insensitive' } },
+          ],
         });
       }
       if (searchFields.includes('description')) {
         orConditions.push({
-          description: { contains: search.keyword, mode: 'insensitive' },
+          OR: [
+            { description: { contains: search.keyword, mode: 'insensitive' } },
+            {
+              descriptionEn: { contains: search.keyword, mode: 'insensitive' },
+            },
+          ],
         });
       }
       if (searchFields.includes('tags')) {
@@ -1501,13 +1514,23 @@ export class RecommendationService {
     return conditions;
   }
 
-  private buildDietaryFilterConditions(
+  async expandAllergenValues(values: string[]): Promise<string[]> {
+    return this.allergensService.expandValues(values);
+  }
+
+  private async buildDietaryFilterConditions(
     allergens: string[] = [],
     avoidIngredients: string[] = [],
-  ): Prisma.DishWhereInput[] {
+  ): Promise<Prisma.DishWhereInput[]> {
     const conditions: Prisma.DishWhereInput[] = [];
     if (allergens.length) {
-      conditions.push({ NOT: { allergens: { hasSome: allergens } } });
+      conditions.push({
+        NOT: {
+          allergens: {
+            hasSome: await this.allergensService.expandValues(allergens),
+          },
+        },
+      });
     }
     if (avoidIngredients.length) {
       conditions.push({ NOT: { ingredients: { hasSome: avoidIngredients } } });
@@ -1863,12 +1886,21 @@ export class RecommendationService {
     const exactMatchWeight = 0.4;
     maxPossibleScore += exactMatchWeight;
 
-    const dishNameLower = (dish.name || '').toLowerCase();
+    const dishNameLower =
+      [dish.name, dish.nameEn]
+        .filter(Boolean)
+        .map((value) => value.toLowerCase())
+        .find((value) => value === keyword.toLowerCase()) ||
+      [dish.name, dish.nameEn]
+        .filter(Boolean)
+        .map((value) => value.toLowerCase())
+        .find((value) => value.includes(keyword.toLowerCase())) ||
+      '';
     if (fields.includes('name')) {
       if (dishNameLower === keyword.toLowerCase()) {
         totalScore += exactMatchWeight; // 完全精确匹配
       } else if (dishNameLower.includes(keyword.toLowerCase())) {
-        const matchRatio = keyword.length / dish.name.length;
+        const matchRatio = keyword.length / dishNameLower.length;
         const positionBonus = dishNameLower.startsWith(keyword.toLowerCase())
           ? 0.2
           : 0;
@@ -1906,8 +1938,14 @@ export class RecommendationService {
     const descMatchWeight = 0.2;
     maxPossibleScore += descMatchWeight;
 
-    if (fields.includes('description') && dish.description) {
-      const descLower = dish.description.toLowerCase();
+    if (
+      fields.includes('description') &&
+      (dish.description || dish.descriptionEn)
+    ) {
+      const descLower = [dish.description, dish.descriptionEn]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
       let descMatchCount = 0;
 
       normalizedKeywords.forEach((kw) => {
@@ -2462,7 +2500,7 @@ export class RecommendationService {
       whereCondition.availableMealTime = { has: mealTime };
     }
 
-    whereCondition.AND = this.buildDietaryFilterConditions(
+    whereCondition.AND = await this.buildDietaryFilterConditions(
       userFeatures.allergens,
       userFeatures.preferences?.avoidIngredients,
     );
@@ -2616,7 +2654,7 @@ export class RecommendationService {
       if (mealTime) {
         whereCondition.availableMealTime = { has: mealTime };
       }
-      whereCondition.AND = this.buildDietaryFilterConditions(
+      whereCondition.AND = await this.buildDietaryFilterConditions(
         userFeatures.allergens,
         userFeatures.preferences?.avoidIngredients,
       );
@@ -2683,7 +2721,7 @@ export class RecommendationService {
     const dietary = userId
       ? await this.getCurrentDietaryFeatures(userId)
       : { allergens: [], preferences: null };
-    const conditions = this.buildFilterConditions(
+    const conditions = await this.buildFilterConditions(
       {
         ...filter,
         avoidIngredients: dietary.preferences?.avoidIngredients,

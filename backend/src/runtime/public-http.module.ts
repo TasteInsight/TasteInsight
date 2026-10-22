@@ -1,3 +1,5 @@
+import { AllergensModule } from '@/allergens/allergens.module';
+import { AllergensController } from '@/allergens/allergens.controller';
 import { ModerationPublicController } from '@/content-moderation/moderation-public.controller';
 import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
 import { Module } from '@nestjs/common';
@@ -25,6 +27,7 @@ import { PublicUploadController } from '@/upload/upload.controller';
 
 @Module({
   imports: [
+    AllergensModule,
     ModerationProcessingModule,
     AuthModule,
     DishesModule,
@@ -40,6 +43,7 @@ import { PublicUploadController } from '@/upload/upload.controller';
     AIChatModule,
   ],
   controllers: [
+    AllergensController,
     ModerationPublicController,
     IdentityController,
     CampusIdentityController,

@@ -157,7 +157,9 @@ export class CreateMealPlanTool implements BaseTool {
       dishes,
       { startDate, endDate, mealTime },
       {
-        allergens: features.allergens,
+        allergens: await this.recommendationService.expandAllergenValues(
+          features.allergens,
+        ),
         avoidIngredients: features.preferences?.avoidIngredients ?? [],
       },
       constraints,
@@ -177,6 +179,9 @@ export class CreateMealPlanTool implements BaseTool {
         dishes: dishes.map((dish) => ({
           id: dish.id,
           name: dish.name,
+          nameEn: dish.nameEn,
+          description: dish.description,
+          descriptionEn: dish.descriptionEn,
           calories: dish.calories,
           protein: dish.protein,
           carbohydrate: dish.carbohydrate,

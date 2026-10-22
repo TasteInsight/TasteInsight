@@ -11,6 +11,8 @@ describe('CreateMealPlanTool meal constraints', () => {
   const main = {
     id: 'main',
     name: '鸡肉饭',
+    nameEn: 'Chicken rice',
+    descriptionEn: 'Rice with chicken',
     canteenId: 'c1',
     canteenName: '第一食堂',
     price: 15,
@@ -41,6 +43,7 @@ describe('CreateMealPlanTool meal constraints', () => {
         .mockResolvedValue({ data: { items: [main, side] } }),
     };
     recommendations = {
+      expandAllergenValues: jest.fn(async (values) => values),
       getUserFeaturesWithCache: jest.fn().mockResolvedValue({
         allergens: [],
         preferences: { avoidIngredients: [], priceMax: 15 },
@@ -58,6 +61,8 @@ describe('CreateMealPlanTool meal constraints', () => {
     expect(draft.confirmAction.body).not.toHaveProperty('source');
     expect(draft.confirmAction.body).not.toHaveProperty('constraints');
     expect(draft.previewData.dishes[0]).toMatchObject({
+      nameEn: 'Chicken rice',
+      descriptionEn: 'Rice with chicken',
       status: 'online',
       availableMealTime: ['lunch'],
     });

@@ -13,6 +13,8 @@ export class AvailableDateRangeDto {
 export class DishDto {
   id: string;
   name: string;
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   tags: string[];
   price: number;
   calories: number | null;
@@ -50,6 +52,8 @@ export class DishDto {
     const dto = new DishDto();
     dto.id = entity.id;
     dto.name = entity.name;
+    dto.nameEn = entity.nameEn ?? null;
+    dto.descriptionEn = entity.descriptionEn ?? null;
     dto.tags = entity.tags ?? [];
     dto.price = entity.price;
     dto.calories = entity.calories ?? null;

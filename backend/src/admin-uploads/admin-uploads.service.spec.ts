@@ -68,6 +68,7 @@ describe('AdminUploadsService', () => {
         canteenId: 'c1',
         OR: [
           { name: contains },
+          { nameEn: contains },
           { canteenName: contains },
           { windowName: contains },
           { user: { nickname: contains } },

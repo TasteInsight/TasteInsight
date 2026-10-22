@@ -102,6 +102,8 @@ export class DishUploadDto {
   floorName: string | null;
   floorLevel: string | null;
   name: string;
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   tags: string[];
   price: number;
   calories?: number | null;

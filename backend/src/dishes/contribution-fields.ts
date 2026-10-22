@@ -5,6 +5,8 @@ import { createHash } from 'crypto';
 
 export const CONTRIBUTION_FIELDS = [
   'name',
+  'nameEn',
+  'descriptionEn',
   'tags',
   'price',
   'priceUnit',
@@ -35,6 +37,8 @@ const dishFields = [
   'floorName',
 ];
 const nullableFields = new Set([
+  'nameEn',
+  'descriptionEn',
   'calories',
   'protein',
   'carbohydrate',
@@ -269,6 +273,8 @@ export async function prepareContribution(
   }
   return {
     name: source.name?.trim() || '未命名菜品',
+    nameEn: source.nameEn?.trim() || null,
+    descriptionEn: source.descriptionEn?.trim() || null,
     tags: source.tags ?? [],
     price: source.price,
     priceUnit: source.priceUnit ?? null,

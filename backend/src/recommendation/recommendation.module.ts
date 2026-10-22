@@ -1,3 +1,4 @@
+import { AllergensModule } from '@/allergens/allergens.module';
 import { Module } from '@nestjs/common';
 import { RecommendationService } from './recommendation.service';
 import { RecommendationCacheService } from './services/cache.service';
@@ -9,7 +10,7 @@ import { TokenizerService } from './services/tokenizer.service';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, AllergensModule],
   providers: [
     RecommendationCacheService,
     EventLoggerService,

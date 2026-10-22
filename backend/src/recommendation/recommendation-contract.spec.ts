@@ -41,6 +41,7 @@ describe('Recommendation candidate contracts', () => {
       null as any,
       null as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest
       .spyOn(service, 'getUserFeaturesWithCache')
@@ -82,6 +83,7 @@ describe('Recommendation candidate contracts', () => {
       experiment as any,
       embedding as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest
       .spyOn(service, 'getUserFeaturesWithCache')
@@ -113,6 +115,7 @@ describe('Recommendation candidate contracts', () => {
       null as any,
       embedding as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest
       .spyOn(service, 'getUserFeaturesWithCache')
@@ -232,6 +235,7 @@ describe('Recommendation candidate contracts', () => {
       null as any,
       embedding as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest.spyOn(service, 'getUserFeaturesWithCache').mockResolvedValue({
       ...features,
@@ -365,6 +369,7 @@ describe('Recommendation candidate contracts', () => {
         null as any,
         embedding as any,
         null as any,
+        { expandValues: async (values: string[]) => values } as any,
       );
       jest
         .spyOn(service, 'getUserFeaturesWithCache')

@@ -318,14 +318,16 @@ export class DishesService {
       const orConditions: Prisma.DishWhereInput[] = [];
 
       if (searchFields.includes('name')) {
-        orConditions.push({
-          name: { contains: search.keyword, mode: 'insensitive' },
-        });
+        orConditions.push(
+          { name: { contains: search.keyword, mode: 'insensitive' } },
+          { nameEn: { contains: search.keyword, mode: 'insensitive' } },
+        );
       }
       if (searchFields.includes('description')) {
-        orConditions.push({
-          description: { contains: search.keyword, mode: 'insensitive' },
-        });
+        orConditions.push(
+          { description: { contains: search.keyword, mode: 'insensitive' } },
+          { descriptionEn: { contains: search.keyword, mode: 'insensitive' } },
+        );
       }
       if (searchFields.includes('tags')) {
         orConditions.push({ tags: { has: search.keyword } });

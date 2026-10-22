@@ -45,7 +45,12 @@ export function assertMealPlanDishes(
   if (
     dishes.some(
       (dish) =>
-        dish.allergens.some((value) => dietary.allergens.includes(value)) ||
+        dish.allergens.some((value) =>
+          dietary.allergens.some(
+            (allergen) =>
+              allergen.trim().toLowerCase() === value.trim().toLowerCase(),
+          ),
+        ) ||
         dish.ingredients.some((value) =>
           dietary.avoidIngredients.includes(value),
         ),

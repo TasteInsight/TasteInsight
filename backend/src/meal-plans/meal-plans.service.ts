@@ -134,6 +134,8 @@ export class MealPlansService {
               select: {
                 id: true,
                 name: true,
+                nameEn: true,
+                descriptionEn: true,
                 images: true,
                 price: true,
                 priceUnit: true,

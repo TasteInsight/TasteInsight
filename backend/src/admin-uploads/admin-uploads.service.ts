@@ -99,6 +99,7 @@ export class AdminUploadsService {
       };
       where.OR = [
         { name: contains },
+        { nameEn: contains },
         { canteenName: contains },
         { windowName: contains },
         { user: { nickname: contains } },
@@ -619,6 +620,8 @@ export class AdminUploadsService {
     return {
       id: upload.id,
       name: upload.name,
+      nameEn: upload.nameEn ?? null,
+      descriptionEn: upload.descriptionEn ?? null,
       tags: upload.tags,
       price: upload.price,
       calories: upload.calories ?? null,

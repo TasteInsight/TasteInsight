@@ -30,12 +30,14 @@ export class UserProfileData {
 export type UserReviewData = ReviewData & {
   status: string;
   dishName: string;
+  dishNameEn?: string | null;
   dishImage: string;
 };
 export class UserFavoriteData {
   dishId: string;
   addedAt: string;
   dishName: string;
+  dishNameEn?: string | null;
   dishImages: string[];
   dishPrice: number;
   priceUnit: string | null;
@@ -54,6 +56,7 @@ export class UserHistoryData {
   dishId: string;
   viewedAt: string;
   dishName: string;
+  dishNameEn?: string | null;
   dishImages: string[];
   dishPrice: number;
   priceUnit: string | null;
@@ -76,6 +79,8 @@ export class UserUploadData {
 
   id: string;
   name: string;
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   images: string[];
   canteenName: string;
   windowName: string;
