@@ -1,6 +1,8 @@
 module.exports = async function shouldDeploy({ github, context }) {
-  if (context.eventName === 'workflow_dispatch') return true;
-  if (context.eventName === 'push') return context.ref.startsWith('refs/tags/v');
+  if (context.eventName === 'workflow_dispatch') return context.ref === 'refs/heads/main';
+  if (context.eventName === 'push') {
+    return context.ref.startsWith('refs/tags/v') && !context.ref.includes('-');
+  }
   if (context.eventName !== 'workflow_run') return false;
 
   const run = context.payload.workflow_run;
@@ -8,6 +10,7 @@ module.exports = async function shouldDeploy({ github, context }) {
   if (
     run.conclusion !== 'success'
     || run.event !== 'push'
+    || run.head_branch !== 'main'
     || run.head_repository?.full_name !== repository
   ) return false;
 

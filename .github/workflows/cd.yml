@@ -3,32 +3,24 @@ name: CD - Deploy
 on:
   # 1. 当 CI 通过后自动触发部署
   #    - push 到 main → CI 成功 → 自动部署生产
-  #    - push 到 dev  → CI 成功 → 自动部署开发
   workflow_run:
     workflows: ["CI - Required Checks"]
     types:
       - completed
-    branches: [main, dev]
+    branches: [main]
   
   # 2. 支持 tag 触发
   push:
     tags:
       - 'v*'
+      - '!v*-*'
   
   # 3. 手动触发
   workflow_dispatch:
-    inputs:
-      environment:
-        description: '部署环境'
-        required: true
-        type: choice
-        options:
-          - development
-          - production
 
 # 防止重复部署
 concurrency:
-  group: cd-${{ github.event.workflow_run.head_branch || github.ref_name }}-${{ inputs.environment || 'auto' }}
+  group: cd-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -118,8 +110,7 @@ jobs:
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
             type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
-            type=raw,value=latest-dev,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') || github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')) }}
-            type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
+            type=raw,value=latest
 
       # 构建并推送
       - name: Build and push Backend
@@ -192,8 +183,7 @@ jobs:
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
             type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
-            type=raw,value=latest-dev,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') || github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')) }}
-            type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
+            type=raw,value=latest
 
       - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
@@ -251,8 +241,7 @@ jobs:
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
             type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
-            type=raw,value=latest-dev,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') || github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')) }}
-            type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
+            type=raw,value=latest
 
       - name: Build and push Embedding Service
         uses: docker/build-push-action@v6
@@ -267,98 +256,20 @@ jobs:
           build-args: |
             PRELOAD_MODEL=false
 
-  # 部署到开发环境
-  deploy-dev:
-    name: Deploy to Development
-    runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, build-embedding]
-    if: >
-      (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'development') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-'))
-    environment: development
-    concurrency:
-      group: deploy-development
-      cancel-in-progress: false
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEV_SSH_KEY }}
-
-      - name: Add host to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DEV_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Create and copy deployment files
-        env:
-          DEPLOY_ENV_FILE: ${{ secrets.DEV_ENV_FILE }}
-        run: |
-          DEPLOY_TMP=$(mktemp -d)
-          trap "rm -rf $DEPLOY_TMP" EXIT
-
-          cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
-          cp backend/docker-compose.local.yml "$DEPLOY_TMP/docker-compose.local.yml"
-          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf nginx.werss.conf gateway-render.sh; do
-            cp "backend/$file" "$DEPLOY_TMP/$file"
-          done
-          printf '%s\n' "$DEPLOY_ENV_FILE" > "$DEPLOY_TMP/.env.production"
-          chmod 600 "$DEPLOY_TMP/.env.production"
-
-          scp .github/scripts/deploy-release.sh "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/deploy-release.sh"
-          ssh "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}" "cd '${{ secrets.DEV_DEPLOY_PATH }}' && sh deploy-release.sh --check-legacy"
-          
-          scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.yml"
-          scp "$DEPLOY_TMP/docker-compose.local.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.local.yml"
-          scp "$DEPLOY_TMP/.env.production" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env.production"
-          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf nginx.werss.conf gateway-render.sh; do
-            scp "$DEPLOY_TMP/$file" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/$file"
-          done
-        shell: bash
-        
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.DEV_HOST }}
-          username: ${{ secrets.DEV_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.DEV_DEPLOY_PATH }}
-
-            echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
-
-            export TAG="${{ env.DEPLOY_IMAGE_TAG }}"
-            
-            # 这个变量会被传入 docker-compose.yml 中替换 ${IMAGE_REGISTRY}
-            export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
-            
-            echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
-            
-            sh deploy-release.sh
-            
-            echo "✅ Development deployment completed at $(date)"
-
   # 部署到生产环境
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend, build-embedding]
-    if: >
-      (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))
     environment: production
     concurrency:
       group: deploy-production
       cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.PROD_HOST }}
+      DEPLOY_USER: ${{ secrets.PROD_USER }}
+      DEPLOY_ROOT: ${{ secrets.PROD_DEPLOY_PATH || '/srv/tasteinsight' }}
+      RELEASE_ID: deploy-${{ github.event.workflow_run.head_sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout code
@@ -374,56 +285,28 @@ jobs:
       - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
-      - name: Create and copy deployment files
-        env:
-          DEPLOY_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
-        run: |
-          # 创建临时目录存放部署文件
-          DEPLOY_TMP=$(mktemp -d)
-          trap "rm -rf $DEPLOY_TMP" EXIT
-
-          # 复制 docker-compose.yml
-          cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
-          cp backend/docker-compose.local.yml "$DEPLOY_TMP/docker-compose.local.yml"
-          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf nginx.werss.conf gateway-render.sh; do
-            cp "backend/$file" "$DEPLOY_TMP/$file"
-          done
-          printf '%s\n' "$DEPLOY_ENV_FILE" > "$DEPLOY_TMP/.env.production"
-          chmod 600 "$DEPLOY_TMP/.env.production"
-
-          scp .github/scripts/deploy-release.sh "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/deploy-release.sh"
-          ssh "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}" "cd '${{ secrets.PROD_DEPLOY_PATH }}' && sh deploy-release.sh --check-legacy"
-          
-          # 复制文件到服务器
-          scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.yml"
-          scp "$DEPLOY_TMP/docker-compose.local.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.local.yml"
-          scp "$DEPLOY_TMP/.env.production" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env.production"
-          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf nginx.werss.conf gateway-render.sh; do
-            scp "$DEPLOY_TMP/$file" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/$file"
-          done
+      - name: Upload production release
         shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_TMP=$(mktemp -d)
+          trap 'rm -rf "$DEPLOY_TMP"' EXIT
+          git archive --format=tar.gz --output="$DEPLOY_TMP/release.tar.gz" HEAD backend frontend-web .github/scripts
+          printf -v prepare_command 'mkdir -p %q' "$DEPLOY_ROOT/staging"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "$prepare_command"
+          scp "$DEPLOY_TMP/release.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_ROOT/staging/$RELEASE_ID.tar.gz"
+          scp .github/scripts/deploy-production.sh "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_ROOT/staging/$RELEASE_ID.sh"
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.PROD_HOST }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.PROD_DEPLOY_PATH }}
-
-            # 生产环境同样登录阿里云
-            echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
-
-            export TAG="${{ env.DEPLOY_IMAGE_TAG }}"
-            
-            # 生产环境同样指定阿里云源
-            export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
-            
-            echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
-            
-            sh deploy-release.sh
-            echo "✅ Production deployment completed at $(date)"
+        shell: bash
+        env:
+          REGISTRY_USERNAME: ${{ secrets.ALIYUN_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf -v login_command 'docker login %q --username %q --password-stdin' "$ALIYUN_REGISTRY" "$REGISTRY_USERNAME"
+          printf '%s' "$REGISTRY_PASSWORD" | ssh "$DEPLOY_USER@$DEPLOY_HOST" "$login_command"
+          printf -v deploy_command 'sh %q %q %q %q %q' "$DEPLOY_ROOT/staging/$RELEASE_ID.sh" "$DEPLOY_ROOT" "$RELEASE_ID" "$ALIYUN_REGISTRY/$ALIYUN_NAMESPACE" "$DEPLOY_IMAGE_TAG"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "$deploy_command"
