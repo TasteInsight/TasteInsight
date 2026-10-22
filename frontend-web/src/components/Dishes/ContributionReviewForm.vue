@@ -1,6 +1,13 @@
 <template>
   <form data-testid="contribution-edit" class="space-y-6" @submit.prevent="submit">
     <fieldset :disabled="busy || uploading" class="space-y-6">
+      <TranslationFields
+        v-model:name-en="draft.nameEn"
+        v-model:description-en="draft.descriptionEn"
+        :name="draft.name"
+        :description="draft.description"
+        :busy="busy"
+      />
       <div class="admin-form-grid">
         <div class="space-y-4">
           <div>
@@ -112,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import TranslationFields from '@/components/Content/TranslationFields.vue'
 import { nutritionFields, nutritionPayload } from '@/utils/nutrition'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { canteenApi } from '@/api/modules/canteen'
@@ -129,6 +137,8 @@ const draft = reactive({
   protein: props.upload.protein ?? '' as number | '',
   carbohydrate: props.upload.carbohydrate ?? '' as number | '',
   fat: props.upload.fat ?? '' as number | '',
+  nameEn: props.upload.nameEn || '',
+  descriptionEn: props.upload.descriptionEn || '',
   name: props.upload.name, price: props.upload.price as number | '', priceUnit: props.upload.priceUnit || '',
   description: props.upload.description || '', windowId: props.upload.windowId || null,
   images: [...(props.upload.images || [])], availableMealTime: [...(props.upload.availableMealTime || [])],

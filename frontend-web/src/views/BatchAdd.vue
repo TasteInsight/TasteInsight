@@ -111,7 +111,10 @@
                       <td class="py-3 px-4 text-sm">{{ item.floorName || '-' }}</td>
                       <td class="py-3 px-4 text-sm">{{ item.windowName || '-' }}</td>
                       <td class="py-3 px-4 text-sm">{{ item.windowNumber || '-' }}</td>
-                      <td class="py-3 px-4 text-sm font-medium">{{ item.name || '-' }}</td>
+                      <td class="py-3 px-4 text-sm font-medium">{{ item.name || '-' }}
+                    <div v-if="item.nameEn" class="text-gray-500 font-normal">
+                      {{ item.nameEn }}
+                    </div></td>
                       <td class="py-3 px-4 text-sm">
                         <span v-if="item.subDishNames && item.subDishNames.length > 0">
                           {{ item.subDishNames.join(', ') }}

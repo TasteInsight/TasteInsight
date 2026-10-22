@@ -531,7 +531,13 @@
               </div>
             </div>
 
-            <NutritionFields :values="formData" @update:values="Object.assign(formData, $event)" />
+            <TranslationFields
+                v-model:name-en="formData.nameEn"
+                v-model:description-en="formData.descriptionEn"
+                :name="formData.name"
+                :description="formData.description"
+              />
+              <NutritionFields :values="formData" @update:values="Object.assign(formData, $event)" />
 
             <!-- 过敏原 -->
             <div class="mb-6">
@@ -593,6 +599,7 @@ import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
+import TranslationFields from '@/components/Content/TranslationFields.vue'
 import NutritionFields from '@/components/Dishes/NutritionFields.vue'
 import { nutritionPayload } from '@/utils/nutrition'
 import { showConfirm } from '@/composables/useModal'
@@ -605,6 +612,7 @@ export default {
   components: {
     AdminImage,
     NutritionFields,
+    TranslationFields,
     Header,
   },
   setup() {
@@ -956,6 +964,8 @@ export default {
         // 构建菜品创建请求
         const dishData = {
           name: formData.name,
+          nameEn: formData.nameEn || null,
+          descriptionEn: formData.descriptionEn || null,
           canteenId: formData.canteenId,
           windowId: formData.windowId,
           canteenName: formData.canteen,

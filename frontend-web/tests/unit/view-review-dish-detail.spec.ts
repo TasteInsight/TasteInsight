@@ -151,7 +151,7 @@ describe('views/ReviewDishDetail contribution moderation', () => {
     await flushPromises()
     expect(wrapper.get('#merge-dish').element).toHaveProperty('value', '')
     await wrapper.get('#merge-dish').setValue('d1')
-    expect(wrapper.findAll('[data-comparison]')).toHaveLength(19)
+    expect(wrapper.findAll('[data-comparison]')).toHaveLength(21)
     expect(wrapper.findAll('col')).toHaveLength(4)
     expect((wrapper.get('col').element as HTMLTableColElement).style.width).toBe('4rem')
     expect(wrapper.text()).not.toContain('图片将追加')

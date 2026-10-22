@@ -22,6 +22,13 @@
     </div>
 
     <nav id="admin-navigation" class="admin-navigation sidebar-menu-scroll" aria-label="管理功能">
+      <router-link
+        v-if="userInfo?.scope === 'GLOBAL'"
+        v-permission="'config:view'"
+        to="/allergen-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/allergen-manage' }"
+        ><AppIcon icon="carbon:catalog" /><span>过敏原词表</span></router-link>
       <div v-permission="'dish:create'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"

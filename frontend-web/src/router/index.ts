@@ -28,6 +28,8 @@ const ExperimentManage = () => import('@/views/ExperimentManage.vue')
 const StudentVerificationManage = () => import('@/views/StudentVerificationManage.vue')
 const CommunityManage = () => import('@/views/CommunityManage.vue')
 
+const AllergenManage = () => import('@/views/AllergenManage.vue')
+
 const routes = [
   { path: '/change-password', name: 'ChangePassword', component: ChangePassword, meta: { requiresAuth: true } },
   {
@@ -57,6 +59,12 @@ const routes = [
       return firstRoute
     },
     children: [
+      {
+        path: 'allergen-manage',
+        name: 'AllergenManage',
+        component: AllergenManage,
+        meta: { requiresAuth: true, requiredPermission: 'config:view', globalOnly: true },
+      },
       {
         path: 'single-add',
         name: 'SingleAdd',

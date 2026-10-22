@@ -518,6 +518,12 @@
               </div>
             </div>
 
+            <TranslationFields
+              v-model:name-en="formData.nameEn"
+              v-model:description-en="formData.descriptionEn"
+              :name="formData.name"
+              :description="formData.description"
+            />
             <NutritionFields :values="formData" @update:values="Object.assign(formData, $event)" />
 
             <!-- 过敏原 -->
@@ -631,6 +637,7 @@ import { useDishStore } from '@/store/modules/use-dish-store'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
+import TranslationFields from '@/components/Content/TranslationFields.vue'
 import NutritionFields from '@/components/Dishes/NutritionFields.vue'
 import { nutritionPayload } from '@/utils/nutrition'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
@@ -643,6 +650,7 @@ export default {
   components: {
     AdminImage,
     NutritionFields,
+    TranslationFields,
     Header,
     AdminDialog,
   },
@@ -691,6 +699,8 @@ export default {
       fat: null,
 
       description: '',
+      nameEn: '',
+      descriptionEn: '',
       allergens: '',
       ingredients: '',
       imageFiles: [], // { id: string, url: string, file?: File, isNew: boolean }
@@ -826,6 +836,9 @@ export default {
       formData.windowId = dish.windowId || ''
       formData.windowName = dish.windowName || dish.window || ''
       formData.windowNumber = dish.windowNumber || ''
+
+      formData.nameEn = dish.nameEn || ''
+      formData.descriptionEn = dish.descriptionEn || ''
 
       formData.name = dish.name || ''
       formData.calories = dish.calories ?? null
@@ -1223,6 +1236,8 @@ export default {
         // 构建菜品更新请求
         const updateData = {
           name: draft.name,
+          nameEn: draft.nameEn || null,
+          descriptionEn: draft.descriptionEn || null,
           canteenId: draft.canteenId,
           windowId: draft.windowId,
           canteenName: draft.canteen,

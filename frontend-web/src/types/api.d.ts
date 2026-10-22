@@ -140,6 +140,8 @@ export interface AvailableDate {
  * 菜品信息
  */
 export interface Dish {
+  nameEn?: string | null
+  descriptionEn?: string | null
   calories?: number | null
   protein?: number | null
   carbohydrate?: number | null
@@ -188,6 +190,8 @@ export interface DishUpload extends Omit<Dish, 'status' | 'parentDishId' | 'subD
  * 创建菜品请求
  */
 export interface DishCreateRequest {
+  nameEn?: string | null
+  descriptionEn?: string | null
   calories?: number | null
   protein?: number | null
   carbohydrate?: number | null
@@ -221,6 +225,8 @@ export interface DishCreateRequest {
  * 更新菜品请求
  */
 export interface DishUpdateRequest {
+  nameEn?: string | null
+  descriptionEn?: string | null
   calories?: number | null
   protein?: number | null
   carbohydrate?: number | null
@@ -266,6 +272,8 @@ export interface GetDishesParams extends PaginationParams {
  * 批量解析后的单条菜品数据（用于预览和确认）
  */
 export interface BatchParsedDish {
+  nameEn?: string | null
+  descriptionEn?: string | null
   // 基础信息
   tempId: string          // 前端生成的临时ID，用于列表渲染
   name: string            // 菜品名

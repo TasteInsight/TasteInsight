@@ -10,6 +10,8 @@ export const contributionTasteFields = [
 
 export const contributionFields: { key: ContributionField; label: string }[] = [
   { key: 'name', label: '菜品名称' },
+  { key: 'nameEn', label: '英文名称' },
+  { key: 'descriptionEn', label: '英文描述' },
   { key: 'price', label: '价格' },
   { key: 'priceUnit', label: '价格单位' },
   { key: 'windowId', label: '窗口与楼层' },

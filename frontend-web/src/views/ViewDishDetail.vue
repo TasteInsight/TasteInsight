@@ -77,6 +77,17 @@
               </div>
             </div>
 
+            <div>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">英文名称</label>
+              <p class="text-gray-700">{{ dishData.nameEn || '未填写' }}</p>
+            </div>
+            <div>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">英文描述</label>
+              <p class="text-gray-700 whitespace-pre-wrap">
+                {{ dishData.descriptionEn || '未填写' }}
+              </p>
+            </div>
+
             <!-- 菜品描述 -->
             <div class="mb-6">
               <label class="block text-gray-700 font-medium mb-2 admin-label">菜品描述</label>
@@ -512,6 +523,8 @@ export default {
       windowNumber: '',
       price: 0,
       description: '',
+      nameEn: '',
+      descriptionEn: '',
       allergens: [],
       ingredients: [],
       images: [],
@@ -585,6 +598,8 @@ export default {
             windowNumber: dish.windowNumber || '',
             price: dish.price !== null && dish.price !== undefined ? dish.price : 0,
             description: dish.description || '',
+            nameEn: dish.nameEn || '',
+            descriptionEn: dish.descriptionEn || '',
             allergens: Array.isArray(dish.allergens)
               ? dish.allergens
               : dish.allergens

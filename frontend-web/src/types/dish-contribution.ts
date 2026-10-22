@@ -4,6 +4,8 @@ export type MealTime = 'breakfast' | 'lunch' | 'dinner' | 'nightsnack'
 export type ContributionStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn'
 
 export interface ContributionFields {
+  nameEn?: string | null
+  descriptionEn?: string | null
   calories?: number | null
   protein?: number | null
   carbohydrate?: number | null
