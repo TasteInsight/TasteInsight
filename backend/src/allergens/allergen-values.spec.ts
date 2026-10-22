@@ -1,3 +1,6 @@
+import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
+import { BatchParsedDishDto } from '@/admin-dishes/dto/admin-dish-batch.dto';
 import { expandAllergenValues } from './allergen-values';
 
 const catalog = [
@@ -38,4 +41,11 @@ it('deduplicates known aliases while retaining distinct allergen identities', ()
   expect(
     expandAllergenValues(['Peanuts', '花生', 'TREE NUTS'], catalog),
   ).toEqual(['花生', 'Peanuts', 'Peanut', '坚果', 'Tree nuts', 'Tree nut']);
+});
+
+it('preserves multiword allergen identities in batch confirmation text', () => {
+  const dto = plainToInstance(BatchParsedDishDto, {
+    allergens: 'Pine nuts, Milk protein；花生',
+  });
+  expect(dto.allergens).toEqual(['Pine nuts', 'Milk protein', '花生']);
 });

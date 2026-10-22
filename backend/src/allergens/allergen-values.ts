@@ -32,3 +32,14 @@ export function expandAllergenValues(
   }
   return [...expanded.values()];
 }
+
+export function parseAllergenValues(value: unknown): string[] {
+  const values = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(/[,，;；、\n\r]+/)
+      : typeof value === 'number'
+        ? [value]
+        : [];
+  return values.map((item) => String(item).trim()).filter(Boolean);
+}

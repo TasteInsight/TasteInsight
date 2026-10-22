@@ -128,6 +128,34 @@ describe('AIChatService', () => {
     });
   });
 
+  it('uses English for session welcome and opening suggestions while retaining canteen names', async () => {
+    jest
+      .spyOn(prisma.aISession, 'create')
+      .mockResolvedValue({ id: 'english-session' } as any);
+    jest
+      .spyOn(prisma.canteen, 'findMany')
+      .mockResolvedValue([{ name: '学生食堂' }] as any);
+    const result = await service.createSession(
+      'user123',
+      { scene: 'meal_planner' },
+      'en',
+    );
+    expect(result.welcomeMessage).toContain('plan your meals');
+    const suggestions = await service.getSuggestions(
+      'user123',
+      { localTime: '2026-10-22T12:00:00+08:00' },
+      'en',
+    );
+    expect(suggestions).toContain('Show me popular dishes on campus');
+    expect(suggestions).toContain('Plan my meals for next week');
+    expect(suggestions.at(-1)).toContain('学生食堂');
+    expect(
+      suggestions.some(
+        (value) => value.includes('有什么') || value.includes('推荐'),
+      ),
+    ).toBe(false);
+  });
+
   describe('getSuggestions', () => {
     it('should return time-based suggestions', async () => {
       jest.spyOn(prisma.canteen, 'findMany').mockResolvedValue([

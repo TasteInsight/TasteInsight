@@ -431,7 +431,10 @@ export class CampusOAuthService {
           data: { completedAt: now },
         });
         if (consumed.count !== 1)
-          throw new BadRequestException('确认码无效或已过期，请重新发起');
+          throw new BadRequestException({
+            code: 'INVALID_CAMPUS_CONFIRMATION',
+            message: '确认码无效或已过期，请重新发起',
+          });
         const attempt = await tx.campusOAuthAttempt.findUniqueOrThrow({
           where: { id: dto.attemptId },
         });

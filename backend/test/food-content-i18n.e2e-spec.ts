@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { AdminDishesService } from '@/admin-dishes/admin-dishes.service';
+import { MealPlansService } from '@/meal-plans/meal-plans.service';
 import { CreateMealPlanTool } from '@/ai-chat/tools/create-meal-plan.tool';
 import { randomUUID } from 'crypto';
 import { Test } from '@nestjs/testing';
@@ -275,6 +276,58 @@ describe('food content localization (PostgreSQL)', () => {
       ).rejects.toThrow('忌口');
     }
   });
+  it('rechecks current allergens and aliases when saving or changing an existing plan', async () => {
+    const userId = prefix + '-save-user';
+    await db.user.create({ data: { id: userId, nickname: 'Plan test' } });
+    const plans = new MealPlansService(db, allergens);
+    const rec = new RecommendationService(
+      db,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      allergens,
+    );
+    jest
+      .spyOn(rec, 'getUserFeaturesWithCache')
+      .mockResolvedValue({ allergens: [], preferences: null } as any);
+    const tool = new CreateMealPlanTool(new DishesService(db), rec);
+    const draft = await tool.execute(
+      {
+        dishIds: [prefix + '-peanut'],
+        startDate: '2026-11-01',
+        endDate: '2026-11-01',
+        mealTime: 'lunch',
+      },
+      { userId, sessionId: 'test' },
+    );
+    const body = draft.confirmAction.body;
+    await db.user.update({
+      where: { id: userId },
+      data: { allergens: ['Peanuts'] },
+    });
+    await expect(plans.createMealPlan(userId, body)).rejects.toMatchObject({
+      response: { code: 'DIETARY_CONFLICT' },
+    });
+    expect(await db.mealPlan.count({ where: { userId } })).toBe(0);
+    const safe = await plans.createMealPlan(userId, {
+      ...body,
+      dishes: [prefix + '-safe'],
+    });
+    await expect(
+      plans.updateMealPlan(safe.data.id, userId, {
+        dishes: [prefix + '-peanut'],
+      }),
+    ).rejects.toMatchObject({ response: { code: 'DIETARY_CONFLICT' } });
+    expect(
+      (
+        await db.mealPlanDish.findMany({ where: { mealPlanId: safe.data.id } })
+      ).map((row) => row.dishId),
+    ).toEqual([prefix + '-safe']);
+    await db.mealPlan.delete({ where: { id: safe.data.id } });
+  });
+
   it('preserves maintained English fields on old Excel imports and keeps sub-dish translations independent', async () => {
     const window = await db.window.create({
       data: { canteenId: prefix, name: prefix + '-window', number: '1' },
@@ -292,7 +345,15 @@ describe('food content localization (PostgreSQL)', () => {
     XLSX.utils.book_append_sheet(
       workbook,
       XLSX.utils.json_to_sheet([
-        { 食堂: prefix, 窗口: window.name, 菜品名: '普通菜', 价格: 9 },
+        {
+          食堂: prefix,
+          窗口: window.name,
+          菜品名: '普通菜',
+          价格: 9,
+          菜品英文名: ' ',
+          英文描述: ' ',
+          过敏原: 'Pine nuts, Milk protein',
+        },
       ]),
       '菜品',
     );
@@ -301,7 +362,38 @@ describe('food content localization (PostgreSQL)', () => {
       { buffer, size: buffer.length } as any,
       admin as any,
     );
+    const invalidBook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      invalidBook,
+      XLSX.utils.json_to_sheet([
+        {
+          食堂: prefix,
+          窗口: window.name,
+          菜品名: '超长英文',
+          价格: 9,
+          菜品英文名: 'x'.repeat(201),
+          英文描述: 'y'.repeat(4001),
+        },
+      ]),
+      '菜品',
+    );
+    const invalidBuffer = XLSX.write(invalidBook, {
+      type: 'buffer',
+      bookType: 'xlsx',
+    });
+    const invalid = await service.parseBatchExcel(
+      { buffer: invalidBuffer, size: invalidBuffer.length } as any,
+      admin as any,
+    );
+    expect(invalid.data.items[0].status).toBe('invalid');
+    expect(invalid.data.items[0].message).toContain('英文名称超过长度限制');
+    expect(invalid.data.items[0].message).toContain('英文描述超过长度限制');
     expect(parsed.data.items[0].nameEn).toBeUndefined();
+    expect(parsed.data.items[0].descriptionEn).toBeUndefined();
+    expect(parsed.data.items[0].allergens).toEqual([
+      'Pine nuts',
+      'Milk protein',
+    ]);
     const imported = await service.confirmBatchImport(
       { dishes: parsed.data.items } as any,
       { ...admin, permissions: ['dish:create', 'dish:edit'] } as any,
@@ -314,7 +406,25 @@ describe('food content localization (PostgreSQL)', () => {
       nameEn: 'Maintained English',
       descriptionEn: 'Maintained description',
       price: 9,
+      allergens: ['Pine nuts', 'Milk protein'],
     });
+    const rec = new RecommendationService(
+      db,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      allergens,
+    );
+    const exclusions = await (rec as any).buildDietaryFilterConditions([
+      'pine nuts',
+    ]);
+    expect(
+      await db.dish.findMany({
+        where: { id: prefix + '-safe', AND: exclusions },
+      }),
+    ).toEqual([]);
     const parent = {
       ...parsed.data.items[0],
       name: prefix + '-parent',
@@ -325,11 +435,16 @@ describe('food content localization (PostgreSQL)', () => {
     expect(
       (
         await service.confirmBatchImport(
-          { dishes: [parent] } as any,
+          {
+            dishes: [
+              parent,
+              { ...parent, nameEn: undefined, descriptionEn: undefined },
+            ],
+          } as any,
           { ...admin, permissions: ['dish:create'] } as any,
         )
       ).data,
-    ).toMatchObject({ successCount: 1, failCount: 0 });
+    ).toMatchObject({ successCount: 2, failCount: 0 });
     const uploads = await db.dishUpload.findMany({
       where: { canteenId: prefix },
     });

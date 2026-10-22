@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AllergensModule } from '@/allergens/allergens.module';
 import { MealPlansService } from './meal-plans.service';
 import { MealPlansController } from './meal-plans.controller';
 import { JwtService } from '@nestjs/jwt';
@@ -8,7 +9,7 @@ import { DiningInvitesService } from './dining-invites.service';
 import { PublicMealPlansController } from './public-meal-plans.controller';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, AllergensModule],
   controllers: [
     MealPlansController,
     PublicMealPlansController,

@@ -1,3 +1,7 @@
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { DishTranslationFieldsDto } from '@/dishes/dto/dish-translation.dto';
+import { parseAllergenValues } from '@/allergens/allergen-values';
 import {
   canAccessCanteen,
   canteenScopeFilter,
@@ -930,7 +934,7 @@ export class AdminDishesService {
         '番茄与鸡蛋炒制',
         '家常菜',
         '番茄,鸡蛋',
-        '蛋',
+        '鸡蛋',
         'Stir-fried tomatoes and eggs',
         'Tomatoes stir-fried with eggs',
       ],
@@ -972,6 +976,11 @@ export class AdminDishesService {
         '选填，用英文逗号分隔，例如早餐、午餐、晚餐、夜宵中的适用时段。',
       ],
       ['菜品描述', '选填，填写菜品介绍。'],
+      ['菜品英文名', '选填，最多200个字符；留空保留已有英文名称。'],
+      [
+        '英文描述',
+        '选填，最多4000个字符；留空保留已有英文描述。清空英文内容可在菜品编辑页完成。',
+      ],
       ['Tags', '选填，用英文逗号分隔多个标签。'],
       ['主辅料', '选填，用英文逗号分隔多种食材。'],
       ['过敏原', '选填，用英文逗号分隔多种过敏原；请按已核实的信息填写。'],
@@ -1750,9 +1759,12 @@ export class AdminDishesService {
       if (!upload) throw new BadRequestException('本批次待审记录已不存在');
 
       if (upload.status === 'pending') {
+        const updateData: Prisma.DishUploadUpdateInput = { ...uploadData };
+        if (data.nameEn === undefined) delete updateData.nameEn;
+        if (data.descriptionEn === undefined) delete updateData.descriptionEn;
         await tx.dishUpload.update({
           where: { id: upload.id },
-          data: { ...uploadData, revision: (upload.revision ?? 1) + 1 },
+          data: { ...updateData, revision: (upload.revision ?? 1) + 1 },
         });
       } else if (upload.status === 'approved' && upload.approvedDishId) {
         await this.updateDish(tx, upload.approvedDishId, data, adminInfo);
@@ -2044,8 +2056,18 @@ export class AdminDishesService {
         : [];
     const tags = splitToStringArray(row.tagsRaw);
     const ingredients = splitToStringArray(row.ingredientsRaw);
-    const allergens = splitToStringArray(row.allergensRaw);
+    const allergens = parseAllergenValues(row.allergensRaw);
     const subDishNames = splitToStringArray(row.subDishRaw);
+
+    const translations = plainToInstance(DishTranslationFieldsDto, {
+      nameEn: String(row.nameEn ?? '').trim() || undefined,
+      descriptionEn: String(row.descriptionEn ?? '').trim() || undefined,
+    });
+    for (const error of validateSync(translations)) {
+      errors.push(
+        `${error.property === 'nameEn' ? '英文名称' : '英文描述'}超过长度限制`,
+      );
+    }
 
     const status = errors.length
       ? BatchDishStatus.INVALID
@@ -2057,10 +2079,7 @@ export class AdminDishesService {
     return {
       tempId: randomUUID(),
       name: dishName,
-      nameEn: row.nameEn ? String(row.nameEn).trim() : undefined,
-      descriptionEn: row.descriptionEn
-        ? String(row.descriptionEn).trim()
-        : undefined,
+      ...translations,
       description: row.description ? String(row.description).trim() : undefined,
       price,
       priceUnit: unit,

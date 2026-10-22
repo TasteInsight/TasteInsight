@@ -6,11 +6,19 @@ export class PromptBuilder {
    * @param scene Chat scene
    * @param currentTime Optional current time (Date object)
    */
-  static getSystemPrompt(scene: string, currentTime?: Date): string {
+  static getSystemPrompt(
+    scene: string,
+    currentTime?: Date,
+    language: 'zh' | 'en' = 'zh',
+  ): string {
     const timeInfo = currentTime
       ? `\n\n当前时间：${this.formatTime(currentTime)}\n。`
       : '';
-    const recommendationPolicy = this.getRecommendationPolicy();
+    const recommendationPolicy =
+      this.getRecommendationPolicy() +
+      (language === 'en'
+        ? '\n\nResponse language: English. Use English for replies and explanations even when source data or previous messages use Chinese. Prefer the provided nameEn and descriptionEn when available; retain original names when translations are missing. Keep identifiers and original user content unchanged. Never invent translated dish names.'
+        : '\n\n回复语言：简体中文。优先使用菜品原名和中文描述，保留真实标识和用户原文。');
 
     switch (scene) {
       case 'meal_planner':
@@ -190,7 +198,17 @@ export class PromptBuilder {
   /**
    * Get welcome message for a scene
    */
-  static getWelcomeMessage(scene: string): string {
+  static getWelcomeMessage(
+    scene: string,
+    language: 'zh' | 'en' = 'zh',
+  ): string {
+    if (language === 'en') {
+      if (scene === 'meal_planner')
+        return 'Hi! I can help plan your meals. Tell me what you have in mind.';
+      if (scene === 'dish_critic')
+        return 'Hi! Which dish would you like to explore and read reviews for?';
+      return 'Hi! I am your campus food assistant. What would you like to eat today?';
+    }
     switch (scene) {
       case 'meal_planner':
         return '你好！我是你的膳食规划助手。告诉我你的需求，我来帮你制定合理的饮食计划！';

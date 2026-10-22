@@ -14,8 +14,8 @@ import { SaveAllergenDto } from './allergens.dto';
 export class AllergensService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async catalog() {
-    const entries = await this.prisma.allergen.findMany({
+  async catalog(db: Pick<Prisma.TransactionClient, 'allergen'> = this.prisma) {
+    const entries = await db.allergen.findMany({
       include: { aliases: true },
       orderBy: { value: 'asc' },
     });
@@ -25,9 +25,12 @@ export class AllergensService {
     }));
   }
 
-  async expandValues(values: string[]) {
+  async expandValues(
+    values: string[],
+    db: Pick<Prisma.TransactionClient, 'allergen'> = this.prisma,
+  ) {
     return values.length
-      ? expandAllergenValues(values, await this.catalog())
+      ? expandAllergenValues(values, await this.catalog(db))
       : [];
   }
 

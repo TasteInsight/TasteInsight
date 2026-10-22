@@ -157,6 +157,15 @@ describe('PromptSecurityService', () => {
   });
 
   describe('enhanceSystemPrompt', () => {
+    it('uses the requested language for the safety refusal', () => {
+      const prompt = service.enhanceSystemPrompt(
+        'Response language: English',
+        'en',
+      );
+      expect(prompt).toContain('I cannot help with that request');
+      expect(prompt).not.toContain('抱歉，我无法执行这个请求');
+      expect(prompt).toContain('Response language: English');
+    });
     it('should add security instructions to system prompt', () => {
       const original = '你是一个美食助手';
       const enhanced = service.enhanceSystemPrompt(original);

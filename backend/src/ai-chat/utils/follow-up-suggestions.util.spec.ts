@@ -1,9 +1,25 @@
+import { PromptBuilder } from './prompt-builder.util';
 import {
   buildFollowUpMessages,
   parseFollowUpSuggestions,
 } from './follow-up-suggestions.util';
 
 describe('contextual follow-up suggestions', () => {
+  it('selects English follow-ups without changing original conversation content', () => {
+    const messages = buildFollowUpMessages(
+      [{ role: 'user', content: [{ type: 'text', data: '午餐' }] }],
+      'en',
+    );
+    expect(messages[0].content).toContain('英文');
+    expect(messages[0].content).not.toContain('中文问题');
+    expect(messages[1].content).toContain('午餐');
+    for (const scene of ['general_chat', 'meal_planner', 'dish_critic']) {
+      const prompt = PromptBuilder.getSystemPrompt(scene, new Date(), 'en');
+      expect(prompt).toContain('Response language: English');
+      expect(prompt).toContain('nameEn');
+      expect(prompt).toContain('草稿只供确认，不代表计划已保存');
+    }
+  });
   it('includes recent questions, answers and visible card data, within a bounded context', () => {
     const messages = buildFollowUpMessages([
       ...Array.from({ length: 8 }, (_, index) => ({

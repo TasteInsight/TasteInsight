@@ -6,6 +6,7 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { MealPlansService } from './meal-plans.service';
+import { AllergensService } from '@/allergens/allergens.service';
 import { MealPlanQueryDto } from './dto/meal-plan-query.dto';
 
 const saved = () => ({
@@ -40,7 +41,13 @@ function fixture() {
   prisma.$transaction.mockImplementation(async (operation) =>
     operation(prisma),
   );
-  return { prisma, service: new MealPlansService(prisma as never) };
+  return {
+    prisma,
+    service: new MealPlansService(
+      prisma as never,
+      new AllergensService(prisma as never),
+    ),
+  };
 }
 
 describe('meal plan calendar contract', () => {
