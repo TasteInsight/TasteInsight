@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
+const { runInNewContext } = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
 const workflow = (name) => fs.readFileSync(path.join(root, '.github/workflows', name), 'utf8');
@@ -113,4 +114,34 @@ test('explicit manual and version-tag deployments remain supported', async () =>
   f.context.ref = 'refs/heads/main';
   assert.equal(await evaluate(f), false);
   assert.equal(f.branchCalls(), 0);
+});
+
+test('deployment routing respects the event and the selected manual environment', () => {
+  const cd = workflow('cd.yml');
+  const conditions = ['dev', 'prod'].map((environment) => {
+    const job = cd.match(new RegExp(`  deploy-${environment}:([\\s\\S]*?)(?=\\n  deploy-|$)`))[1];
+    return [environment, job.match(/    if: >\n((?: {6}[^\n]*\n)+)/)[1]];
+  });
+  const scenarios = [
+    ['workflow_run', 'refs/heads/main', 'dev', '', 'dev'],
+    ['workflow_run', 'refs/heads/main', 'main', '', 'prod'],
+    ['push', 'refs/tags/v1.2.3-beta.1', '', '', 'dev'],
+    ['push', 'refs/tags/v1.2.3', '', '', 'prod'],
+    ...['refs/heads/main', 'refs/heads/dev', 'refs/tags/v1.2.3', 'refs/tags/v1.2.3-beta.1']
+      .flatMap((ref) => [
+        ['workflow_dispatch', ref, '', 'development', 'dev'],
+        ['workflow_dispatch', ref, '', 'production', 'prod'],
+      ]),
+  ];
+  for (const [eventName, ref, branch, environment, expected] of scenarios) {
+    const context = {
+      github: { event_name: eventName, ref, event: { workflow_run: { head_branch: branch } } },
+      inputs: { environment },
+      startsWith: (value, prefix) => value.startsWith(prefix),
+      contains: (value, part) => value.includes(part),
+    };
+    const actual = conditions.filter(([, condition]) => runInNewContext(condition, context))
+      .map(([target]) => target);
+    assert.deepEqual(actual, [expected], `${eventName} ${ref} ${branch} ${environment}`);
+  }
 });
