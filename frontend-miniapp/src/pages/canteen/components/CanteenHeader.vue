@@ -1,22 +1,12 @@
 <template>
   <view class="canteen-header" :aria-busy="loading">
-    <view
-      v-if="error"
-      class="canteen-header__feedback error-feedback"
-      :class="{ 'page-state-region': !canteen }"
-      role="alert"
-    >
-      <text class="error-feedback__message">{{ error }}</text>
-      <button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        :disabled="loading"
-        @tap="emit('retry')"
-      >
-        重新加载
-      </button>
-    </view>
-    <EmptyState v-if="loading && !canteen && !error" title="正在加载食堂…" loading />
+    <AsyncState
+      :loading="loading"
+      :has-content="!!canteen"
+      :error="error"
+      loading-title="正在加载食堂…"
+      @retry="emit('retry')"
+    />
     <template v-if="canteen">
       <!-- 轮播图 -->
       <swiper
@@ -55,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import { computed, ref, watch } from 'vue';
 import type { Canteen } from '@/types/api';
 

@@ -59,7 +59,7 @@ test.each([
   });
   expect(wrapper.text()).toContain('信息加载失败');
   expect(wrapper.text()).not.toContain('正在加载');
-  await wrapper.get('button').trigger('tap');
+  await wrapper.get('button').trigger('click');
   expect(wrapper.emitted('retry')).toHaveLength(1);
   wrapper.unmount();
 });

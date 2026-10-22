@@ -1,23 +1,12 @@
 <template>
   <view class="dish-page page-content page-state-layout">
-    <!-- 错误状态 -->
-    <view v-if="error" :class="{ 'page-state-region': !dish }" class="error-feedback" role="alert">
-      <text class="error-feedback__message">{{ error }}</text>
-      <button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        :disabled="loading"
-        @click="refresh"
-      >
-        重试
-      </button>
-    </view>
-
-    <EmptyState
-      v-if="loading && !dish && !error"
-      class="page-state-region"
-      title="正在加载菜品…"
-      loading
+    <AsyncState
+      :loading="loading"
+      :has-content="!!dish"
+      :error="error"
+      loading-title="正在加载菜品…"
+      retry-text="重试"
+      @retry="refresh"
     />
     <!-- 菜品详情内容 -->
     <view v-if="dish" class="dish-content" :aria-busy="loading">
@@ -320,9 +309,11 @@
 </template>
 
 <script setup lang="ts">
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import { requireStudent } from '@/utils/student-access';
 import DishNutrition from '@/components/DishNutrition.vue';
+import { requireLogin } from '@/utils/login-navigation';
+import { useSessionRefresh } from '@/composables/use-session-refresh';
 import { priceUnitSuffix } from '@/utils/price-display';
 import { ref, computed, nextTick, watch, onScopeDispose } from 'vue';
 import { onLoad, onBackPress, onPullDownRefresh, onReachBottom, onHide } from '@dcloudio/uni-app';
@@ -474,6 +465,7 @@ const restoreQuickPlanHelper = async () => {
   if (active && isQuickPlanVisible.value) renderQuickPlanHelper.value = true;
 };
 const openQuickPlan = () => {
+  if (!requireLogin()) return;
   if (!dish.value || loading.value || dish.value.id !== dishId.value) return;
   planDialogVersion += 1;
   renderQuickPlanHelper.value = true;
@@ -608,6 +600,11 @@ onLoad(async (options: Record<string, string | undefined> = {}) => {
     if (loaded && active && options.reviewId) showAllCommentsPanel(options.reviewId);
   }
 });
+
+useSessionRefresh(
+  () => fetchDishDetail(dishId.value),
+  () => !!dishId.value
+);
 
 // 下拉刷新处理
 onPullDownRefresh(async () => {

@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "食鉴",
   "appid": "",
   "description": "",
   "versionName": "1.0.0",
@@ -12,7 +12,7 @@
     "compilerVersion": 3,
     "splashscreen": {
       "alwaysShowBeforeRender": true,
-      "waiting": true,
+      "waiting": false,
       "autoclose": true,
       "delay": 0
     },
@@ -20,6 +20,18 @@
     "modules": {},
     /* 应用发布信息 */
     "distribute": {
+      "icons": {
+        "android": {
+          "hdpi": "static/app-icons/android-72.png",
+          "xhdpi": "static/app-icons/android-96.png",
+          "xxhdpi": "static/app-icons/android-144.png",
+          "xxxhdpi": "static/app-icons/android-192.png"
+        }
+      },
+      "splashscreen": {
+        "androidStyle": "common",
+        "androidNavigationBarColor": "#FFFFFF"
+      },
       /* android打包配置 */
       "android": {
         "permissions": [
@@ -52,8 +64,14 @@
   "mp-weixin": {
     "appid": "",
     "setting": {
-      "urlCheck": false
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true,
+      "minifyWXML": true,
+      "minifyWXSS": true
     },
+    "lazyCodeLoading": "requiredComponents",
     "usingComponents": true
   },
   "mp-alipay": {

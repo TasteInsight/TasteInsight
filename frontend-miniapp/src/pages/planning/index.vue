@@ -4,15 +4,7 @@
     :class="{ 'planning-page--state': !userStore.isLoggedIn }"
     :aria-busy="loading"
   >
-    <view v-if="!userStore.isLoggedIn" class="page-state-region">
-      <EmptyState
-        title="登录后查看饮食规划"
-        icon="calendar"
-        action-text="登录"
-        @action="openLogin"
-      />
-    </view>
-    <template v-else>
+    <LoginGate title="登录后查看饮食规划" icon="calendar">
       <!-- #ifdef MP-WEIXIN -->
       <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
       <!-- 详情弹窗 -->
@@ -97,41 +89,24 @@
         </view>
       </template>
 
-      <!-- 错误状态 -->
-      <view
-        v-if="error"
-        class="error-feedback"
-        :class="{ 'page-state-region': !displayPlans.length }"
-        role="alert"
-      >
-        <text class="error-feedback__message">{{ error }}</text>
-        <button
-          @tap="refreshPlans"
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-        >
-          <text>重试</text>
-        </button>
-      </view>
-
-      <EmptyState
-        v-if="loading && !initialized && !error"
-        class="page-state-region"
-        title="正在加载规划…"
-        loading
-      />
-      <!-- 空状态 -->
-      <EmptyState
-        class="page-state-region"
-        v-else-if="!error && initialized && displayPlans.length === 0 && viewMode !== 'day'"
-        :title="
-          viewMode === 'list'
-            ? activeTab === 'current'
-              ? '暂无当前规划'
-              : '暂无历史规划'
-            : '这天还没有安排'
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="!!displayPlans.length"
+        :error="error"
+        loading-title="正在加载规划…"
+        :empty-title="
+          viewMode === 'day'
+            ? ''
+            : viewMode === 'list'
+              ? activeTab === 'current'
+                ? '暂无当前规划'
+                : '暂无历史规划'
+              : '这天还没有安排'
         "
-        icon="calendar"
+        empty-icon="calendar"
+        retry-text="重试"
+        @retry="refreshPlans"
       />
 
       <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
@@ -212,12 +187,11 @@
         icon="plus"
         @click="createNewPlan"
       />
-    </template>
+    </LoginGate>
   </view>
 </template>
 
 <script setup lang="ts">
-import { openLogin } from '@/utils/login-navigation';
 import { ref, computed, watch, isRef, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { onHide, onShow, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning, type PlanningViewMode } from './composables/use-menu-planning';
@@ -227,7 +201,8 @@ import PlanDetailDialog from './components/PlanDetailDialog.vue';
 import PlanEditDialog from '@/components/meal-plan/PlanEditDialog.vue';
 import PlanCalendar from './components/PlanCalendar.vue';
 import UiPicker from '@/components/UiPicker.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import FloatingActionButton from '@/components/FloatingActionButton.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 // #ifndef MP-WEIXIN
@@ -496,8 +471,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .planning-page {
   position: relative;
-  max-width: 680px;
-  margin: 0 auto;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
   background: #fff;
   color: #1f2937;

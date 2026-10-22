@@ -69,7 +69,7 @@ import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import UiIcon from '@/components/UiIcon.vue';
 import DishNutrition from '@/components/DishNutrition.vue';
-import type { UiIconName, UiIconTone } from '@/components/UiIcon.vue';
+import type { UiIconName, UiIconTone } from '@/types/ui-icon';
 import { priceUnitSuffix } from '@/utils/price-display';
 import type { MyUploadItem, DishContributionStatus } from '@/types/api';
 const props = defineProps<{

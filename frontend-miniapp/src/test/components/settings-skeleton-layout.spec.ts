@@ -37,10 +37,10 @@ beforeEach(() => {
 });
 
 it.each([
-  ['display', DisplayPage, DisplaySkeleton],
-  ['preferences', PreferencesPage, PreferencesSkeleton],
-  ['notifications', NotificationsPage, NotificationsSkeleton],
-  ['allergens', AllergensPage, AllergensSkeleton],
+  ['display', DisplayPage],
+  ['preferences', PreferencesPage],
+  ['notifications', NotificationsPage],
+  ['allergens', AllergensPage],
 ] as const)(
   '%s keeps the existing viewport with loading feedback until profile initialization succeeds',
   (_name, Page) => {

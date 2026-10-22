@@ -18,9 +18,6 @@
       />
     </view>
     <view class="search-content page-state-content" :aria-busy="loading">
-      <view v-if="loading && hasResults" class="search-state search-state--compact"
-        >正在更新结果…</view
-      >
       <view v-if="canteenError && (hasResults || !error)" class="error-feedback" role="alert">
         <text class="error-feedback__message">食堂搜索未完成：{{ canteenError }}</text>
         <button
@@ -32,21 +29,19 @@
           重试食堂搜索
         </button>
       </view>
-      <view
-        v-if="error"
-        :class="{ 'page-state-region': !hasResults }"
-        class="error-feedback"
-        role="alert"
-      >
-        <text class="error-feedback__message">{{ error }}</text>
-        <button
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          @tap="retrySearch"
-        >
-          重新搜索
-        </button>
-      </view>
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized && !canteenError"
+        :has-content="hasResults"
+        :error="error"
+        refreshing-title="正在更新结果…"
+        :empty-title="`未找到“${submittedKeyword}”相关结果`"
+        empty-icon="search"
+        empty-action-text="申请新增菜品"
+        retry-text="重新搜索"
+        @retry="retrySearch"
+        @action="goToAddDish"
+      />
       <view v-if="hasResults">
         <view v-if="searchResults.canteens.length" class="search-results">
           <text class="search-heading">食堂 · {{ searchResults.canteens.length }}</text>
@@ -86,20 +81,6 @@
           <button class="search-button search-link" @tap="goToAddDish">申请新增菜品</button>
         </view>
       </view>
-      <EmptyState
-        v-else-if="loading && !hasResults && !error && !canteenError"
-        class="page-state-region"
-        title="正在加载…"
-        loading
-      />
-      <EmptyState
-        class="page-state-region"
-        v-else-if="!loading && !error && !canteenError && initialized"
-        :title="`未找到“${submittedKeyword}”相关结果`"
-        icon="search"
-        action-text="申请新增菜品"
-        @action="goToAddDish"
-      />
     </view>
   </view>
 </template>
@@ -109,7 +90,7 @@ import { computed, nextTick, onMounted, ref } from 'vue';
 import { onHide, onLoad, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { useSearch, type SearchScope } from './composables/use-search';
 import SearchBar from '@/components/SearchBar.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import CanteenResultItem from './components/CanteenResultItem.vue';
 import DishResultItem from './components/DishResultItem.vue';
 

@@ -18,6 +18,7 @@ export default defineConfigWithVueTs(
     '**/playwright-report/**',
     '**/test-results/**',
     'src/static/**',
+    'src/assets/iconfont/**',
   ]),
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,

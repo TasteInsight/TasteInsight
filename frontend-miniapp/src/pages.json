@@ -11,7 +11,6 @@
     {
       "path": "pages/index/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "食鉴",
         "navigationBarBackgroundColor": "#FFFFFF",
         "enablePullDownRefresh": true
@@ -62,7 +61,6 @@
     {
       "path": "pages/news/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "新闻",
         "enablePullDownRefresh": true
       }
@@ -76,7 +74,6 @@
     {
       "path": "pages/planning/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "规划",
         "enablePullDownRefresh": true
       }
@@ -84,10 +81,6 @@
     {
       "path": "pages/ai-chat/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
-        // #ifdef H5 || APP-PLUS
-        "navigationStyle": "custom",
-        // #endif
         // #ifdef APP-PLUS
         "app-plus": {
           "softinputMode": "adjustResize"
@@ -99,7 +92,6 @@
     {
       "path": "pages/profile/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "我的",
         "enablePullDownRefresh": true
       }
@@ -150,95 +142,9 @@
     },
 
     {
-      "path": "pages/settings/index",
-      "style": {
-        "navigationBarTitleText": "设置"
-      }
-    },
-    {
-      "path": "pages/settings/components/personal",
-      "style": {
-        "navigationBarTitleText": "个人信息"
-      }
-    },
-    {
-      "path": "pages/settings/components/avatar-crop",
-      "style": {
-        "navigationBarTitleText": "裁剪头像"
-      }
-    },
-    {
-      "path": "pages/settings/components/allergens",
-      "style": {
-        "navigationBarTitleText": "过敏原设置"
-      }
-    },
-    {
-      "path": "pages/settings/components/preferences",
-      "style": {
-        "navigationBarTitleText": "偏好设置"
-      }
-    },
-    {
-      "path": "pages/settings/components/display",
-      "style": {
-        "navigationBarTitleText": "显示设置"
-      }
-    },
-    {
-      "path": "pages/settings/components/notifications",
-      "style": {
-        "navigationBarTitleText": "通知设置"
-      }
-    },
-    {
-      "path": "pages/settings/privacy",
-      "style": {
-        "navigationBarTitleText": "隐私政策"
-      }
-    },
-    {
-      "path": "pages/settings/about",
-      "style": {
-        "navigationBarTitleText": "关于食鉴"
-      }
-    },
-    {
       "path": "pages/easter-egg/index",
       "style": {
         "navigationBarTitleText": "食鉴彩蛋"
-      }
-    },
-    {
-      "path": "pages/profile/my-uploads/index",
-      "style": {
-        "navigationBarTitleText": "我的上传",
-        "enablePullDownRefresh": true
-      }
-    },
-    {
-      "path": "pages/profile/my-reviews/index",
-      "style": {
-        "navigationBarTitleText": "我的评价",
-        "enablePullDownRefresh": true
-      }
-    },
-    {
-      "path": "pages/profile/my-reports/index",
-      "style": { "navigationBarTitleText": "我的举报", "enablePullDownRefresh": true }
-    },
-    {
-      "path": "pages/profile/history/index",
-      "style": {
-        "navigationBarTitleText": "历史浏览",
-        "enablePullDownRefresh": true
-      }
-    },
-    {
-      "path": "pages/profile/my-favorites/index",
-      "style": {
-        "navigationBarTitleText": "我的收藏",
-        "enablePullDownRefresh": true
       }
     },
     {
@@ -246,6 +152,128 @@
       "style": {
         "navigationBarTitleText": "申请新增菜品"
       }
+    }
+  ],
+
+  "subPackages": [
+    {
+      "root": "pages/settings",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "设置"
+          }
+        },
+        {
+          "path": "components/personal",
+          "style": {
+            "navigationBarTitleText": "个人信息"
+          }
+        },
+        {
+          "path": "components/avatar-crop",
+          "style": {
+            "navigationBarTitleText": "裁剪头像"
+          }
+        },
+        {
+          "path": "components/allergens",
+          "style": {
+            "navigationBarTitleText": "过敏原设置"
+          }
+        },
+        {
+          "path": "components/preferences",
+          "style": {
+            "navigationBarTitleText": "偏好设置"
+          }
+        },
+        {
+          "path": "components/display",
+          "style": {
+            "navigationBarTitleText": "显示设置"
+          }
+        },
+        {
+          "path": "components/notifications",
+          "style": {
+            "navigationBarTitleText": "通知设置"
+          }
+        },
+        {
+          "path": "privacy",
+          "style": {
+            "navigationBarTitleText": "隐私政策"
+          }
+        },
+        {
+          "path": "about",
+          "style": {
+            "navigationBarTitleText": "关于食鉴"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/profile/my-uploads",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "我的上传",
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/profile/my-reviews",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "我的评价",
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/profile/my-reports",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "我的举报",
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/profile/history",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "历史浏览",
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/profile/my-favorites",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "我的收藏",
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
     }
   ],
 

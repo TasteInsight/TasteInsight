@@ -85,3 +85,25 @@ test('guest weekly recommendations offer explicit login and resume after returni
   expect(getWeeklyNotificationCollection).toHaveBeenCalledWith('2026-10-05');
   expect(wrapper.text()).toContain('本期暂无可查看的菜品');
 });
+
+test('refreshing an empty weekly collection displays loading without a competing empty state', async () => {
+  (getWeeklyNotificationCollection as jest.Mock).mockResolvedValueOnce({
+    code: 200,
+    data: { items: [] },
+  });
+  const wrapper = await page();
+  expect(wrapper.text()).toContain('本期暂无可查看的菜品');
+  let resolve!: (value: any) => void;
+  (getWeeklyNotificationCollection as jest.Mock).mockReturnValueOnce(
+    new Promise(done => {
+      resolve = done;
+    })
+  );
+  (onShow as jest.Mock).mock.calls.slice(-1)[0][0]();
+  await flushPromises();
+  expect(wrapper.text()).toContain('正在加载推荐…');
+  expect(wrapper.text()).not.toContain('本期暂无可查看的菜品');
+  expect(wrapper.findAll('[role="status"]')).toHaveLength(1);
+  resolve({ code: 200, data: { items: [] } });
+  await flushPromises();
+});

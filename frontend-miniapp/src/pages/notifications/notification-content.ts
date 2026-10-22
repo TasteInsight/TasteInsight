@@ -1,5 +1,5 @@
 import type { InboxNotification } from '@/api/modules/notifications';
-import type { UiIconName } from '@/components/UiIcon.vue';
+import type { UiIconName } from '@/types/ui-icon';
 import dayjs from 'dayjs';
 
 const systemPresentation: Partial<

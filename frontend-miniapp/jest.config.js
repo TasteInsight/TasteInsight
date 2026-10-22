@@ -6,12 +6,14 @@ module.exports = {
     '^.+\\.js$': 'babel-jest',
     '^.+\\.vue$': '@vue/vue3-jest',
   },
+  // ESM 解析器依赖通过现有 Babel 转换加载。
+  transformIgnorePatterns: ['node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?(?:eventsource-parser|markdown-it-cjk-friendly|get-east-asian-width)/)'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   globals: {
-    'ts-jest': {
-      tsconfig: '<rootDir>/tsconfig.jest.json',
+    'vue-jest': {
+      tsConfig: 'tsconfig.jest.json',
     },
   },
   setupFilesAfterEnv: ['<rootDir>/src/test/components/jest.setup.ts'],

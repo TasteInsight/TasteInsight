@@ -4,26 +4,16 @@
     :class="{ 'notifications-page--state': !user.isLoggedIn || !unread }"
     :aria-busy="loading"
   >
-    <EmptyState
-      class="page-state-region"
-      v-if="!user.isLoggedIn"
-      title="登录后查看消息"
-      icon="bell"
-      action-text="登录"
-      @action="login"
-    />
-    <template v-else>
-      <view v-if="loading && !items.length" aria-hidden="true">
-        <view v-for="item in 4" :key="item" class="notification-skeleton">
-          <view class="notification-skeleton-icon" />
-          <view class="notification-skeleton-main"><view /><view /></view>
-        </view>
-      </view>
-      <EmptyState
-        class="page-state-region"
-        v-else-if="initialized && !items.length && !error"
-        title="暂无新消息"
-        icon="bell"
+    <LoginGate title="登录后查看消息" icon="bell">
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="!!items.length"
+        :error="error"
+        loading-title="正在加载消息…"
+        empty-title="暂无新消息"
+        empty-icon="bell"
+        @retry="load(failedAppend)"
       />
       <view v-if="items.length" class="notification-list">
         <button
@@ -60,29 +50,15 @@
           </view>
         </button>
       </view>
-      <view
-        v-if="error"
-        class="notification-error error-feedback"
-        :class="{ 'page-state-region': !items.length }"
-        role="alert"
-        ><text class="error-feedback__message">{{ error }}</text
-        ><button
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          @click="load(failedAppend)"
-        >
-          重新加载
-        </button></view
-      >
       <button
-        v-else-if="hasMore && items.length"
+        v-if="hasMore && items.length && !error"
         class="notification-button notification-more"
         :disabled="loading"
         @click="load(true)"
       >
-        {{ loading ? '加载中…' : '加载更多' }}
+        加载更多
       </button>
-    </template>
+    </LoginGate>
     <FloatingActionButton
       v-if="user.isLoggedIn && (unread > 0 || markingAll)"
       icon="eye"
@@ -93,12 +69,11 @@
   </view>
 </template>
 <script setup lang="ts">
-import { openLogin } from '@/utils/login-navigation';
-
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import UserAvatar from '@/components/UserAvatar.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import FloatingActionButton from '@/components/FloatingActionButton.vue';
 import UiIcon from '@/components/UiIcon.vue';
 import {
@@ -139,7 +114,6 @@ const capture = () => {
   const generation = epoch;
   return () => active && visible && session === user.sessionVersion && generation === epoch;
 };
-const login = () => openLogin();
 async function load(append = false) {
   if (!user.isLoggedIn || (append && (loading.value || !hasMore.value))) return;
   const current = capture();
@@ -292,8 +266,6 @@ onReachBottom(() => {
 <style scoped>
 .notifications-page {
   box-sizing: border-box;
-  max-width: 720px;
-  margin: 0 auto;
   padding: 4px 20px calc(88px + env(safe-area-inset-bottom));
   background: #fff;
   color: #1f2937;
@@ -428,33 +400,6 @@ onReachBottom(() => {
 .notification-more {
   display: flex;
   margin: 16px auto 0;
-}
-.notification-skeleton {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid #eef0f3;
-}
-.notification-skeleton-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: #f4f4f5;
-}
-.notification-skeleton-main {
-  flex: 1;
-}
-.notification-skeleton-main view {
-  width: 76%;
-  height: 14px;
-  margin: 6px 0;
-  border-radius: 4px;
-  background: #f4f4f5;
-}
-.notification-skeleton-main view:last-child {
-  width: 52%;
 }
 @media (hover: hover) {
   .notification-button:not([disabled]):hover {

@@ -1,12 +1,12 @@
 # 食鉴 - TasteInsight
 
 <p align="center">
-  <img src="https://img.shields.io/badge/UniApp-3.0-green" alt="UniApp">
-  <img src="https://img.shields.io/badge/Vue-3.5-brightgreen" alt="Vue 3">
+  <img src="https://img.shields.io/badge/UniApp-5.26-green" alt="UniApp 编译器">
+  <img src="https://img.shields.io/badge/Vue-3-brightgreen" alt="Vue 3">
   <img src="https://img.shields.io/badge/NestJS-11-red" alt="NestJS">
   <img src="https://img.shields.io/badge/PostgreSQL-15-blue" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-7-red" alt="Redis">
-  <img src="https://img.shields.io/badge/TypeScript-5-blue" alt="TypeScript">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6" alt="TypeScript">
 </p>
 
 **食鉴（TasteInsight）** 是一个校园食堂菜品点评与智能推荐平台，帮助学生发现美食、分享评价、获取个性化推荐。
@@ -37,7 +37,7 @@
 
 | 层级 | 技术 |
 |------|------|
-| **小程序前端** | UniApp 3.0 + Vue 3.4 + Pinia + TailwindCSS |
+| **小程序前端** | UniApp 编译器 5.26 + Vue 3.4.21 + Pinia + TailwindCSS |
 | **管理端前端** | Vue 3.5 + Vite 5 + Pinia + TailwindCSS + WangEditor |
 | **后端服务** | NestJS 11 + Prisma ORM + JWT + Swagger |
 | **数据库** | PostgreSQL 15 + Redis 7 |
@@ -45,6 +45,8 @@
 | **AI 服务** | OpenAI API + Python 嵌入服务 |
 | **对象存储** | 本地文件与通用 S3 多实例存储（AWS、腾讯云 COS、阿里云 OSS） |
 | **容器化** | Docker + Docker Compose |
+
+小程序使用 TypeScript 7 检查核心模块，Vue 模板和 Jest 使用官方 TypeScript 6 兼容 API；完整版本与升级约定见[小程序依赖维护](frontend-miniapp/README.md#发布构建与依赖维护)。
 
 ## 📁 项目结构
 

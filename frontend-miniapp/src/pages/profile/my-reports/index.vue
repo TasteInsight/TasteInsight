@@ -1,15 +1,15 @@
 <template>
   <view class="reports-page page-content page-state-layout" :aria-busy="loading">
-    <EmptyState
-      v-if="!user.isLoggedIn"
-      class="page-state-region"
-      title="登录后查看举报记录"
-      icon="shield"
-      action-text="登录"
-      @action="login"
-    />
-    <template v-else>
-      <ReviewListSkeleton v-if="loading && !initialized" />
+    <LoginGate title="登录后查看举报记录" icon="shield">
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="!!items.length || !!focusedReport"
+        :error="error"
+        :empty-title="focusError ? '' : '暂无举报记录'"
+        empty-icon="shield"
+        @retry="retry"
+      />
       <view v-if="focusId" class="report-focus">
         <text class="report-section-title">举报详情</text>
         <ReportRecord v-if="focusedReport" :item="focusedReport" />
@@ -20,31 +20,18 @@
       </view>
       <text v-if="focusId && visibleItems.length" class="report-section-title">举报记录</text>
       <ReportRecord v-for="item in visibleItems" :key="item.id" :item="item" />
-      <view v-if="error" class="error-feedback" role="alert">
-        <text class="error-feedback__message">{{ error }}</text>
-        <button class="error-feedback__action" :disabled="loading" @click="retry">重新加载</button>
-      </view>
-      <EmptyState
-        v-if="initialized && !items.length && !focusedReport && !error && !focusError"
-        class="page-state-region"
-        title="暂无举报记录"
-        icon="shield"
-      />
       <button v-if="hasMore && !error" class="reports-more" :disabled="loading" @click="loadMore">
         {{ loading ? '加载中…' : '加载更多' }}
       </button>
-    </template>
+    </LoginGate>
   </view>
 </template>
 <script setup lang="ts">
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
-import EmptyState from '@/components/EmptyState.vue';
-import ReviewListSkeleton from '@/components/skeleton/ReviewListSkeleton.vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { openLogin } from '@/utils/login-navigation';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import ReportRecord from './ReportRecord.vue';
 import { useMyReports } from './use-my-reports';
-const user = useUserStore();
 const {
   items,
   visibleItems,
@@ -71,7 +58,6 @@ onPullDownRefresh(async () => {
     uni.stopPullDownRefresh();
   }
 });
-const login = () => openLogin();
 </script>
 <style scoped>
 .reports-page {

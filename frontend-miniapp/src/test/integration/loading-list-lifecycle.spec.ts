@@ -9,7 +9,7 @@ import FavoritesPage from '@/pages/profile/my-favorites/index.vue';
 import HistoryPage from '@/pages/profile/history/index.vue';
 import NewsPage from '@/pages/news/components/NewsFeed.vue';
 import NewsDetailPage from '@/pages/news/components/detail.vue';
-import ReviewCard from '@/pages/profile/my-reviews/components/ReviewCard.vue';
+import ReviewCard from '@/pages/profile/components/ReviewCard.vue';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import NewsItem from '@/pages/news/components/NewsItem.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -87,7 +87,7 @@ const listCases = [
     name: 'news',
     Page: NewsPage,
     api: getNewsList,
-    empty: '暂无公告',
+    empty: '暂无新闻',
     icon: 'info',
     Card: NewsItem,
   },
@@ -98,7 +98,7 @@ let consoleError: jest.SpyInstance;
 
 function mountPage(Page: any) {
   const wrapper = shallowMount(Page, {
-    global: { stubs: { EmptyState: false, UiIcon: false } },
+    global: { stubs: { EmptyState: false, UiIcon: false, AsyncState: false, LoginGate: false } },
   });
   wrappers.push(wrapper);
   return wrapper;
@@ -156,7 +156,7 @@ describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, i
     expect(wrapper.html()).not.toMatch(/skeleton/i);
   });
 
-  it('shows an empty state only after success and retains it during refresh', async () => {
+  it('shows an empty state only after success and replaces it with loading during refresh', async () => {
     const first = deferred();
     const refresh = deferred();
     (api as jest.Mock).mockReturnValueOnce(first.promise).mockReturnValueOnce(refresh.promise);
@@ -175,7 +175,8 @@ describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, i
 
     const refreshing = (wrapper.vm as any).refresh();
     await nextTick();
-    expect(wrapper.text()).toContain(empty);
+    expect(wrapper.text()).not.toContain(empty);
+    expect(wrapper.getComponent(EmptyState).props('loading')).toBe(true);
     expect(wrapper.html()).not.toMatch(/skeleton/i);
     refresh.resolve(response([item('fresh')]));
     await refreshing;
@@ -333,8 +334,8 @@ describe('news detail loading lifecycle', () => {
       if (failure === 'timeout') first.reject(new Error('请求超时，请重试'));
       else first.resolve({ code: 500, message: '读取失败' });
       await flushPromises();
-      expect(wrapper.text()).toContain('公告加载失败，请重试');
-      expect(wrapper.find('button').text()).toBe('重试');
+      expect(wrapper.text()).toContain('新闻加载失败，请重试');
+      expect(wrapper.find('button').text()).toBe('重新加载');
       expect((wrapper.vm as any).initialized).toBe(false);
       await wrapper.find('button').trigger('click');
       expectPendingContent(wrapper);
@@ -363,9 +364,11 @@ describe('news detail loading lifecycle', () => {
       await refreshing;
       await nextTick();
       expect(wrapper.find('.article-title').text()).toBe('first公告');
-      expect(wrapper.find('.article-state').exists()).toBe(true);
+      expect(wrapper.find('.async-state.error-feedback').exists()).toBe(true);
       expect((wrapper.vm as any).initialized).toBe(true);
-      expect(wrapper.find('button').text()).toBe(failure === 'timeout' ? '重试' : '返回公告列表');
+      expect(wrapper.find('button').text()).toBe(
+        failure === 'timeout' ? '重新加载' : '返回新闻列表'
+      );
     }
   );
 
@@ -405,12 +408,12 @@ describe('news detail loading lifecycle', () => {
     await nextTick();
     expect((wrapper.vm as any).loading).toBe(false);
     expect((wrapper.vm as any).initialized).toBe(false);
-    expect(wrapper.text()).toContain('公告不存在或已下架');
-    expect(wrapper.find('button').text()).toBe('返回公告列表');
+    expect(wrapper.text()).toContain('新闻不存在或已下架');
+    expect(wrapper.find('button').text()).toBe('返回新闻列表');
     first.resolve(article('first'));
     await flushPromises();
     expect(wrapper.find('.article-title').exists()).toBe(false);
-    expect(wrapper.text()).toContain('公告不存在或已下架');
+    expect(wrapper.text()).toContain('新闻不存在或已下架');
     expect(getNewsById).toHaveBeenCalledTimes(1);
   });
 });

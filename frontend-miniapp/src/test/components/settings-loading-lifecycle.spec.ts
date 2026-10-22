@@ -78,7 +78,7 @@ it.each([
   expect(wrapper.find('.skeleton-item').exists()).toBe(false);
   expect(wrapper.get('.settings-form-body').text()).toBe('正在加载设置…');
   expect(wrapper.find('.settings-section').exists()).toBe(false);
-  expect(wrapper.find('.settings-load-error').exists()).toBe(false);
+  expect(wrapper.find('.settings-load-state.error-feedback').exists()).toBe(false);
   expect(wrapper.find('.settings-save-bar').exists()).toBe(false);
   expect(updateUserProfile).not.toHaveBeenCalled();
   wrapper.unmount();
@@ -131,15 +131,15 @@ it('keeps failed initialization noneditable and offers a successful retry', asyn
   const wrapper = mount(PersonalPage);
   response.reject(new Error('请求超时，请重试'));
   await flushPromises();
-  expect(wrapper.get('.settings-load-error').text()).toContain('请求超时，请重试');
+  expect(wrapper.get('.settings-load-state.error-feedback').text()).toContain('请求超时，请重试');
   expect(wrapper.find('input').exists()).toBe(false);
   expect(wrapper.find('.settings-save-bar').exists()).toBe(false);
   expect(updateUserProfile).not.toHaveBeenCalled();
   (getUserProfile as jest.Mock).mockResolvedValueOnce({ code: 200, data: user });
-  await wrapper.get('.settings-load-error button').trigger('click');
+  await wrapper.get('.settings-load-state.error-feedback button').trigger('click');
   await flushPromises();
   expect(wrapper.get('input').element.value).toBe(user.nickname);
-  expect(wrapper.find('.settings-load-error').exists()).toBe(false);
+  expect(wrapper.find('.settings-load-state.error-feedback').exists()).toBe(false);
   wrapper.unmount();
 });
 
@@ -178,7 +178,7 @@ it('retains a cached account profile during a failed background refresh', async 
   response.reject(new Error('请求超时，请重试'));
   await flushPromises();
   expect(wrapper.getComponent(UserHeader).element).toBe(header);
-  expect(wrapper.get('.profile-error').text()).toContain('请求超时，请重试');
+  expect(wrapper.get('.async-state.error-feedback').text()).toContain('请求超时，请重试');
   expect(wrapper.findAll('.profile-tab')).toHaveLength(3);
   wrapper.unmount();
 });

@@ -144,7 +144,7 @@ describe('useChat isInitializing', () => {
     expect(chatStoreMock.sendChatMessage).not.toHaveBeenCalled();
 
     await sendMessage('hello');
-    expect(chatStoreMock.sendChatMessage).toHaveBeenCalledWith('hello');
+    expect(chatStoreMock.sendChatMessage).toHaveBeenCalledWith('hello', undefined);
     expect(getAISuggestions).not.toHaveBeenCalled();
   });
 
@@ -183,7 +183,7 @@ describe('useChat isInitializing', () => {
   it('handleSuggestionClick forwards to sendMessage', async () => {
     const { handleSuggestionClick } = useChat();
     await handleSuggestionClick('suggest');
-    expect(chatStoreMock.sendChatMessage).toHaveBeenCalledWith('suggest');
+    expect(chatStoreMock.sendChatMessage).toHaveBeenCalledWith('suggest', undefined);
   });
 
   it('setScene calls store.setScene and updates scene ref', () => {

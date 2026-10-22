@@ -7,6 +7,7 @@ import ChatPage from '@/pages/ai-chat/index.vue';
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
 
 jest.mock('@/pages/ai-chat/composables/use-chat', () => ({ useChat: jest.fn() }));
+jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ isLoggedIn: true }) }));
 
 const makePlan = () =>
   ({

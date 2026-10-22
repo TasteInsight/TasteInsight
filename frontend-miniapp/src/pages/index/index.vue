@@ -74,44 +74,23 @@
         </view>
 
         <FilterBar ref="filterBarRef" :filter="currentFilter" @filter-change="handleFilterChange" />
-        <view v-if="dishesStore.loading && topThreeDishes.length" class="home-status"
-          >正在更新菜品…</view
-        >
-        <view
-          v-if="recommendError"
-          class="error-feedback"
-          :class="{ 'page-state-region': !topThreeDishes.length }"
-          role="alert"
-        >
-          <text class="error-feedback__message">{{ recommendError }}</text>
-          <button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            @click="retryLoadRecommend"
-          >
-            重新加载
-          </button>
-        </view>
+        <AsyncState
+          v-if="!homeError"
+          :loading="dishesStore.loading"
+          :initialized="recommendationsInitialized"
+          :has-content="!!topThreeDishes.length"
+          :error="recommendError"
+          loading-title="正在加载推荐…"
+          refreshing-title="正在更新菜品…"
+          :empty-title="hasActiveFilters ? '没有符合条件的菜品' : '暂无推荐菜品'"
+          empty-icon="search"
+          :empty-action-text="hasActiveFilters ? '清除全部筛选' : ''"
+          @retry="retryLoadRecommend"
+          @action="handleFilterChange({})"
+        />
         <view v-if="topThreeDishes.length > 0">
           <RecommendItem v-for="dish in topThreeDishes" :key="dish.id" :dish="dish" />
         </view>
-
-        <EmptyState
-          v-else-if="dishesStore.loading && !recommendationsInitialized && !recommendError"
-          class="page-state-region"
-          title="正在加载推荐…"
-          loading
-        />
-        <EmptyState
-          class="page-state-region"
-          v-else-if="
-            recommendationsInitialized && !dishesStore.loading && !homeError && !recommendError
-          "
-          :title="hasActiveFilters ? '没有符合条件的菜品' : '暂无推荐菜品'"
-          icon="search"
-          :action-text="hasActiveFilters ? '清除全部筛选' : ''"
-          @action="handleFilterChange({})"
-        />
 
         <!-- 上拉加载更多：底部提示/动画（仅在有列表或正在加载更多时显示） -->
         <view
@@ -167,7 +146,7 @@ import { onMounted, onScopeDispose, computed, ref, watch } from 'vue';
 import { onPullDownRefresh, onReachBottom, onShow, onBackPress, onHide } from '@dcloudio/uni-app';
 
 import SearchBar from '@/components/SearchBar.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import CanteenItem from './components/CanteenList.vue';
 import RecommendItem from './components/RecommendItem.vue';
 import FilterBar from './components/FilterBar.vue';

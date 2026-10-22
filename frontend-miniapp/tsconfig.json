@@ -2,17 +2,19 @@
   "extends": "@vue/tsconfig/tsconfig.json",
   "compilerOptions": {
     "sourceMap": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
     "lib": ["esnext", "dom"],
-    "types": [
-      "@dcloudio/types",
-      "vite/client", 
-      "node",
-      "jest"
-    ]
+    "types": ["@dcloudio/types", "vite/client", "node", "jest"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue","src/pages.json", "src/manifest.json", "src/uni.scss"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "src/pages.json",
+    "src/manifest.json",
+    "src/uni.scss"
+  ]
 }

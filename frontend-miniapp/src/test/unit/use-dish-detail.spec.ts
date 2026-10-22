@@ -22,6 +22,7 @@ jest.mock('@/store/modules/use-user-store');
 const mockShowToast = jest.fn();
 (global as any).uni = {
   showToast: mockShowToast,
+  navigateTo: jest.fn(options => options.complete?.({ errMsg: 'navigateTo:ok' })),
 };
 
 describe('useDishDetail', () => {
@@ -196,7 +197,9 @@ describe('useDishDetail', () => {
       user.isLoggedIn = false;
       dish.value = { id: 'd1' } as any;
       await toggleFavorite();
-      expect(mockShowToast).toHaveBeenCalled();
+      expect(uni.navigateTo).toHaveBeenCalledWith(
+        expect.objectContaining({ url: '/pages/login/index' })
+      );
 
       // logged in and favorite
       user.isLoggedIn = true;

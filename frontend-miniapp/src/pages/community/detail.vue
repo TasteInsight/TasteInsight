@@ -1,30 +1,29 @@
 <template>
-  <view class="campus-page page-content post-detail" :aria-busy="loading">
-    <template v-if="loading && !post"
-      ><view class="campus-skeleton"
-        ><view class="campus-skeleton-line" /><view class="campus-skeleton-line" /><view
-          class="campus-skeleton-line" /></view
-    ></template>
-    <view v-if="error" class="campus-error error-feedback" role="alert"
-      ><text class="error-feedback__message">{{ error }}</text
-      ><button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        @click="load"
-      >
-        重新加载
-      </button></view
-    >
+  <view class="campus-page page-content page-state-layout post-detail" :aria-busy="loading">
+    <AsyncState
+      :loading="loading"
+      :has-content="!!post"
+      :error="error"
+      loading-title="正在加载动态…"
+      @retry="load"
+    />
     <template v-if="post">
       <PostCard :post="post" detail @manage="managePost" @reply="focusReply" />
       <view class="reply-heading"
         ><text class="reply-title">回复</text
         ><text v-if="commentsReady" class="campus-hint">{{ totalComments }}</text></view
       >
-      <view v-if="commentsReady && !comments.length && !commentsError" class="campus-empty"
-        ><text>还没有回复</text
-        ><text class="campus-hint">{{ canReply ? '聊聊你的看法。' : '稍后再来看看。' }}</text></view
-      >
+      <AsyncState
+        :loading="commentsLoading"
+        :initialized="commentsReady"
+        :has-content="comments.length > 0"
+        :error="commentsError"
+        loading-title="正在加载回复…"
+        :empty-title="canReply ? '还没有回复，聊聊你的看法' : '还没有回复，稍后再来看看'"
+        empty-icon="chat"
+        retry-text="重试"
+        @retry="loadComments(commentsFailedAppend)"
+      />
       <view v-for="comment in comments" :key="comment.id" class="post-reply">
         <button
           class="campus-button reply-avatar"
@@ -77,18 +76,8 @@
           >
         </view>
       </view>
-      <view v-if="commentsError" class="campus-error error-feedback" role="alert"
-        ><text class="error-feedback__message">{{ commentsError }}</text
-        ><button
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          @click="loadComments(commentsFailedAppend)"
-        >
-          重试
-        </button></view
-      >
       <button
-        v-else-if="hasMore"
+        v-if="!commentsError && hasMore"
         class="campus-button campus-more"
         :disabled="commentsLoading"
         @click="loadComments(true)"
@@ -163,6 +152,7 @@ import { requireStudent } from '@/utils/student-access';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import { useContentLike } from '@/pages/dish/composables/use-content-like';
 import UserAvatar from '@/components/UserAvatar.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import ReportDialog from '@/pages/dish/components/ReportDialog.vue';
 import PostCard from './components/PostCard.vue';
 
@@ -229,14 +219,15 @@ async function load() {
     if (!current() || request !== postRequest) return;
     if (response.code !== 200) throw new Error(response.message || '动态加载失败');
     post.value = response.data;
-    await loadComments();
   } catch (cause) {
     if (current() && request === postRequest) {
       error.value = cause instanceof Error ? cause.message : '动态加载失败，请重试';
     }
+    return;
   } finally {
     if (current() && request === postRequest) loading.value = false;
   }
+  await loadComments();
 }
 async function loadComments(append = false) {
   if (!post.value || (append && (commentsLoading.value || !hasMore.value))) return;
