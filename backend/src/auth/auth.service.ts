@@ -94,25 +94,33 @@ export class AuthService {
   }
 
   // --- 功能1: 微信登录 ---
-  async wechatLogin(code: string, platform: WechatPlatform = 'mp-weixin') {
-    return this.userLogin(await this.identities.wechat(code, platform));
+  async wechatLogin(
+    code: string,
+    platform: WechatPlatform = 'mp-weixin',
+    language = 'zh',
+  ) {
+    return this.userLogin(
+      await this.identities.wechat(code, platform, undefined, language),
+    );
   }
 
-  async phoneLogin(challengeId: string, code: string) {
+  async phoneLogin(challengeId: string, code: string, language = 'zh') {
     const phone = await this.challenges.consume(
       'PHONE_LOGIN',
       challengeId,
       code,
     );
-    return this.userLogin(await this.identities.phone(phone));
+    return this.userLogin(
+      await this.identities.phone(phone, undefined, language),
+    );
   }
 
   startCampusLogin(ip: string, origin?: string) {
     return this.campusOAuth.startLogin(ip, origin);
   }
 
-  async campusLogin(dto: CampusLoginDto) {
-    return this.userLogin(await this.campusOAuth.login(dto));
+  async campusLogin(dto: CampusLoginDto, language = 'zh') {
+    return this.userLogin(await this.campusOAuth.login(dto, language));
   }
 
   private async userLogin(user: User) {

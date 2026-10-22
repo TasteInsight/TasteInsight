@@ -362,10 +362,14 @@ describe('campus OAuth handoff (PostgreSQL and HTTP)', () => {
     config.set('CAMPUS_VERIFICATION_METHODS', '');
     const ticket = await loginHandoff();
     await login({ ...ticket, loginVerifier: 'x'.repeat(43) }).expect(400);
-    const results = await Promise.all([login(ticket), login(ticket)]);
+    const results = await Promise.all([
+      login(ticket).set('Accept-Language', 'en-US'),
+      login(ticket).set('Accept-Language', 'en-US'),
+    ]);
     expect(results.map((result) => result.status).sort()).toEqual([200, 400]);
     const data = results.find((result) => result.status === 200)!.body.data;
     userIds.push(data.user.id);
+    expect(data.user.nickname).toMatch(/^Foodie_[0-9a-f]{12}$/);
     expect(
       jwt.verify(data.token.accessToken, { secret: accessSecret }),
     ).toMatchObject({ sub: data.user.id, type: 'user', tokenUse: 'access' });

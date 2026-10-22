@@ -558,6 +558,7 @@ describe('CampusOAuthService', () => {
       tx,
       expect.any(String),
       'alice',
+      'zh',
     );
     expect(tx.studentVerification.findUnique).not.toHaveBeenCalled();
     expect(tx.studentVerification.upsert).not.toHaveBeenCalled();

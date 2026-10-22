@@ -14,7 +14,7 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   openId    String?  @unique
-  nickname  String
+  nickname  String   @default(dbgenerated("('食友_'::text || substr((gen_random_uuid())::text, 25, 12))"))
   avatar    String?
   bio       String?
   allergens String[] @default([]) // 过敏原列表

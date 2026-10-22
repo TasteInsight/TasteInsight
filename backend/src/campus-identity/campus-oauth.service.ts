@@ -340,8 +340,8 @@ export class CampusOAuthService {
     return { completed: true, status: result.status! };
   }
 
-  async login(dto: CampusLoginDto) {
-    return (await this.finish('LOGIN', dto)).user!;
+  async login(dto: CampusLoginDto, language = 'zh') {
+    return (await this.finish('LOGIN', dto, undefined, language)).user!;
   }
 
   async completeBinding(userId: string, dto: CompleteCampusOAuthDto) {
@@ -404,6 +404,7 @@ export class CampusOAuthService {
     purpose: 'LOGIN' | 'VERIFICATION' | 'LOGIN_BIND',
     dto: CompleteCampusOAuthDto | CampusLoginDto,
     userId?: string,
+    language = 'zh',
   ) {
     this.assertConfigured(purpose);
     const now = new Date();
@@ -442,6 +443,7 @@ export class CampusOAuthService {
                 tx,
                 proof.studentSubjectDigest,
                 userId,
+                language,
               );
         const shouldVerify =
           purpose === 'VERIFICATION' ||

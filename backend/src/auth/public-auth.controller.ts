@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Request as ExpressRequest } from 'express';
 import { CampusLoginDto } from '@/campus-identity/dto/student-verification.dto';
 import { AuthService } from './auth.service';
 import { AuthRealm } from './decorators/auth-realm.decorator';
@@ -51,8 +52,8 @@ export class PublicAuthController {
   @Post('campus/login')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
-  campusLogin(@Body() dto: CampusLoginDto) {
-    return this.authService.campusLogin(dto);
+  campusLogin(@Body() dto: CampusLoginDto, @Request() req: ExpressRequest) {
+    return this.authService.campusLogin(dto, this.nicknameLanguage(req));
   }
 
   @Post('phone/challenges')
@@ -67,14 +68,26 @@ export class PublicAuthController {
 
   @Post('phone/login')
   @HttpCode(HttpStatus.OK)
-  phoneLogin(@Body() dto: VerifyChallengeDto) {
-    return this.authService.phoneLogin(dto.challengeId, dto.code);
+  phoneLogin(@Body() dto: VerifyChallengeDto, @Request() req: ExpressRequest) {
+    return this.authService.phoneLogin(
+      dto.challengeId,
+      dto.code,
+      this.nicknameLanguage(req),
+    );
   }
 
   @Post('wechat/login')
   @HttpCode(HttpStatus.OK)
-  wechatLogin(@Body() dto: WechatLoginDto) {
-    return this.authService.wechatLogin(dto.code, dto.platform);
+  wechatLogin(@Body() dto: WechatLoginDto, @Request() req: ExpressRequest) {
+    return this.authService.wechatLogin(
+      dto.code,
+      dto.platform,
+      this.nicknameLanguage(req),
+    );
+  }
+
+  private nicknameLanguage(req: ExpressRequest): string {
+    return req.acceptsLanguages(['zh', 'en']) || 'en';
   }
 
   @UseGuards(RefreshAuthGuard)

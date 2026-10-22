@@ -97,7 +97,7 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data.token.accessToken).toBeDefined();
       expect(response.body.data.token.refreshToken).toBeDefined();
       expect(response.body.data.user).toBeDefined();
-      expect(response.body.data.user.nickname).toBe('新用户');
+      expect(response.body.data.user.nickname).toMatch(/^食友_[0-9a-f]{12}$/);
       expect(response.body.data.user.capabilities.canContribute).toBe(false);
 
       const dbUser = await prisma.user.findUnique({
@@ -105,6 +105,7 @@ describe('AuthController (e2e)', () => {
         include: { studentVerification: true },
       });
       expect(dbUser).not.toBeNull();
+      expect(dbUser?.nickname).toBe(response.body.data.user.nickname);
       expect(dbUser?.studentVerification).toBeNull();
     });
 

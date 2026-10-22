@@ -54,24 +54,6 @@ export class UserProfileService {
     @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {}
 
-  // 创建用户入口（由用户模块负责），缺省值由数据库默认值提供
-  async createUser(openId: string) {
-    return this.prisma.user.create({
-      data: {
-        openId,
-        nickname: `微信用户_${openId.slice(-4)}`,
-        allergens: [],
-        preferences: {
-          create: {},
-        },
-        settings: {
-          create: {},
-        },
-      },
-      include: { settings: true, preferences: true },
-    });
-  }
-
   async getUserProfile(userId: string): Promise<UserProfileResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
