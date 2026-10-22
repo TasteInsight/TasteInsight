@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   HttpCode,
+  Get,
+  Put,
   Post,
   Res,
   UseGuards,
@@ -11,6 +13,12 @@ import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 import {
+  CurrentAdmin,
+  type AdminInfo,
+} from '@/auth/decorators/current-admin.decorator';
+import { TranslationSettingsService } from './translation-settings.service';
+import { UpdateTranslationSettingsDto } from './dto/update-translation-settings.dto';
+import {
   ContentTranslationsService,
   TranslationDraftDto,
 } from './content-translations.service';
@@ -18,7 +26,37 @@ import {
 @Controller('admin/content-translations')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
 export class ContentTranslationsController {
-  constructor(private readonly translations: ContentTranslationsService) {}
+  constructor(
+    private readonly translations: ContentTranslationsService,
+    private readonly settings: TranslationSettingsService,
+  ) {}
+
+  @Get('status')
+  @RequirePermissions(
+    'dish:create',
+    'dish:edit',
+    'upload:approve',
+    'config:edit',
+  )
+  async status() {
+    return { code: 200, data: await this.settings.getStatus() };
+  }
+
+  @Get('settings')
+  @RequirePermissions('config:view')
+  async getSettings(@CurrentAdmin() admin: AdminInfo) {
+    return { code: 200, data: await this.settings.getSettings(admin) };
+  }
+
+  @Put('settings')
+  @RequirePermissions('config:edit')
+  async updateSettings(
+    @Body() dto: UpdateTranslationSettingsDto,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return { code: 200, data: await this.settings.updateSettings(dto, admin) };
+  }
+
   @Post()
   @HttpCode(200)
   @RequirePermissions(

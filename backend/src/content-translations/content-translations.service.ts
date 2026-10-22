@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadGatewayException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, BadGatewayException } from '@nestjs/common';
 import {
   IsIn,
   IsNotEmpty,
@@ -11,7 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { AIConfigService } from '@/ai-chat/services/ai-config.service';
+import { TranslationSettingsService } from './translation-settings.service';
 import { OpenAIProviderService } from '@/ai-chat/services/ai-provider/openai-provider.service';
 
 export class TranslationDraftDto {
@@ -30,12 +26,10 @@ export class TranslationDraftDto {
 
 @Injectable()
 export class ContentTranslationsService {
-  constructor(private readonly config: AIConfigService) {}
+  constructor(private readonly config: TranslationSettingsService) {}
 
   async draft(input: TranslationDraftDto, signal: AbortSignal) {
     const config = await this.config.getProviderConfig();
-    if (!config.apiKey)
-      throw new ServiceUnavailableException('请先配置 AI 服务');
     const provider = new OpenAIProviderService();
     provider.setConfig(config);
     try {
@@ -72,7 +66,9 @@ export class ContentTranslationsService {
         descriptionEn: input.description ? parsed.descriptionEn.trim() : '',
       };
     } catch {
-      throw new BadGatewayException('英文建议生成失败，请稍后重试');
+      throw new BadGatewayException(
+        '英文建议生成失败，请手工填写英文或稍后重试；持续失败时请联系全局配置管理员',
+      );
     }
   }
 }

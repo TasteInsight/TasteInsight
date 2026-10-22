@@ -12,7 +12,7 @@
       <button
         type="button"
         class="admin-button admin-button-secondary"
-        :disabled="busy || loading || !name.trim()"
+        :disabled="busy || loading || statusLoading || !status?.available || !name.trim()"
         :aria-busy="loading"
         @click="suggest"
       >
@@ -31,6 +31,37 @@
         @input="emit('update:descriptionEn', ($event.target as HTMLTextAreaElement).value)"
       />
     </label>
+    <div
+      v-if="statusError || (status && !status.available)"
+      class="text-sm leading-6 text-gray-600"
+    >
+      <p>
+        {{
+          statusError ||
+          (status?.enabled
+            ? '辅助翻译暂不可用，可手工填写英文。'
+            : '辅助翻译尚未启用，可手工填写英文。')
+        }}
+      </p>
+      <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <button
+          v-if="statusError"
+          type="button"
+          class="admin-text-link"
+          :disabled="statusLoading"
+          @click="loadStatus"
+        >
+          重新读取状态
+        </button>
+        <router-link
+          v-if="canConfigure"
+          class="admin-text-link"
+          to="/config-manage?section=translation"
+          >翻译服务配置</router-link
+        >
+        <span v-else-if="!statusError">需要辅助翻译时，请联系配置管理员。</span>
+      </div>
+    </div>
     <p v-if="error" class="admin-field-error" role="alert">{{ error }}</p>
     <section v-if="proposal" class="admin-feedback admin-feedback-info" aria-label="英文建议">
       <div class="translation-proposal space-y-3">
@@ -61,9 +92,14 @@
 </template>
 <script setup lang="ts">
 import AppIcon from '@/components/Common/AppIcon.vue'
-import { ref, watch, onScopeDispose } from 'vue'
-import { contentLocalizationApi, type TranslationDraft } from '@/api/modules/content-localization'
+import { computed, ref, watch, onScopeDispose, onMounted, onActivated, onDeactivated } from 'vue'
+import {
+  contentLocalizationApi,
+  type TranslationDraft,
+  type TranslationStatus,
+} from '@/api/modules/content-localization'
 import { authSessionVersion } from '@/utils/auth-session'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 const props = withDefaults(
   defineProps<{
     kind?: 'dish' | 'allergen'
@@ -79,6 +115,53 @@ const emit = defineEmits<{
   'update:nameEn': [value: string]
   'update:descriptionEn': [value: string]
 }>()
+const auth = useAuthStore()
+const canConfigure = computed(
+  () => auth.user?.scope === 'GLOBAL' && auth.hasPermission('config:view'),
+)
+const status = ref<TranslationStatus | null>(null)
+const statusLoading = ref(false)
+const statusError = ref('')
+let statusRequest: AbortController | null = null
+async function loadStatus() {
+  statusRequest?.abort()
+  const controller = new AbortController()
+  statusRequest = controller
+  statusLoading.value = true
+  statusError.value = ''
+  status.value = null
+  try {
+    const response = await contentLocalizationApi.translationStatus(controller.signal)
+    if (statusRequest === controller) status.value = response.data
+  } catch {
+    if (statusRequest === controller) statusError.value = '辅助翻译状态读取失败，可手工填写英文。'
+  } finally {
+    if (statusRequest === controller) {
+      statusRequest = null
+      statusLoading.value = false
+    }
+  }
+}
+function cancelRequests() {
+  invalidate()
+  statusRequest?.abort()
+  statusRequest = null
+  statusLoading.value = false
+  status.value = null
+}
+onMounted(loadStatus)
+onActivated(() => {
+  if (!statusLoading.value) loadStatus()
+})
+onDeactivated(cancelRequests)
+watch(
+  authSessionVersion,
+  () => {
+    cancelRequests()
+    loadStatus()
+  },
+  { flush: 'sync' },
+)
 const loading = ref(false)
 const error = ref('')
 const proposal = ref<TranslationDraft | null>(null)
@@ -101,8 +184,9 @@ watch(
   invalidate,
   { flush: 'sync' },
 )
-onScopeDispose(invalidate)
+onScopeDispose(cancelRequests)
 async function suggest() {
+  if (props.busy || loading.value || !status.value?.available || !props.name.trim()) return
   invalidate()
   const controller = new AbortController()
   active = controller
@@ -114,7 +198,7 @@ async function suggest() {
     )
     if (active === controller) proposal.value = response.data
   } catch {
-    if (active === controller) error.value = '生成失败，请检查 AI 配置后重试'
+    if (active === controller) error.value = '英文建议生成失败，可重试或手工填写。'
   } finally {
     if (active === controller) {
       active = null

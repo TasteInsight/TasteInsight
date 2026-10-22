@@ -4,11 +4,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import TranslationFields from '@/components/Content/TranslationFields.vue'
 import { contentLocalizationApi } from '@/api/modules/content-localization'
 vi.mock('@/api/modules/content-localization', () => ({
-  contentLocalizationApi: { draft: vi.fn() },
+  contentLocalizationApi: { draft: vi.fn(), translationStatus: vi.fn() },
+}))
+vi.mock('@/store/modules/use-auth-store', () => ({
+  useAuthStore: () => ({ user: { scope: 'CANTEENS' }, hasPermission: () => false }),
 }))
 vi.mock('@/utils/auth-session', () => ({ authSessionVersion: ref(0) }))
 describe('translation suggestions', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(contentLocalizationApi.translationStatus).mockResolvedValue({
+      code: 200,
+      message: 'ok',
+      data: { enabled: true, available: true },
+    })
+  })
   it('keeps existing translations until an explicit apply action', async () => {
     vi.mocked(contentLocalizationApi.draft).mockResolvedValue({
       code: 200,
@@ -18,6 +28,7 @@ describe('translation suggestions', () => {
     const wrapper = mount(TranslationFields, {
       props: { name: '番茄炒蛋', nameEn: 'Existing', descriptionEn: 'Existing description' },
     })
+    await flushPromises()
     await wrapper.get('button').trigger('click')
     await flushPromises()
     expect(wrapper.emitted('update:nameEn')).toBeUndefined()
@@ -41,6 +52,7 @@ describe('translation suggestions', () => {
           }),
       )
       const wrapper = mount(TranslationFields, { props: { name: '原菜名' } })
+      await flushPromises()
       await wrapper.get('button').trigger('click')
       const signal = vi.mocked(contentLocalizationApi.draft).mock.calls[0][1]
       await wrapper.setProps(patch)
@@ -52,9 +64,41 @@ describe('translation suggestions', () => {
       wrapper.unmount()
     },
   )
+  it('keeps manual English editable without configuration permissions when translation is disabled', async () => {
+    vi.mocked(contentLocalizationApi.translationStatus).mockResolvedValue({
+      code: 200,
+      message: 'ok',
+      data: { enabled: false, available: false },
+    })
+    const wrapper = mount(TranslationFields, { props: { name: '菜品', nameEn: 'Manual' } })
+    await flushPromises()
+    expect(wrapper.get('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('可手工填写英文')
+    expect(wrapper.text()).toContain('请联系配置管理员')
+    expect(wrapper.find('router-link').exists()).toBe(false)
+    await wrapper.get('input').setValue('Hand edited')
+    expect(wrapper.emitted('update:nameEn')).toEqual([['Hand edited']])
+    expect(contentLocalizationApi.draft).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+  it('preserves manual entry when capability lookup fails and can retry', async () => {
+    vi.mocked(contentLocalizationApi.translationStatus).mockRejectedValueOnce(new Error('offline'))
+    const wrapper = mount(TranslationFields, { props: { name: '菜品', nameEn: 'Manual' } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('状态读取失败')
+    expect(wrapper.get('input').attributes('disabled')).toBeUndefined()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重新读取状态')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.get('button').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
   it('preserves the form on failure and allows retry', async () => {
     vi.mocked(contentLocalizationApi.draft).mockRejectedValue(new Error('network'))
     const wrapper = mount(TranslationFields, { props: { name: '菜品', nameEn: 'Manual' } })
+    await flushPromises()
     await wrapper.get('button').trigger('click')
     await flushPromises()
     expect(wrapper.get('[role=alert]').text()).toContain('生成失败')

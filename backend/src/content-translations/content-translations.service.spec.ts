@@ -1,5 +1,7 @@
 import { ContentTranslationsService } from './content-translations.service';
 import { OpenAIProviderService } from '@/ai-chat/services/ai-provider/openai-provider.service';
+import { ServiceUnavailableException } from '@nestjs/common';
+import { TranslationSettingsService } from './translation-settings.service';
 
 describe('reviewable translation drafts', () => {
   const config = {
@@ -12,7 +14,7 @@ describe('reviewable translation drafts', () => {
   beforeEach(() => {
     service = new ContentTranslationsService({
       getProviderConfig: jest.fn().mockResolvedValue(config),
-    } as any);
+    } as unknown as TranslationSettingsService);
     jest
       .spyOn(OpenAIProviderService.prototype, 'setConfig')
       .mockImplementation(() => {});
@@ -60,14 +62,17 @@ describe('reviewable translation drafts', () => {
   });
   it('returns a useful failure when configuration is absent without invoking a provider', async () => {
     service = new ContentTranslationsService({
-      getProviderConfig: async () => ({ apiKey: '' }),
-    } as any);
+      getProviderConfig: () =>
+        Promise.reject(
+          new ServiceUnavailableException('请手工填写英文或联系全局配置管理员'),
+        ),
+    } as unknown as TranslationSettingsService);
     await expect(
       service.draft(
         { kind: 'allergen', name: '花生' },
         new AbortController().signal,
       ),
-    ).rejects.toThrow('请先配置');
+    ).rejects.toThrow('手工填写英文');
     expect(complete).not.toHaveBeenCalled();
   });
   it('hides provider errors and does not retry a timed out call', async () => {
