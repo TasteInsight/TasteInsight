@@ -119,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import { parseAllergenList } from '@/utils/allergen-values'
 import TranslationFields from '@/components/Content/TranslationFields.vue'
 import { nutritionFields, nutritionPayload } from '@/utils/nutrition'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -151,7 +152,7 @@ const splitList = (value: string) => [...new Set(value.split(/[、,，\n]/).map(
 const content = (): ContributionFields => ({
   ...draft, ...nutritionPayload(draft), name: draft.name.trim(), price: Number(draft.price), priceUnit: draft.priceUnit.trim(), description: draft.description.trim(),
   images: [...draft.images], availableMealTime: [...draft.availableMealTime], availableDates: draft.availableDates.map(range => ({ ...range })),
-  tags: splitList(lists.tags), ingredients: splitList(lists.ingredients), allergens: splitList(lists.allergens),
+  tags: splitList(lists.tags), ingredients: splitList(lists.ingredients), allergens: parseAllergenList(lists.allergens),
 })
 const baseline = content()
 const error = ref('')

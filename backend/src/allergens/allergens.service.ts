@@ -7,7 +7,12 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma.service';
 import type { AdminInfo } from '@/auth/decorators/current-admin.decorator';
-import { expandAllergenValues } from './allergen-values';
+import {
+  allergenComparisonKey,
+  expandAllergenValues,
+  normalizeAllergenText,
+  normalizeAllergenValues,
+} from './allergen-values';
 import { SaveAllergenDto } from './allergens.dto';
 
 @Injectable()
@@ -40,44 +45,52 @@ export class AllergensService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const previous = value
-          ? await tx.allergen.findUnique({
-              where: { value },
-              include: { aliases: true },
-            })
+          ? ((await tx.allergen.findMany({ include: { aliases: true } })).find(
+              (entry) =>
+                allergenComparisonKey(entry.value) ===
+                allergenComparisonKey(value),
+            ) ?? null)
           : null;
         if (value && !previous) throw new NotFoundException('过敏原不存在');
-        const key = previous?.value ?? dto.nameZh.trim();
-        const names = new Map<string, string>();
-        for (const name of [
+        const nameZh = normalizeAllergenText(dto.nameZh);
+        const nameEn =
+          dto.nameEn === undefined
+            ? previous?.nameEn
+            : dto.nameEn
+              ? normalizeAllergenText(dto.nameEn) || null
+              : null;
+        const key = previous?.value ?? nameZh;
+        const names = normalizeAllergenValues([
           key,
-          dto.nameZh,
-          dto.nameEn,
+          nameZh,
+          ...(nameEn ? [nameEn] : []),
           ...(dto.aliases ?? []),
+          ...(previous
+            ? [previous.nameZh, ...(previous.nameEn ? [previous.nameEn] : [])]
+            : []),
           ...(previous?.aliases.map((alias) => alias.name) ?? []),
-        ]) {
-          const trimmed = name?.trim();
-          if (trimmed) names.set(trimmed.toLowerCase(), trimmed);
-        }
+        ]);
         const entry = previous
           ? await tx.allergen.update({
               where: { value: key },
               data: {
-                nameZh: dto.nameZh,
-                ...(dto.nameEn !== undefined ? { nameEn: dto.nameEn } : {}),
+                nameZh,
+                ...(dto.nameEn !== undefined ? { nameEn } : {}),
               },
             })
           : await tx.allergen.create({
               data: {
                 value: key,
-                nameZh: dto.nameZh,
-                nameEn: dto.nameEn ?? null,
+                nameZh,
+                nameEn: nameEn ?? null,
               },
             });
         const existing = new Set(
-          previous?.aliases.map((alias) => alias.name.toLowerCase()) ?? [],
+          previous?.aliases.map((alias) => allergenComparisonKey(alias.name)) ??
+            [],
         );
-        const additions = [...names.values()].filter(
-          (name) => !existing.has(name.toLowerCase()),
+        const additions = names.filter(
+          (name) => !existing.has(allergenComparisonKey(name)),
         );
         if (additions.length)
           await tx.allergenAlias.createMany({
@@ -91,13 +104,13 @@ export class AllergensService {
             targetId: key,
             result: 'success',
             details: {
-              nameZh: dto.nameZh,
+              nameZh,
               nameEn: entry.nameEn,
-              aliases: [...names.values()],
+              aliases: names,
             },
           },
         });
-        return { ...entry, aliases: [...names.values()] };
+        return { ...entry, aliases: names };
       });
     } catch (error) {
       if (

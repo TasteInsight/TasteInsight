@@ -1,4 +1,5 @@
 import { AllergensService } from '@/allergens/allergens.service';
+import { allergenComparisonKey } from '@/allergens/allergen-values';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -1526,8 +1527,10 @@ export class RecommendationService {
     if (allergens.length) {
       conditions.push({
         NOT: {
-          allergens: {
-            hasSome: await this.allergensService.expandValues(allergens),
+          allergenKeys: {
+            hasSome: (await this.allergensService.expandValues(allergens)).map(
+              allergenComparisonKey,
+            ),
           },
         },
       });

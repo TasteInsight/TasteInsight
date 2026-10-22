@@ -1,3 +1,4 @@
+import { normalizeAllergenValues } from '@/allergens/allergen-values';
 import { contributionModerationText } from '@/content-moderation/moderation.types';
 import { randomUUID } from 'crypto';
 import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
@@ -116,6 +117,9 @@ export class UserProfileService {
 
     // 检查是否更新了 allergens（过敏原变化会影响推荐）
     if (userUpdatePayload.allergens !== undefined) {
+      userUpdatePayload.allergens = normalizeAllergenValues(
+        updateDto.allergens!,
+      );
       needRefreshEmbedding = true;
     }
 

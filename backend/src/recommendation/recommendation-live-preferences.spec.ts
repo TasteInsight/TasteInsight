@@ -90,7 +90,7 @@ describe('Recommendation current preference boundary', () => {
             id: { in: ['shrimp'] },
             AND: expect.arrayContaining([
               { status: 'online' },
-              { NOT: { allergens: { hasSome: ['虾'] } } },
+              { NOT: { allergenKeys: { hasSome: ['虾'] } } },
               { NOT: { ingredients: { hasSome: ['香菜'] } } },
             ]),
           }),

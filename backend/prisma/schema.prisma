@@ -385,6 +385,7 @@ model Dish {
   // 食材信息
   ingredients String[]
   allergens   String[] @db.Citext
+  allergenKeys String[] @default(dbgenerated("allergen_comparison_keys(allergens)"))
 
   // 口味信息
   spicyLevel Int @default(0) // 0-5 辣度等级
@@ -1261,7 +1262,7 @@ model Allergen {
 }
 
 model AllergenAlias {
-  name          String @id @db.Citext
+  name          String @id
   allergenValue String
   allergen      Allergen @relation(fields: [allergenValue], references: [value], onDelete: Cascade)
 

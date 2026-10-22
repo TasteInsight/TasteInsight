@@ -118,6 +118,7 @@
     "@types/node": "^22.10.7",
     "@types/sanitize-html": "^2.16.2",
     "@types/supertest": "^6.0.2",
+    "@unicode/unicode-17.0.0": "2.0.8",
     "dotenv-cli": "^11.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

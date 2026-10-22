@@ -1,3 +1,8 @@
+import {
+  parseAllergenList,
+  allergenValue,
+  normalizeAllergenValues,
+} from '@/utils/allergen-catalog';
 import { t } from '@/i18n';
 import { openLogin } from '@/utils/login-navigation';
 import { reactive, ref, computed, watch } from 'vue';
@@ -200,7 +205,9 @@ export function useSettings() {
       const payload: UserProfileUpdateRequest = {
         nickname: form.nickname.trim() || undefined,
         avatar: form.avatar.trim() || undefined,
-        allergens: parseList(form.allergensText),
+        allergens: normalizeAllergenValues(
+          parseAllergenList(form.allergensText).map(allergenValue)
+        ),
       };
 
       const preferences: Partial<UserPreference> = {};

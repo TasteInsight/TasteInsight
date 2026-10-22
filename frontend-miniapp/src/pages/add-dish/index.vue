@@ -376,8 +376,8 @@
               v-for="allergen in commonAllergens"
               :key="allergen.value"
               class="choice badge-choice"
-              :class="{ 'is-selected': formData.allergens?.includes(allergen.value) }"
-              :aria-pressed="formData.allergens?.includes(allergen.value)"
+              :class="{ 'is-selected': isAllergenSelected(allergen.value) }"
+              :aria-pressed="isAllergenSelected(allergen.value)"
               :disabled="formLocked"
               @tap="toggleAllergen(allergen.value)"
             >
@@ -542,6 +542,7 @@ const {
   addCustomTag,
   removeCustomTag,
   toggleAllergen,
+  isAllergenSelected,
   addCustomAllergen,
   removeCustomAllergen,
   chooseImages,

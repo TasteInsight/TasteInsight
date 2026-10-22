@@ -1,3 +1,4 @@
+import { normalizeAllergenValues } from '@/allergens/allergen-values';
 import { Injectable } from '@nestjs/common';
 import { BaseTool, ToolDefinition, ToolContext } from './base-tool.interface';
 import { UserProfileService } from '@/user-profile/user-profile.service';
@@ -125,7 +126,7 @@ export class UpdatePreferencesTool implements BaseTool {
     }
     if (allergens !== undefined) {
       before.allergens = structuredClone(data.allergens);
-      after.allergens = structuredClone(allergens);
+      after.allergens = normalizeAllergenValues(allergens);
     }
     return {
       summary: '请核对偏好变更，确认后保存。',

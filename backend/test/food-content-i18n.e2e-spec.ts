@@ -1,4 +1,12 @@
 import * as XLSX from 'xlsx';
+import { MealTime } from '@/common/enums';
+import {
+  allergenComparisonKey,
+  normalizeAllergenText,
+  normalizeAllergenValues,
+} from '@/allergens/allergen-values';
+import { assertDietaryExclusions } from '@/meal-plans/meal-plan-validation';
+import { AdminUploadsService } from '@/admin-uploads/admin-uploads.service';
 import { AdminDishesService } from '@/admin-dishes/admin-dishes.service';
 import { MealPlansService } from '@/meal-plans/meal-plans.service';
 import { CreateMealPlanTool } from '@/ai-chat/tools/create-meal-plan.tool';
@@ -191,6 +199,98 @@ describe('food content localization (PostgreSQL)', () => {
       (await allergens.catalog()).some((e) => e.value === '私人自定义成分'),
     ).toBe(false);
   });
+  it('uses fixed Unicode case folding for database keys, recommendation, plan assertions and alias uniqueness', async () => {
+    const comparisons = [
+      { left: 'İ', right: 'i', equal: false },
+      { left: 'ΟΣ', right: 'οσ', equal: true },
+      { left: 'ΟΣ', right: 'ος', equal: true },
+      { left: 'Straße', right: 'STRASSE', equal: true },
+      { left: 'Ᲊ', right: 'ᲊ', equal: true },
+      { left: 'Ɤ', right: 'ɤ', equal: true },
+      { left: 'Ꟍ', right: 'ꟍ', equal: true },
+      { left: 'Ꟛ', right: 'ꟛ', equal: true },
+      { left: 'PiNe Nuts', right: 'pine nuts', equal: true },
+      { left: 'Pine Nutshell', right: 'pine nuts', equal: false },
+    ];
+    const rec = new RecommendationService(
+      db,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      allergens,
+    );
+    const saved = await db.user.create({
+      data: {
+        id: prefix + '-unicode-user',
+        allergens: comparisons.flatMap(({ left, right }) => [left, right]),
+      },
+    });
+    expect(saved.allergens).toEqual(
+      normalizeAllergenValues(
+        comparisons.flatMap(({ left, right }) => [left, right]),
+      ),
+    );
+    for (const [index, { left, right, equal }] of comparisons.entries()) {
+      const dish = await db.dish.create({
+        data: {
+          id: prefix + '-unicode-' + index,
+          name: 'Unicode comparison',
+          canteenId: prefix,
+          canteenName: prefix,
+          windowName: 'test',
+          tags: [],
+          images: [],
+          ingredients: [],
+          availableMealTime: ['lunch'],
+          price: 8,
+          allergens: [' \uFEFF' + left + '\t'],
+        },
+      });
+      expect(dish).not.toHaveProperty('allergenKeys');
+      expect(dish.allergens).toEqual([left]);
+      expect(
+        await db.dish.findUnique({
+          where: { id: dish.id },
+          select: { allergenKeys: true },
+        }),
+      ).toEqual({ allergenKeys: [allergenComparisonKey(left)] });
+      const filter = await (rec as any).buildDietaryFilterConditions([right]);
+      expect(
+        await db.dish.findMany({ where: { id: dish.id, AND: filter } }),
+      ).toHaveLength(equal ? 0 : 1);
+      const assertPlan = () =>
+        assertDietaryExclusions([dish], {
+          allergens: [right],
+          avoidIngredients: [],
+        });
+      if (equal) expect(assertPlan).toThrow('忌口');
+      else expect(assertPlan).not.toThrow();
+
+      const aliasPrefix = prefix + '-unicode-alias-' + index + ' ';
+      await request(app.getHttpServer())
+        .post('/admin/allergens')
+        .send({
+          nameZh: prefix + '-unicode-first-' + index,
+          aliases: [aliasPrefix + left],
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post('/admin/allergens')
+        .send({
+          nameZh: prefix + '-unicode-second-' + index,
+          aliases: [aliasPrefix + right],
+        })
+        .expect(equal ? 409 : 201);
+      expect(
+        await db.allergen.count({
+          where: { value: prefix + '-unicode-second-' + index },
+        }),
+      ).toBe(equal ? 0 : 1);
+    }
+  });
+
   it('keeps English fields through snapshots, merge patches, DTO validation and moderation', async () => {
     const dto = plainToInstance(UploadDishDto, {
       nameEn: '  English name  ',
@@ -455,5 +555,255 @@ describe('food content localization (PostgreSQL)', () => {
       nameEn: null,
       descriptionEn: null,
     });
+  });
+  it('uses the ECMAScript whitespace set at the PostgreSQL persistence boundary', async () => {
+    const whitespace =
+      '\t\n\v\f\r \u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF';
+    for (const separator of [...whitespace, '\u0085']) {
+      const input =
+        separator + 'Pine' + separator + separator + 'Nuts' + separator;
+      const rows = await db.$queryRaw<
+        { value: string }[]
+      >`SELECT normalize_allergen_text(${input}) AS value`;
+      expect(rows[0].value).toBe(normalizeAllergenText(input));
+    }
+    const saved = await db.user.create({
+      data: {
+        id: prefix + '-whitespace-user',
+        allergens: [
+          ' \uFEFFPine\t\nNuts\u3000',
+          'PINE  NUTS',
+          '私人\u00A0成分',
+          '  ',
+        ],
+      },
+    });
+    expect(saved.allergens).toEqual(['Pine Nuts', '私人 成分']);
+    const profiles = new UserProfileService(db);
+    expect(
+      (
+        await profiles.updateUserProfile(saved.id, {
+          allergens: [' PiNe\t NuTs ', 'pine nuts', 'PRIVATE\u3000phrase'],
+        })
+      ).data.allergens,
+    ).toEqual(['PiNe NuTs', 'PRIVATE phrase']);
+  });
+
+  it('normalizes catalog names, keeps one spelling per identity and rolls back alias collisions', async () => {
+    const key = prefix + '-whitespace';
+    const response = await request(app.getHttpServer())
+      .post('/admin/allergens')
+      .send({
+        nameZh: '  ' + key + '  ',
+        nameEn: '  Private\t Oats ' + prefix,
+        aliases: [' Shared\talias ' + prefix, 'shared  ALIAS ' + prefix],
+      })
+      .expect(201);
+    expect(response.body.data).toMatchObject({
+      value: key,
+      nameZh: key,
+      nameEn: 'Private Oats ' + prefix,
+    });
+    expect(
+      response.body.data.aliases.filter((name) =>
+        name.toLowerCase().startsWith('shared'),
+      ),
+    ).toEqual(['Shared alias ' + prefix]);
+    await request(app.getHttpServer())
+      .put(
+        '/admin/allergens/' +
+          encodeURIComponent('  ' + key.toUpperCase() + '  '),
+      )
+      .send({ nameZh: key + '-renamed', aliases: [' TrEe\t\nNuTs '] })
+      .expect(409);
+    expect(
+      await db.allergen.findUnique({ where: { value: key } }),
+    ).toMatchObject({ nameZh: key });
+    await request(app.getHttpServer())
+      .post('/admin/allergens')
+      .send({
+        nameZh: prefix + '-space-conflict',
+        aliases: [' sHaReD\u3000ALIAS ' + prefix],
+      })
+      .expect(409);
+    expect(
+      await db.allergen.findUnique({
+        where: { value: prefix + '-space-conflict' },
+      }),
+    ).toBeNull();
+  });
+
+  it('serializes concurrent normalized alias claims through database uniqueness', async () => {
+    const responses = await Promise.all(
+      [
+        {
+          nameZh: prefix + '-race-a',
+          aliases: ['Concurrent\t alias ' + prefix],
+        },
+        {
+          nameZh: prefix + '-race-b',
+          aliases: ['  CONCURRENT  ALIAS ' + prefix],
+        },
+      ].map((body) =>
+        request(app.getHttpServer()).post('/admin/allergens').send(body),
+      ),
+    );
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+    expect(
+      await db.allergen.count({
+        where: { value: { in: [prefix + '-race-a', prefix + '-race-b'] } },
+      }),
+    ).toBe(1);
+  });
+
+  it('keeps recommendation and final plan validation equal for normalized aliases and whole private phrases', async () => {
+    const base = {
+      canteenId: prefix,
+      canteenName: prefix,
+      windowName: 'test',
+      tags: [],
+      images: [],
+      ingredients: [],
+      availableMealTime: ['lunch'],
+      price: 8,
+    };
+    const ids = [
+      '-normalized-known',
+      '-normalized-private',
+      '-whole-term-safe',
+    ].map((suffix) => prefix + suffix);
+    await db.dish.createMany({
+      data: [
+        {
+          ...base,
+          id: ids[0],
+          name: 'Curated',
+          allergens: ['  TrEe\t\nNuT\u3000'],
+        },
+        {
+          ...base,
+          id: ids[1],
+          name: 'Private',
+          allergens: [' Pine\u00A0Nuts ', 'PINE  NUTS'],
+        },
+        {
+          ...base,
+          id: ids[2],
+          name: 'Whole term',
+          allergens: ['Tree nutshell', 'Pine nutshell'],
+        },
+      ],
+    });
+    expect(
+      (await db.dish.findUnique({ where: { id: ids[1] } }))?.allergens,
+    ).toEqual(['Pine Nuts']);
+    const rec = new RecommendationService(
+      db,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      allergens,
+    );
+    const exclusions = [' \u3000TREE  NUTS ', ' pInE\t\nNuTs '];
+    const filter = await (rec as any).buildDietaryFilterConditions(exclusions);
+    expect(
+      (await db.dish.findMany({ where: { id: { in: ids }, AND: filter } })).map(
+        (dish) => dish.id,
+      ),
+    ).toEqual([ids[2]]);
+    jest
+      .spyOn(rec, 'getUserFeaturesWithCache')
+      .mockResolvedValue({ allergens: exclusions, preferences: null } as any);
+    const tool = new CreateMealPlanTool(new DishesService(db), rec);
+    for (const id of ids.slice(0, 2)) {
+      await expect(
+        tool.execute(
+          {
+            dishIds: [id],
+            startDate: '2099-11-01',
+            endDate: '2099-11-01',
+            mealTime: 'lunch',
+          },
+          { userId: prefix + '-whitespace-user', sessionId: 'test' },
+        ),
+      ).rejects.toThrow('忌口');
+    }
+    await expect(
+      tool.execute(
+        {
+          dishIds: [ids[2]],
+          startDate: '2099-11-01',
+          endDate: '2099-11-01',
+          mealTime: 'lunch',
+        },
+        { userId: prefix + '-whitespace-user', sessionId: 'test' },
+      ),
+    ).resolves.toHaveProperty('confirmAction');
+    const plans = new MealPlansService(db, allergens);
+    const userId = prefix + '-whitespace-user';
+    await db.user.update({
+      where: { id: userId },
+      data: { allergens: exclusions },
+    });
+    for (const id of ids.slice(0, 2)) {
+      await expect(
+        plans.createMealPlan(userId, {
+          dishes: [id],
+          startDate: '2099-11-01',
+          endDate: '2099-11-01',
+          mealTime: MealTime.LUNCH,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'DIETARY_CONFLICT' } });
+    }
+    expect(
+      (await allergens.catalog()).some(
+        (entry) => entry.value.toLowerCase() === 'pine nuts',
+      ),
+    ).toBe(false);
+  });
+
+  it('normalizes legacy snapshot restoration while retaining historical JSON and conflict checks', async () => {
+    const base = {
+      canteenId: prefix,
+      canteenName: prefix,
+      windowName: 'test',
+      tags: [],
+      images: [],
+      ingredients: [],
+      availableMealTime: ['lunch'],
+      price: 8,
+      name: 'Snapshot restore',
+    };
+    const dish = await db.dish.create({
+      data: { ...base, allergens: ['Peanut'] },
+    });
+    const historical = ['  Pine\t\nNuts ', 'PINE  NUTS'];
+    const upload = await db.dishUpload.create({
+      data: {
+        ...base,
+        allergens: [' PEANUT\t'],
+        status: 'approved',
+        kind: 'update',
+        approvedDishId: dish.id,
+        targetDishId: dish.id,
+        changedFields: ['allergens'],
+        baseSnapshot: { allergens: historical },
+        approvedSnapshot: { allergens: ['  PEANUT '] },
+      },
+    });
+    expect(upload.allergens).toEqual(['PEANUT']);
+    const review = new AdminUploadsService(db);
+    await review.revokeUpload(upload.id, admin, 1);
+    expect(
+      (await db.dish.findUnique({ where: { id: dish.id } }))?.allergens,
+    ).toEqual(['Pine Nuts']);
+    expect(
+      (await db.dishUpload.findUnique({ where: { id: upload.id } }))
+        ?.baseSnapshot,
+    ).toEqual({ allergens: historical });
   });
 });

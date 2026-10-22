@@ -1,3 +1,4 @@
+import { allergenComparisonKey } from '@/allergens/allergen-values';
 import { BadRequestException } from '@nestjs/common';
 import { supplyDatesCover } from '@/dishes/dish-availability';
 
@@ -67,7 +68,7 @@ export function assertDietaryExclusions(
         dish.allergens.some((value) =>
           dietary.allergens.some(
             (allergen) =>
-              allergen.trim().toLowerCase() === value.trim().toLowerCase(),
+              allergenComparisonKey(allergen) === allergenComparisonKey(value),
           ),
         ) ||
         dish.ingredients.some((value) =>

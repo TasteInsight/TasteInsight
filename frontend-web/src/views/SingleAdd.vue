@@ -594,6 +594,7 @@
 </template>
 
 <script>
+import { parseAllergenList } from '@/utils/allergen-values'
 import { reactive, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
@@ -945,12 +946,7 @@ export default {
               .filter((item) => item)
           : []
 
-        const allergens = formData.allergens
-          ? formData.allergens
-              .split(/[，,、]/)
-              .map((item) => item.trim())
-              .filter((item) => item)
-          : []
+        const allergens = parseAllergenList(formData.allergens)
 
         // 处理供应日期段（过滤掉空的日期段）
         const availableDates =

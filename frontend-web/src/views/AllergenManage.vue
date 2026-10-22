@@ -112,6 +112,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { parseAllergenList, normalizeAllergenText } from '@/utils/allergen-values'
 import Header from '@/components/Layout/Header.vue'
 import AppIcon from '@/components/Common/AppIcon.vue'
 import { computed, reactive, ref, onMounted, watch, onScopeDispose } from 'vue'
@@ -169,12 +170,9 @@ async function save() {
   try {
     const response = await contentLocalizationApi.saveAllergen(
       {
-        nameZh: form.nameZh.trim(),
-        nameEn: form.nameEn.trim() || null,
-        aliases: form.aliases
-          .split(/[,，;；、\n]+/)
-          .map((v) => v.trim())
-          .filter(Boolean),
+        nameZh: normalizeAllergenText(form.nameZh),
+        nameEn: normalizeAllergenText(form.nameEn) || null,
+        aliases: parseAllergenList(form.aliases),
       },
       selected.value,
     )

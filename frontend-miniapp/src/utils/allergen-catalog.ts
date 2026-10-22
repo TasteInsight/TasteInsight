@@ -1,3 +1,4 @@
+import { unicodeCaseFold } from './unicode-case-fold';
 import { computed, ref } from 'vue';
 import { locale, t } from '@/i18n';
 import request from '@/utils/request';
@@ -30,36 +31,49 @@ const fallback = [
 }));
 const entries = ref<AllergenEntry[]>([]);
 let pending: Promise<void> | undefined;
+export function normalizeAllergenText(value: string): string {
+  return value.replace(/\s+/gu, ' ').trim();
+}
+export function allergenComparisonKey(value: string): string {
+  return unicodeCaseFold(normalizeAllergenText(value));
+}
+export function normalizeAllergenValues(values: string[]): string[] {
+  const unique = new Map<string, string>();
+  for (const raw of values) {
+    const value = normalizeAllergenText(raw);
+    const key = allergenComparisonKey(value);
+    if (value && !unique.has(key)) unique.set(key, value);
+  }
+  return [...unique.values()];
+}
 export function parseAllergenList(text: string): string[] {
-  return [
-    ...new Set(
-      text
-        .split(/[,，;；、\n\r]+/)
-        .map(value => value.trim())
-        .filter(Boolean)
-    ),
-  ];
+  return normalizeAllergenValues(text.split(/[,，;；、\n\r]+/));
 }
 function findEntry(value: string) {
-  const key = value.trim().toLowerCase();
+  const key = allergenComparisonKey(value);
   return entries.value.find(entry =>
     [entry.value, entry.nameZh, entry.nameEn, ...entry.aliases].some(
-      name => name?.toLowerCase() === key
+      name => !!name && allergenComparisonKey(name) === key
     )
   );
 }
 export function allergenLabel(value: string): string {
   const entry = findEntry(value);
   if (entry) return (locale.value === 'en' ? entry.nameEn : entry.nameZh) || entry.nameZh || value;
-  return fallback.find(entry => entry.value === value)?.label || value;
+  return (
+    fallback.find(entry => allergenComparisonKey(entry.value) === allergenComparisonKey(value))
+      ?.label || normalizeAllergenText(value)
+  );
 }
 export function allergenValue(value: string): string {
   return (
     findEntry(value)?.value ||
-    fallback.find(
-      entry => entry.value === value || entry.label.toLowerCase() === value.trim().toLowerCase()
+    fallback.find(entry =>
+      [entry.value, entry.label].some(
+        name => allergenComparisonKey(name) === allergenComparisonKey(value)
+      )
     )?.value ||
-    value.trim()
+    normalizeAllergenText(value)
   );
 }
 export const allergenOptions = computed(() =>

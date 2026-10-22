@@ -1,5 +1,11 @@
 import { useLocalizedMessage } from '@/composables/use-localized-message';
-import { allergenOptions, loadAllergenCatalog } from '@/utils/allergen-catalog';
+import {
+  allergenOptions,
+  loadAllergenCatalog,
+  allergenValue,
+  allergenComparisonKey,
+  normalizeAllergenValues,
+} from '@/utils/allergen-catalog';
 import { t } from '@/i18n';
 import { ref, reactive, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -143,7 +149,11 @@ const toForm = (value: any): FormData => {
 const equivalent = (left: unknown, right: unknown, field?: DishContributionField) => {
   if (Array.isArray(left) && Array.isArray(right)) {
     const comparable = (values: any[]) =>
-      field === 'images' ? [...new Set(values.map(imageIdentity))] : [...values].sort();
+      field === 'images'
+        ? [...new Set(values.map(imageIdentity))]
+        : field === 'allergens'
+          ? normalizeAllergenValues(values).map(allergenComparisonKey).sort()
+          : [...values].sort();
     return JSON.stringify(comparable(left)) === JSON.stringify(comparable(right));
   }
   return JSON.stringify(left ?? '') === JSON.stringify(right ?? '');
@@ -375,7 +385,11 @@ export function useAddDish() {
       tag => !commonTags.some(option => option.value === tag)
     );
     customAllergens.value = (formData.allergens || []).filter(
-      tag => !commonAllergens.value.some(option => option.value === tag)
+      tag =>
+        !commonAllergens.value.some(
+          option =>
+            allergenComparisonKey(option.value) === allergenComparisonKey(allergenValue(tag))
+        )
     );
   };
   const syncLocation = () => {
@@ -449,24 +463,35 @@ export function useAddDish() {
     formData.tags = formData.tags?.filter(item => item !== tag);
     updateCustomChoices();
   };
+  const isAllergenSelected = (tag: string) =>
+    formData.allergens?.some(
+      value =>
+        allergenComparisonKey(allergenValue(value)) === allergenComparisonKey(allergenValue(tag))
+    ) ?? false;
   const toggleAllergen = (tag: string) => {
     if (formLocked.value) return;
     formData.allergens ||= [];
-    const index = formData.allergens.indexOf(tag);
-    if (index < 0) formData.allergens.push(tag);
+    const index = formData.allergens.findIndex(
+      value =>
+        allergenComparisonKey(allergenValue(value)) === allergenComparisonKey(allergenValue(tag))
+    );
+    if (index < 0) formData.allergens.push(allergenValue(tag));
     else formData.allergens.splice(index, 1);
   };
   const addCustomAllergen = () => {
     if (formLocked.value) return;
-    const tag = customAllergenInput.value.trim();
+    const tag = allergenValue(customAllergenInput.value);
     if (!tag) return;
-    if (!formData.allergens?.includes(tag)) toggleAllergen(tag);
+    if (!isAllergenSelected(tag)) toggleAllergen(tag);
     customAllergenInput.value = '';
     updateCustomChoices();
   };
   const removeCustomAllergen = (tag: string) => {
     if (formLocked.value) return;
-    formData.allergens = formData.allergens?.filter(item => item !== tag);
+    formData.allergens = formData.allergens?.filter(
+      item =>
+        allergenComparisonKey(allergenValue(item)) !== allergenComparisonKey(allergenValue(tag))
+    );
     updateCustomChoices();
   };
   const chooseImages = () => {
@@ -742,6 +767,7 @@ export function useAddDish() {
       payload.subDishId = draft.subDishId;
       payload.status = draft.status;
     }
+    if (payload.allergens) payload.allergens = normalizeAllergenValues(payload.allergens);
     return payload;
   };
   const complete = (id?: string) => {
@@ -961,6 +987,7 @@ export function useAddDish() {
     addCustomTag,
     removeCustomTag,
     toggleAllergen,
+    isAllergenSelected,
     addCustomAllergen,
     removeCustomAllergen,
     chooseImages,

@@ -1,7 +1,10 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { DishTranslationFieldsDto } from '@/dishes/dto/dish-translation.dto';
-import { parseAllergenValues } from '@/allergens/allergen-values';
+import {
+  normalizeAllergenValues,
+  parseAllergenValues,
+} from '@/allergens/allergen-values';
 import {
   canAccessCanteen,
   canteenScopeFilter,
@@ -437,7 +440,7 @@ export class AdminDishesService {
       parentDishId: createDto.parentDishId,
       parentUploadId: createDto.parentUploadId,
       ingredients: createDto.ingredients || [],
-      allergens: createDto.allergens || [],
+      allergens: normalizeAllergenValues(createDto.allergens || []),
       spicyLevel: createDto.spicyLevel || 0,
       sweetness: createDto.sweetness || 0,
       saltiness: createDto.saltiness || 0,
@@ -551,7 +554,7 @@ export class AdminDishesService {
     if (updateDto.ingredients !== undefined)
       updateData.ingredients = updateDto.ingredients;
     if (updateDto.allergens !== undefined)
-      updateData.allergens = updateDto.allergens;
+      updateData.allergens = normalizeAllergenValues(updateDto.allergens);
     if (updateDto.spicyLevel !== undefined)
       updateData.spicyLevel = updateDto.spicyLevel;
     if (updateDto.sweetness !== undefined)
@@ -1467,9 +1470,7 @@ export class AdminDishesService {
     const ingredients = (item.ingredients || [])
       .map((v) => v.trim())
       .filter((v) => v.length > 0);
-    const allergens = (item.allergens || [])
-      .map((v) => v.trim())
-      .filter((v) => v.length > 0);
+    const allergens = normalizeAllergenValues(item.allergens || []);
     const subDishNames = (item.subDishNames || [])
       .map((name) => name.trim())
       .filter((name) => name.length > 0);

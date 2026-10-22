@@ -408,7 +408,7 @@ describe('RecommendationService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { NOT: { allergens: { hasSome: ['花生'] } } },
+              { NOT: { allergenKeys: { hasSome: ['花生'] } } },
             ]),
           }),
         }),

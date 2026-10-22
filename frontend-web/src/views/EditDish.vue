@@ -631,6 +631,7 @@
 </template>
 
 <script>
+import { parseAllergenList } from '@/utils/allergen-values'
 import { reactive, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
@@ -1217,12 +1218,7 @@ export default {
               .filter((item) => item)
           : []
 
-        const allergens = draft.allergens
-          ? draft.allergens
-              .split(/[，,、]/)
-              .map((item) => item.trim())
-              .filter((item) => item)
-          : []
+        const allergens = parseAllergenList(draft.allergens)
 
         // 处理供应日期段（过滤掉空的日期段）
         const availableDates =

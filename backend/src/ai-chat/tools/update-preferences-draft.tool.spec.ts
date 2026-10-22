@@ -112,4 +112,19 @@ describe('UpdatePreferencesTool confirmation drafts', () => {
     );
     expect(profile.updateUserProfile).not.toHaveBeenCalled();
   });
+  it('shows the normalized complete allergen phrases that will be saved', async () => {
+    const result = await tool.execute(
+      { allergens: [' Pine\t\nNuts ', 'PINE  NUTS', 'PRIVATE\u3000phrase'] },
+      context,
+    );
+    expect(result.previewData.after.allergens).toEqual([
+      'Pine Nuts',
+      'PRIVATE phrase',
+    ]);
+    expect(result.confirmAction.body.allergens).toEqual([
+      'Pine Nuts',
+      'PRIVATE phrase',
+    ]);
+    expect(profile.updateUserProfile).not.toHaveBeenCalled();
+  });
 });

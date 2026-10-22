@@ -1,7 +1,11 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { BatchParsedDishDto } from '@/admin-dishes/dto/admin-dish-batch.dto';
-import { expandAllergenValues } from './allergen-values';
+import {
+  allergenComparisonKey,
+  expandAllergenValues,
+  normalizeAllergenValues,
+} from './allergen-values';
 
 const catalog = [
   {
@@ -48,4 +52,48 @@ it('preserves multiword allergen identities in batch confirmation text', () => {
     allergens: 'Pine nuts, Milk protein；花生',
   });
   expect(dto.allergens).toEqual(['Pine nuts', 'Milk protein', '花生']);
+});
+
+it('normalizes Unicode whitespace and deduplicates case while preserving first display spelling', () => {
+  expect(
+    normalizeAllergenValues([
+      '\uFEFF Pine\t\nNuts\u3000',
+      'pine  nuts',
+      'Milk\u00A0protein',
+      '  ',
+    ]),
+  ).toEqual(['Pine Nuts', 'Milk protein']);
+});
+it('normalizes curated names and aliases with the same rule as private phrases', () => {
+  expect(expandAllergenValues(['\t TrEe\n  NuTs \u3000'], catalog)).toEqual([
+    '坚果',
+    'Tree nuts',
+    'Tree nut',
+  ]);
+  expect(
+    expandAllergenValues(
+      ['Tree nutshell', 'Private\t phrase', 'PRIVATE  phrase'],
+      catalog,
+    ),
+  ).toEqual(['Tree nutshell', 'Private phrase']);
+});
+
+it.each([
+  ['İ', 'i', false],
+  ['ΟΣ', 'οσ', true],
+  ['ΟΣ', 'ος', true],
+  ['Straße', 'STRASSE', true],
+  ['Ᲊ', 'ᲊ', true],
+  ['Ɤ', 'ɤ', true],
+  ['Ꟍ', 'ꟍ', true],
+  ['Ꟛ', 'ꟛ', true],
+  ['Pine Nuts', 'pine nuts', true],
+  ['Pine nutshell', 'pine nuts', false],
+])('uses fixed Unicode case folding for %s and %s', (left, right, equal) => {
+  expect(allergenComparisonKey(left) === allergenComparisonKey(right)).toBe(
+    equal,
+  );
+  expect(normalizeAllergenValues([left, right])).toEqual(
+    equal ? [left] : [left, right],
+  );
 });

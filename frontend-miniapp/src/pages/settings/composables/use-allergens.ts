@@ -5,6 +5,8 @@ import {
   parseAllergenList,
   allergenLabel,
   allergenValue,
+  allergenComparisonKey,
+  normalizeAllergenValues,
 } from '@/utils/allergen-catalog';
 import { ref, watch, reactive, onMounted } from 'vue';
 import { useSettingsProfile } from './use-settings-profile';
@@ -53,23 +55,29 @@ export function useAllergens() {
    * 判断过敏原是否已选中
    */
   function isSelected(allergen: string): boolean {
-    return parseAllergenList(form.allergens).map(allergenValue).includes(allergen);
+    return parseAllergenList(form.allergens).some(
+      value =>
+        allergenComparisonKey(allergenValue(value)) ===
+        allergenComparisonKey(allergenValue(allergen))
+    );
   }
 
   /**
    * 切换过敏原选中状态
    */
   function toggleAllergen(allergen: string) {
-    const allergenList = parseAllergenList(form.allergens)
-      .map(allergenValue)
-      .filter(a => a);
+    const allergenList = normalizeAllergenValues(
+      parseAllergenList(form.allergens).map(allergenValue)
+    );
 
-    const index = allergenList.indexOf(allergen);
+    const index = allergenList.findIndex(
+      value => allergenComparisonKey(value) === allergenComparisonKey(allergenValue(allergen))
+    );
 
     if (index > -1) {
       allergenList.splice(index, 1);
     } else {
-      allergenList.push(allergen);
+      allergenList.push(allergenValue(allergen));
     }
 
     form.allergens = allergenList.join(', ');
@@ -80,7 +88,7 @@ export function useAllergens() {
    */
   async function handleSave(): Promise<boolean> {
     const payload: UserProfileUpdateRequest = {
-      allergens: parseAllergenList(form.allergens).map(allergenValue),
+      allergens: normalizeAllergenValues(parseAllergenList(form.allergens).map(allergenValue)),
     };
     return saveProfile(payload);
   }
