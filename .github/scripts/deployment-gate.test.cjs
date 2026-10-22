@@ -2,7 +2,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
-const { runInNewContext } = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
 const workflow = (name) => fs.readFileSync(path.join(root, '.github/workflows', name), 'utf8');
@@ -10,6 +9,7 @@ const workflow = (name) => fs.readFileSync(path.join(root, '.github/workflows', 
 function fixture(overrides = {}) {
   const context = {
     eventName: 'workflow_run',
+    ref: 'refs/heads/main',
     repo: { owner: 'tasteinsight', repo: 'app' },
     payload: {
       workflow_run: {
@@ -68,6 +68,12 @@ test('a successful push CI run at the current branch head may deploy', async () 
   assert.equal(f.branchCalls(), 1);
 });
 
+test('successful dev CI remains validation-only', async () => {
+  const f = fixture({ head_branch: 'dev' });
+  assert.equal(await require('./deployment-gate.cjs')(f), false);
+  assert.equal(f.branchCalls(), 0);
+});
+
 for (const conclusion of ['failure', 'cancelled', 'skipped', null]) {
   test(`a ${conclusion} CI result cannot deploy`, async () => {
     const f = fixture({ conclusion });
@@ -117,32 +123,24 @@ test('explicit manual and version-tag deployments remain supported', async () =>
   assert.equal(f.branchCalls(), 0);
 });
 
-test('deployment routing respects the event and the selected manual environment', () => {
-  const cd = workflow('cd.yml');
-  const conditions = ['dev', 'prod'].map((environment) => {
-    const job = cd.match(new RegExp(`  deploy-${environment}:([\\s\\S]*?)(?=\\n  deploy-|$)`))[1];
-    return [environment, job.match(/    if: >\n((?: {6}[^\n]*\n)+)/)[1]];
-  });
-  const scenarios = [
-    ['workflow_run', 'refs/heads/main', 'dev', '', 'dev'],
-    ['workflow_run', 'refs/heads/main', 'main', '', 'prod'],
-    ['push', 'refs/tags/v1.2.3-beta.1', '', '', 'dev'],
-    ['push', 'refs/tags/v1.2.3', '', '', 'prod'],
-    ...['refs/heads/main', 'refs/heads/dev', 'refs/tags/v1.2.3', 'refs/tags/v1.2.3-beta.1']
-      .flatMap((ref) => [
-        ['workflow_dispatch', ref, '', 'development', 'dev'],
-        ['workflow_dispatch', ref, '', 'production', 'prod'],
-      ]),
-  ];
-  for (const [eventName, ref, branch, environment, expected] of scenarios) {
-    const context = {
-      github: { event_name: eventName, ref, event: { workflow_run: { head_branch: branch } } },
-      inputs: { environment },
-      startsWith: (value, prefix) => value.startsWith(prefix),
-      contains: (value, part) => value.includes(part),
-    };
-    const actual = conditions.filter(([, condition]) => runInNewContext(condition, context))
-      .map(([target]) => target);
-    assert.deepEqual(actual, [expected], `${eventName} ${ref} ${branch} ${environment}`);
+test('manual deployment is limited to main and prerelease tags cannot deploy production', async () => {
+  const evaluate = require('./deployment-gate.cjs');
+  const f = fixture();
+  f.context.eventName = 'workflow_dispatch';
+  for (const ref of ['refs/heads/dev', 'refs/heads/feature', 'refs/tags/v1.2.3']) {
+    f.context.ref = ref;
+    assert.equal(await evaluate(f), false, ref);
   }
+  f.context.eventName = 'push';
+  f.context.ref = 'refs/tags/v1.2.3-beta.1';
+  assert.equal(await evaluate(f), false);
+  assert.equal(f.branchCalls(), 0);
+});
+
+test('the CD workflow has one production target while CI still checks main and dev', () => {
+  const cd = workflow('cd.yml');
+  assert.match(cd, /branches: \[main\]/);
+  assert.doesNotMatch(cd, /\bDEV_[A-Z_]+|deploy-dev:|environment: development|latest-dev|inputs\.environment/);
+  assert.deepEqual([...cd.matchAll(/^  (deploy-[\w-]+):/gm)].map((match) => match[1]), ['deploy-prod']);
+  assert.match(workflow('ci.yml'), /branches: \[main, dev\]/);
 });

@@ -7,6 +7,7 @@ const { test } = require('node:test');
 
 const repository = path.resolve(__dirname, '../..');
 const scripts = path.join(repository, '.github/scripts');
+const workflow = fs.readFileSync(path.join(repository, '.github/workflows/cd.yml'), 'utf8');
 
 function fixture(options = {}) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tasteinsight-production-')));
@@ -72,7 +73,6 @@ fi
 }
 
 test('production CD uploads a source release and consumes server-owned configuration', () => {
-  const workflow = fs.readFileSync(path.join(repository, '.github/workflows/cd.yml'), 'utf8');
   const production = workflow.split('  deploy-prod:')[1];
   assert.doesNotMatch(production, /PROD_ENV_FILE|PROD_SSL_CERT|PROD_SSL_KEY|PROD_NGINX_CONF/);
   assert.match(production, /git archive/);
@@ -196,4 +196,23 @@ test('real Compose resolves release images after server overrides and preserves 
     assert.equal(services.werss.image, 'registry.example/tasteinsight/tasteinsight-werss:image-tested-1');
     assert.equal(services['embedding-service'].image, 'registry.example/tasteinsight/tasteinsight-embedding:image-tested-1');
   } finally { f.dispose(); }
+});
+
+test('a newer workflow does not cancel a deployment in progress', () => {
+  const concurrency = workflow.match(/^concurrency:\n((?: {2}[^\n]*\n)+)/m)[1];
+  assert.match(concurrency, /cancel-in-progress: false/);
+});
+
+test('embedding images do not download models during the default CD build', () => {
+  assert.match(workflow, /PRELOAD_MODEL=false/);
+  assert.doesNotMatch(workflow, /PRELOAD_MODEL=true/);
+});
+
+
+test('release publishes the subpath-aware WeRSS image with the web UI matrix', () => {
+  const job = workflow.match(/  build-frontend:([\s\S]*?)(?=\n  # 构建嵌入|$)/)[1];
+  assert.match(job, /context: \.\/backend\/werss/);
+  assert.match(job, /aliyun_repo: tasteinsight-werss/);
+  assert.match(job, /context: \$\{\{ matrix\.context \}\}/);
+  assert.match(job, /github\.repository \}\}-\$\{\{ matrix\.suffix/);
 });
