@@ -1,13 +1,6 @@
 <template>
   <form data-testid="contribution-edit" class="space-y-6" @submit.prevent="submit">
     <fieldset :disabled="busy || uploading" class="space-y-6">
-      <TranslationFields
-        v-model:name-en="draft.nameEn"
-        v-model:description-en="draft.descriptionEn"
-        :name="draft.name"
-        :description="draft.description"
-        :busy="busy"
-      />
       <div class="admin-form-grid">
         <div class="space-y-4">
           <div>
@@ -41,6 +34,13 @@
             <label for="upload-description" class="block font-medium mb-1 admin-label">菜品描述</label>
             <textarea id="upload-description" v-model="draft.description" rows="4" class="review-input admin-textarea" />
           </div>
+          <TranslationFields
+            v-model:name-en="draft.nameEn"
+            v-model:description-en="draft.descriptionEn"
+            :name="draft.name"
+            :description="draft.description"
+            :busy="busy || uploading"
+          />
           <div>
             <span class="block text-sm font-medium mb-2">菜品图片</span>
             <p v-if="upload.kind === 'update'" class="text-sm text-gray-600 mb-2">图片将追加到原菜品，移除仅影响本次提交。</p>

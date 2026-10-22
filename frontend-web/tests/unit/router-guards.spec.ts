@@ -119,6 +119,23 @@ describe('router/index route guard & redirect', () => {
     expect(next).toHaveBeenCalledWith()
   })
 
+  it('keeps the allergen child page under global configuration authorization', async () => {
+    const children = capturedRoutes!.find((route: any) => route.path === '/').children
+    const route = children.find((route: any) => route.name === 'AllergenManage')
+    expect(route.path).toBe('modify-dish/allergens')
+    expect(route.meta).toMatchObject({ requiredPermission: 'config:view', globalOnly: true })
+    authState.isLoggedIn = true
+    authState.hasPermission = (permission: string) => permission === 'config:view'
+    authState.user.scope = 'CANTEENS'
+    const next = vi.fn()
+    await guard({ meta: route.meta, fullPath: '/modify-dish/allergens' }, { path: '/' }, next)
+    expect(next).toHaveBeenCalledWith('/config-manage')
+    next.mockReset()
+    authState.user.scope = 'GLOBAL'
+    await guard({ meta: route.meta, fullPath: '/modify-dish/allergens' }, { path: '/' }, next)
+    expect(next).toHaveBeenCalledWith()
+  })
+
   it('declares either-permission access for combined moderation routes', async () => {
     const children = capturedRoutes!.find((route: any) => route.path === '/').children
     const permissionsFor = (name: string) =>

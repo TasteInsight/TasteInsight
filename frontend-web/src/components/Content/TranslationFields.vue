@@ -1,45 +1,66 @@
 <template>
-  <div class="translation-fields">
+  <div class="translation-fields space-y-4">
     <div class="translation-heading">
-      <label
+      <label class="admin-label translation-name"
         >英文名称（选填）<input
           :value="nameEn || ''"
+          class="w-full admin-input mt-1"
           :maxlength="kind === 'allergen' ? 100 : 200"
           :disabled="busy"
           @input="emit('update:nameEn', ($event.target as HTMLInputElement).value)"
       /></label>
       <button
         type="button"
-        class="translation-action"
+        class="admin-button admin-button-secondary"
         :disabled="busy || loading || !name.trim()"
         :aria-busy="loading"
         @click="suggest"
       >
-        {{ loading ? '正在生成…' : '生成英文建议' }}
+        <AppIcon icon="carbon:translate" aria-hidden="true" />{{
+          loading ? '正在生成…' : '生成英文建议'
+        }}
       </button>
     </div>
-    <label v-if="kind !== 'allergen'"
+    <label v-if="kind !== 'allergen'" class="admin-label"
       >英文描述（选填）<textarea
         :value="descriptionEn || ''"
+        class="w-full admin-textarea mt-1"
         maxlength="4000"
         :disabled="busy"
         rows="3"
         @input="emit('update:descriptionEn', ($event.target as HTMLTextAreaElement).value)"
       />
     </label>
-    <p v-if="error" class="translation-error" role="alert">{{ error }}</p>
-    <div v-if="proposal" class="translation-proposal">
-      <p>{{ proposal.nameEn }}</p>
-      <p v-if="proposal.descriptionEn">{{ proposal.descriptionEn }}</p>
-      <div class="translation-actions">
-        <button type="button" class="translation-action" :disabled="busy" @click="apply">
-          采用建议</button
-        ><button type="button" class="translation-action" @click="proposal = null">取消</button>
+    <p v-if="error" class="admin-field-error" role="alert">{{ error }}</p>
+    <section v-if="proposal" class="admin-feedback admin-feedback-info" aria-label="英文建议">
+      <div class="translation-proposal space-y-3">
+        <div class="space-y-1">
+          <p class="font-medium">{{ proposal.nameEn }}</p>
+          <p v-if="proposal.descriptionEn">{{ proposal.descriptionEn }}</p>
+        </div>
+        <div class="admin-actions">
+          <button
+            type="button"
+            class="admin-button admin-button-primary admin-button-compact"
+            :disabled="busy"
+            @click="apply"
+          >
+            采用建议
+          </button>
+          <button
+            type="button"
+            class="admin-button admin-button-secondary admin-button-compact"
+            @click="proposal = null"
+          >
+            取消
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 <script setup lang="ts">
+import AppIcon from '@/components/Common/AppIcon.vue'
 import { ref, watch, onScopeDispose } from 'vue'
 import { contentLocalizationApi, type TranslationDraft } from '@/api/modules/content-localization'
 import { authSessionVersion } from '@/utils/auth-session'
@@ -110,77 +131,27 @@ function apply() {
 }
 </script>
 <style scoped>
-.translation-fields {
-  display: grid;
-  gap: 12px;
-  margin-block: 16px;
-}
 .translation-heading {
   display: flex;
-  align-items: end;
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 12px;
 }
-.translation-fields label {
-  display: grid;
-  gap: 6px;
+.translation-name {
   flex: 1;
-  color: #374151;
-  font-size: 14px;
-}
-.translation-fields input,
-.translation-fields textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #fff;
-  box-sizing: border-box;
-  color: #111827;
-  font-size: 16px;
-}
-.translation-action {
-  padding: 10px 12px;
-  min-height: 44px;
-  color: #660874;
-  border-radius: 8px;
-  white-space: nowrap;
-}
-.translation-action:hover:not(:disabled) {
-  background: #f4f4f5;
-}
-.translation-action:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.translation-fields :focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 2px;
+  min-width: 160px;
 }
 .translation-proposal {
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 10px;
-  overflow-wrap: anywhere;
+  min-width: 0;
+  width: 100%;
 }
-.translation-proposal p + p {
-  margin-top: 8px;
-}
-.translation-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.translation-error {
-  color: #b91c1c;
-  font-size: 14px;
-}
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .translation-heading {
-    align-items: stretch;
     flex-direction: column;
+    align-items: stretch;
   }
-  .translation-heading button {
-    align-self: start;
+  .translation-heading > button {
+    align-self: flex-start;
   }
 }
 </style>

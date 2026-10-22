@@ -1,11 +1,16 @@
 <template>
   <div class="admin-page">
     <div class="admin-panel">
-      <Header
-        title="菜品管理"
-        description="编辑和更新现有菜品信息"
-        header-icon="clarity:note-edit-line"
-      />
+      <div class="admin-heading-row">
+        <Header title="菜品管理" description="编辑和更新现有菜品信息" header-icon="clarity:note-edit-line" />
+        <router-link
+          v-if="authStore.user?.scope === 'GLOBAL' && authStore.hasPermission('config:view')"
+          to="/modify-dish/allergens"
+          class="admin-button admin-button-secondary"
+        >
+          <AppIcon icon="carbon:catalog" aria-hidden="true" />过敏原词表
+        </router-link>
+      </div>
 
       <!-- 搜索和筛选区域 -->
       <div class="mt-6 admin-filters">

@@ -1,58 +1,119 @@
 <template>
-  <section class="allergen-page">
-    <header class="allergen-header">
-      <h1>过敏原词表</h1>
-      <button v-if="canEdit" type="button" class="allergen-action" @click="select()">
-        新增过敏原
-      </button>
-    </header>
-    <p v-if="error" role="alert" class="allergen-error">
-      {{ error }} <button type="button" :disabled="saving" @click="load">重试</button>
-    </p>
-    <p v-if="loading" role="status">正在加载…</p>
-    <div class="allergen-layout">
-      <div class="allergen-list">
-        <button
-          v-for="entry in entries"
-          :key="entry.value"
-          type="button"
-          class="allergen-row"
-          :aria-pressed="selected === entry.value"
-          @click="select(entry)"
-        >
-          <span>{{ entry.nameZh }}</span
-          ><span class="allergen-secondary">{{ entry.nameEn || '未填写英文名称' }}</span>
-        </button>
-      </div>
-      <form v-if="canEdit" class="allergen-editor" @submit.prevent="save">
-        <label
-          >中文名称<input v-model="form.nameZh" required maxlength="100" :disabled="saving"
-        /></label>
-        <TranslationFields
-          v-model:name-en="form.nameEn"
-          kind="allergen"
-          :name="form.nameZh"
-          :busy="saving"
+  <div class="admin-page">
+    <section class="admin-panel">
+      <div class="admin-heading-row">
+        <Header
+          title="过敏原词表"
+          description="维护过敏原的中英文名称与别名"
+          header-icon="carbon:catalog"
         />
-        <p v-if="selectedAliases.length" class="allergen-secondary">
-          已有别名：{{ selectedAliases.join('、') }}
-        </p>
-        <label
-          >补充别名<input
-            v-model="form.aliases"
-            placeholder="多个别名用逗号分隔"
+        <div class="admin-actions">
+          <router-link
+            v-if="auth.hasPermission('dish:view')"
+            to="/modify-dish"
+            class="admin-button admin-button-secondary"
+          >
+            <AppIcon icon="carbon:arrow-left" aria-hidden="true" />返回菜品管理
+          </router-link>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="admin-button admin-button-primary"
             :disabled="saving"
-        /></label>
-        <p v-if="saveError" role="alert" class="allergen-error">{{ saveError }}</p>
-        <button class="allergen-primary" type="submit" :disabled="saving || !form.nameZh.trim()">
-          {{ saving ? '正在保存…' : '保存' }}
-        </button>
-        <p v-if="saved" role="status">已保存</p>
-      </form>
-    </div>
-  </section>
+            @click="select()"
+          >
+            <AppIcon icon="carbon:add" aria-hidden="true" />新增过敏原
+          </button>
+        </div>
+      </div>
+      <div class="allergen-layout" :class="{ 'admin-form-grid': canEdit }">
+        <section
+          :class="{ 'allergen-list--editable': canEdit }"
+          aria-labelledby="allergen-list-title"
+        >
+          <h3 id="allergen-list-title" class="mb-4 text-base font-semibold text-gray-800">
+            已收录过敏原
+          </h3>
+          <div v-if="error" role="alert" class="admin-feedback admin-feedback-error">
+            <AppIcon icon="carbon:warning" aria-hidden="true" />
+            <span>{{ error }}</span
+            ><button type="button" :disabled="saving" @click="load">重试</button>
+          </div>
+          <p v-else-if="loading" role="status" class="admin-state">正在加载…</p>
+          <p v-else-if="!entries.length" class="admin-state">暂无过敏原</p>
+          <ul v-else class="allergen-list divide-y divide-gray-200">
+            <li v-for="entry in entries" :key="entry.value">
+              <button
+                type="button"
+                class="allergen-row hover:bg-gray-50 disabled:cursor-wait"
+                :class="
+                  selected === entry.value
+                    ? 'bg-tsinghua-purple/5 text-tsinghua-purple'
+                    : 'text-gray-800'
+                "
+                :aria-pressed="selected === entry.value"
+                :disabled="saving"
+                @click="select(entry)"
+              >
+                <span class="font-medium">{{ entry.nameZh }}</span>
+                <span class="text-gray-600">{{ entry.nameEn || '未填写英文名称' }}</span>
+                <AppIcon icon="carbon:chevron-right" aria-hidden="true" />
+              </button>
+            </li>
+          </ul>
+        </section>
+        <form v-if="canEdit" class="allergen-editor space-y-6" @submit.prevent="save">
+          <h3 class="text-base font-semibold text-gray-800">
+            {{ selected ? '编辑过敏原' : '新增过敏原' }}
+          </h3>
+          <label class="admin-label"
+            >中文名称<input
+              v-model="form.nameZh"
+              class="w-full admin-input mt-1"
+              required
+              maxlength="100"
+              :disabled="saving"
+          /></label>
+          <TranslationFields
+            v-model:name-en="form.nameEn"
+            kind="allergen"
+            :name="form.nameZh"
+            :busy="saving"
+          />
+          <div class="space-y-2">
+            <p
+              v-if="selectedAliases.length"
+              class="allergen-aliases text-sm leading-6 text-gray-600"
+            >
+              已有别名：{{ selectedAliases.join('、') }}
+            </p>
+            <label class="admin-label"
+              >补充别名<input
+                v-model="form.aliases"
+                class="w-full admin-input mt-1"
+                placeholder="多个别名用逗号分隔"
+                :disabled="saving"
+            /></label>
+          </div>
+          <p v-if="saveError" role="alert" class="admin-field-error">{{ saveError }}</p>
+          <div class="admin-actions">
+            <button
+              class="admin-button admin-button-primary"
+              type="submit"
+              :disabled="saving || !form.nameZh.trim()"
+            >
+              <AppIcon icon="carbon:save" aria-hidden="true" />{{ saving ? '正在保存…' : '保存' }}
+            </button>
+            <p v-if="saved" role="status" class="admin-field-success">已保存</p>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
 </template>
 <script setup lang="ts">
+import Header from '@/components/Layout/Header.vue'
+import AppIcon from '@/components/Common/AppIcon.vue'
 import { computed, reactive, ref, onMounted, watch, onScopeDispose } from 'vue'
 import { contentLocalizationApi, type AllergenEntry } from '@/api/modules/content-localization'
 import TranslationFields from '@/components/Content/TranslationFields.vue'
@@ -147,103 +208,47 @@ onScopeDispose(() => {
 onMounted(load)
 </script>
 <style scoped>
-.allergen-page {
-  max-width: 1100px;
-  margin: auto;
-  padding: 24px;
+.allergen-list--editable {
+  border-right: 1px solid #e5e7eb;
+  padding-right: 24px;
 }
-.allergen-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.allergen-header h1 {
-  font-size: 24px;
-  font-weight: 600;
-}
-.allergen-layout {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1fr);
-  gap: 32px;
+.allergen-list {
+  max-height: 560px;
+  overflow-y: auto;
 }
 .allergen-row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  text-align: left;
-  gap: 4px;
+  min-height: 48px;
   padding: 12px;
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 8px;
-}
-.allergen-row:hover,
-.allergen-row[aria-pressed='true'] {
-  background: #f8f9fa;
-}
-.allergen-secondary {
+  text-align: left;
   font-size: 14px;
-  color: #4b5563;
+  line-height: 22px;
+}
+.allergen-row:focus-visible {
+  outline-offset: -3px;
+}
+.allergen-row > span,
+.allergen-aliases {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
-.allergen-editor {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
+.allergen-row > svg {
+  width: 16px;
+  height: 16px;
 }
-.allergen-editor label {
-  display: grid;
-  gap: 6px;
-  font-size: 14px;
-  color: #374151;
-}
-.allergen-editor input {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 16px;
-  width: 100%;
-  box-sizing: border-box;
-}
-.allergen-action,
-.allergen-primary {
-  padding: 10px 16px;
-  min-height: 44px;
-  border-radius: 8px;
-}
-.allergen-action {
-  color: #660874;
-}
-.allergen-action:hover {
-  background: #f4f4f5;
-}
-.allergen-primary {
-  background: #660874;
-  color: white;
-  align-self: start;
-}
-.allergen-primary:disabled {
-  opacity: 0.5;
-}
-.allergen-error {
-  color: #b91c1c;
-  margin-bottom: 12px;
-}
-.allergen-page :focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 2px;
-}
-@media (max-width: 720px) {
-  .allergen-page {
-    padding: 16px;
-  }
-  .allergen-layout {
-    grid-template-columns: 1fr;
+@media (max-width: 900px) {
+  .allergen-list--editable {
+    border-right: 0;
+    padding-right: 0;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5e7eb;
   }
   .allergen-list {
-    max-height: 260px;
-    overflow: auto;
+    max-height: 240px;
   }
 }
 </style>

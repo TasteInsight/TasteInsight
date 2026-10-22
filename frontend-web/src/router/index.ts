@@ -60,12 +60,6 @@ const routes = [
     },
     children: [
       {
-        path: 'allergen-manage',
-        name: 'AllergenManage',
-        component: AllergenManage,
-        meta: { requiresAuth: true, requiredPermission: 'config:view', globalOnly: true },
-      },
-      {
         path: 'single-add',
         name: 'SingleAdd',
         component: SingleAdd,
@@ -82,6 +76,12 @@ const routes = [
         name: 'ModifyDish',
         component: ModifyDish,
         meta: { requiresAuth: true, requiredPermission: 'dish:view', keepAlive: true },
+      },
+      {
+        path: 'modify-dish/allergens',
+        name: 'AllergenManage',
+        component: AllergenManage,
+        meta: { requiresAuth: true, requiredPermission: 'config:view', globalOnly: true },
       },
       {
         path: 'edit-dish/:id',

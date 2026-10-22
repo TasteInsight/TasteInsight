@@ -150,6 +150,14 @@
               ></textarea>
             </div>
 
+            <TranslationFields
+              class="mb-6"
+              v-model:name-en="formData.nameEn"
+              v-model:description-en="formData.descriptionEn"
+              :name="formData.name"
+              :description="formData.description"
+            />
+
             <!-- 菜品图片上传 -->
             <div>
               <label class="block text-gray-700 font-medium mb-2 admin-label"
@@ -531,13 +539,7 @@
               </div>
             </div>
 
-            <TranslationFields
-                v-model:name-en="formData.nameEn"
-                v-model:description-en="formData.descriptionEn"
-                :name="formData.name"
-                :description="formData.description"
-              />
-              <NutritionFields :values="formData" @update:values="Object.assign(formData, $event)" />
+            <NutritionFields :values="formData" @update:values="Object.assign(formData, $event)" />
 
             <!-- 过敏原 -->
             <div class="mb-6">
