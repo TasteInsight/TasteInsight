@@ -124,8 +124,8 @@ export function useMenuPlanning() {
           title: t('social.deleteConfirmation'),
           content: t('social.deletePlanConfirmation'),
           showCancel: true,
-          cancelText: t('social.cancel'),
-          confirmText: t('social.confirm'),
+          cancelText: t('common.modal.cancel'),
+          confirmText: t('common.modal.ok'),
           success: (res: any) => {
             resolve(!!res.confirm);
           },

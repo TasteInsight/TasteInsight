@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t, locale, type AppLocale } from '@/i18n';
 import { defineStore } from 'pinia';
 import { ref, reactive, watch } from 'vue';
 import { useUserStore } from './use-user-store';
@@ -163,6 +163,8 @@ export interface ChatMessage {
   isStreaming?: boolean; // 是否正在流式接收中
   replyStatus?: 'failed' | 'stopped' | 'interrupted';
   suggestions?: string[];
+  suggestionsLocale?: AppLocale;
+  welcomeScene?: AIScene;
 }
 
 // 历史会话记录
@@ -255,6 +257,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         historyEntries.value = (cached as ChatHistoryEntry[]).map(entry => ({
           ...entry,
           messages: restoreMessages(entry.messages),
+          title: conversationTitle(entry.messages),
         }));
       }
     } catch (e) {
@@ -291,11 +294,17 @@ export const useChatStore = defineStore('ai-chat', () => {
     return restored;
   }
 
+  function conversationTitle(msgs: ChatMessage[]): string | undefined {
+    const segment = msgs
+      .find(message => message.type === 'user')
+      ?.content?.find(part => part.type === 'text');
+    return segment?.type === 'text' ? segment.text : undefined;
+  }
+
   function upsertHistoryEntry(session: string, scene: AIScene, msgs: ChatMessage[]) {
     if (!session) return;
     const copy = cloneMessages(msgs);
-    const textSeg = copy.find(m => m.type === 'user')?.content?.find(seg => seg.type === 'text');
-    const title = textSeg && textSeg.type === 'text' ? textSeg.text : t('social.conversation');
+    const title = conversationTitle(copy);
     const idx = historyEntries.value.findIndex(h => h.sessionId === session);
     const entry: ChatHistoryEntry = {
       sessionId: session,
@@ -603,6 +612,7 @@ export const useChatStore = defineStore('ai-chat', () => {
               id: Date.now() + Math.random(),
               type: 'ai',
               content: [{ type: 'text', text: res.data.welcomeMessage }],
+              welcomeScene: sceneToUse,
               timestamp: Date.now(),
             });
             upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
@@ -656,6 +666,7 @@ export const useChatStore = defineStore('ai-chat', () => {
       if (pendingSend === submission) pendingSend = null;
     }
     abortChat(false);
+    const requestLocale = locale.value;
 
     // 先在 UI 上显示用户消息。
     const userMessage = addUserMessage(text);
@@ -813,6 +824,7 @@ export const useChatStore = defineStore('ai-chat', () => {
                   json.suggestions.every((question: unknown) => typeof question === 'string')
                 ) {
                   aiMessage.suggestions = json.suggestions;
+                  aiMessage.suggestionsLocale = requestLocale;
                   upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
                 }
                 if (currentEvent === 'new_block') {

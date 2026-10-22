@@ -257,7 +257,7 @@ async function togglePublicPlan(plan: EnrichedMealPlan) {
         : userStore.userInfo?.settings?.showMealPlans
           ? t('social.publicPlanDescription')
           : t('social.publicPlanSpaceDescription'),
-      confirmText: makePublic ? t('social.makePublic') : t('social.makePrivate'),
+      confirmText: makePublic ? t('common.modal.public') : t('common.modal.private'),
       success: result => resolve(!!result.confirm),
       fail: () => resolve(false),
     })

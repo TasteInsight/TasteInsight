@@ -118,7 +118,7 @@
               class="dish-related"
               @click="goToSubDish(sub.id)"
             >
-              <text>{{ sub.name }}</text
+              <text>{{ localizedDishName(sub) }}</text
               ><text>¥{{ sub.price }}</text>
             </button>
             <button

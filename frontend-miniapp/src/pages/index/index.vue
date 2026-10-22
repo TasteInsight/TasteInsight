@@ -148,6 +148,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import { onMounted, onScopeDispose, computed, ref, watch } from 'vue';
 import { onPullDownRefresh, onReachBottom, onShow, onBackPress, onHide } from '@dcloudio/uni-app';
@@ -200,7 +201,7 @@ const hasActiveFilters = computed(() => {
 const homeError = ref<string | null>(null);
 // 推荐菜品加载错误状态
 const recommendError = ref<string | null>(null);
-const recommendMoreError = ref('');
+const recommendMoreError = useLocalizedMessage();
 let recommendationRun = 0;
 let disposed = false;
 onScopeDispose(() => {
@@ -423,7 +424,7 @@ const fetchRecommendations = async (
         : error?.message?.includes('400') || error?.message?.includes('Bad Request')
           ? t('food.connectionProblemTryAgainLater')
           : t('food.couldNotLoadRecommendationsTryAgainLater');
-    } else recommendMoreError.value = t('food.couldNotLoadMoreDishesTryAgain');
+    } else recommendMoreError.value = 'food.couldNotLoadMoreDishesTryAgain';
     console.error('加载推荐菜品失败:', error);
     return 'failed';
   } finally {

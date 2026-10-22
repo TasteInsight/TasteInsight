@@ -601,7 +601,7 @@ const discardDraft = async () => {
         content: conflict.value
           ? t('food.discardLocalChangesAndLoadTheLatestDetails')
           : t('food.clearThisLocalDraftSubmittedInformationWillBe'),
-        confirmText: conflict.value ? t('food.discardAndReload') : t('food.clear'),
+        confirmText: conflict.value ? t('common.modal.reload') : t('common.modal.clear'),
         success: result => resolve(result.confirm),
         fail: () => resolve(false),
       })
@@ -636,8 +636,8 @@ const requestLeave = async () => {
         uni.showModal({
           title: t('food.keepDraft'),
           content: t('food.saveOnThisDeviceAndReturnYouCan'),
-          confirmText: t('food.saveAndReturn'),
-          cancelText: t('food.keepEditing'),
+          confirmText: t('common.modal.save'),
+          cancelText: t('common.modal.edit'),
           success: result => resolve(result.confirm),
           fail: () => resolve(false),
         })

@@ -5,8 +5,8 @@ export function registerFeedbackDefaults(): void {
 
   uni.addInterceptor('showModal', {
     invoke(options: UniNamespace.ShowModalOptions) {
-      options.confirmText ??= t('common.confirm');
-      options.cancelText ??= t('common.cancel');
+      options.confirmText ??= t('common.modal.ok');
+      options.cancelText ??= t('common.modal.cancel');
       options.confirmColor ??= '#660874';
       options.cancelColor ??= '#667085';
     },

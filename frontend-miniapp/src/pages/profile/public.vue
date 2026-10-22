@@ -140,6 +140,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { localizedDishName } from '@/utils/dish-localization';
 import { t } from '@/i18n';
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
@@ -164,7 +165,7 @@ const user = useUserStore();
 const id = ref('');
 const profile = ref<PublicProfile | null>(null);
 const loading = ref(false);
-const error = ref('');
+const error = useLocalizedMessage();
 const tab = ref<'posts' | 'plans'>('posts');
 const {
   posts,
@@ -203,7 +204,7 @@ const capture = () => {
 };
 async function loadProfile() {
   if (!id.value) {
-    error.value = t('account.profile.userNotFound');
+    error.value = 'account.profile.userNotFound';
     return;
   }
   const current = capture();
@@ -222,7 +223,7 @@ async function loadProfile() {
   } catch (cause) {
     if (current() && request === profileRequest) {
       error.value =
-        cause instanceof Error ? cause.message : t('account.profile.unableToLoadProfileTry');
+        cause instanceof Error ? cause.message : 'account.profile.unableToLoadProfileTry';
     }
   } finally {
     if (current() && request === profileRequest) loading.value = false;

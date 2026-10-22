@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t, locale } from '@/i18n';
 import { ref, onMounted, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useChatStore, type PreferenceDraftCard } from '@/store/modules/use-chat-store';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -14,7 +14,9 @@ export function useChat(transport?: TextStreamTransport) {
     if (!chatStore.messages.some(message => message.type === 'user'))
       return openingSuggestions.value;
     const latest = chatStore.messages[chatStore.messages.length - 1];
-    return latest?.type === 'ai' ? latest.suggestions || [] : [];
+    return latest?.type === 'ai' && latest.suggestionsLocale === locale.value
+      ? latest.suggestions || []
+      : [];
   });
   const isSuggestionsLoading = ref(false);
 
@@ -55,14 +57,16 @@ export function useChat(transport?: TextStreamTransport) {
     return captureOperation();
   };
 
-  const fetchSuggestions = async (isCurrent = beginOperation()) => {
+  const fetchSuggestions = async (isCurrent = captureOperation()) => {
     if (!isCurrent()) return;
     if (chatStore.messages.some(message => message.type === 'user')) {
       openingSuggestions.value = [];
       return;
     }
     const sessionId = chatStore.sessionId;
-    const ownsSuggestions = () => isCurrent() && chatStore.sessionId === sessionId;
+    const requestLocale = locale.value;
+    const ownsSuggestions = () =>
+      isCurrent() && chatStore.sessionId === sessionId && requestLocale === locale.value;
     isSuggestionsLoading.value = true;
     try {
       // 构建时间上下文，与发送聊天消息时保持一致
@@ -253,6 +257,16 @@ export function useChat(transport?: TextStreamTransport) {
     { flush: 'sync' }
   );
 
+  watch(
+    locale,
+    () => {
+      openingSuggestions.value = [];
+      isSuggestionsLoading.value = false;
+      if (userStore.isLoggedIn && chatStore.sessionId) void fetchSuggestions();
+    },
+    { flush: 'sync' }
+  );
+
   if (getCurrentScope()) {
     onScopeDispose(() => {
       disposed = true;
@@ -274,7 +288,27 @@ export function useChat(transport?: TextStreamTransport) {
 
   return {
     isLoggedIn: computed(() => userStore.isLoggedIn),
-    messages: computed(() => chatStore.messages),
+    messages: computed(() =>
+      chatStore.messages.map(message =>
+        message.welcomeScene
+          ? {
+              ...message,
+              content: [
+                {
+                  type: 'text' as const,
+                  text: t(
+                    {
+                      general_chat: 'social.welcomeGeneral',
+                      meal_planner: 'social.welcomePlanner',
+                      dish_critic: 'social.welcomeCritic',
+                    }[message.welcomeScene]
+                  ),
+                },
+              ],
+            }
+          : message
+      )
+    ),
     aiLoading: computed(() => chatStore.aiLoading),
     currentSessionId: computed(() => chatStore.sessionId),
     suggestions,

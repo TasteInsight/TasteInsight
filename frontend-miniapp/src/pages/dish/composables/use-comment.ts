@@ -1,3 +1,4 @@
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getCommentsByReview, createComment, deleteComment } from '@/api/modules/comment';
@@ -143,7 +144,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
   const comments = ref<Comment[]>([]);
   const initialized = ref(false);
   const loading = ref(false);
-  const error = ref('');
+  const error = useLocalizedMessage();
   const submitting = ref(false);
   const deletingId = ref('');
   const hasMore = ref(false);
@@ -213,7 +214,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
     } catch (err) {
       if (isCurrent()) {
         failedPage = page;
-        error.value = t('food.couldNotLoadRepliesTryAgain');
+        error.value = 'food.couldNotLoadRepliesTryAgain';
       }
       return false;
     } finally {

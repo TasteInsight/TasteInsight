@@ -1,3 +1,4 @@
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import {
@@ -66,13 +67,13 @@ export function useReview() {
   const ownReview = ref<Review | null>(null);
   const ownReviewLoading = ref(false);
   const ownReviewLoaded = ref(false);
-  const ownReviewError = ref('');
+  const ownReviewError = useLocalizedMessage();
   const reviews = ref<Review[]>([]);
   const reviewsInitialized = ref(false);
   const ratingSummary = ref<ReviewListData['rating'] | null>(null);
   const reviewsLoading = ref(false);
   const isInitializing = ref(false);
-  const reviewsError = ref('');
+  const reviewsError = useLocalizedMessage();
   const reviewsHasMore = ref(true);
   const reviewsPage = ref(1);
   const reviewsPageSize = 10;
@@ -135,7 +136,7 @@ export function useReview() {
       ownReviewLoaded.value = true;
       return true;
     } catch (error) {
-      if (isCurrent()) ownReviewError.value = t('food.yourReviewIsUnavailableRetryToEditIt');
+      if (isCurrent()) ownReviewError.value = 'food.yourReviewIsUnavailableRetryToEditIt';
       return false;
     } finally {
       if (isCurrent()) ownReviewLoading.value = false;
@@ -192,14 +193,14 @@ export function useReview() {
         reviewsInitialized.value = true;
         return true;
       } else {
-        reviewsError.value = response.message || t('food.couldNotLoadReviews');
+        reviewsError.value = response.message || 'food.couldNotLoadReviews';
         failedReviewRefresh = refresh;
         return false;
       }
     } catch (err: any) {
       if (!isCurrent()) return false;
       console.error('获取评价失败:', err);
-      reviewsError.value = t('food.connectionErrorTryAgainLater');
+      reviewsError.value = 'food.connectionErrorTryAgainLater';
       failedReviewRefresh = refresh;
       return false;
     } finally {

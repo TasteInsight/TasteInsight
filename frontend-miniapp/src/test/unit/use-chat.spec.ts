@@ -12,6 +12,7 @@ const chatStoreMock: any = {
     chatStoreMock.currentScene = s;
   }),
   aiLoading: false,
+  abortChat: jest.fn(),
   historyEntries: [],
   loadSessionFromHistory: jest.fn((id: string) => true),
 };
@@ -23,11 +24,22 @@ jest.mock('@/store/modules/use-user-store', () => ({
 }));
 jest.mock('@/api/modules/ai', () => ({ getAISuggestions: jest.fn() }));
 
-import { useChat } from '@/pages/ai-chat/composables/use-chat';
+import { useChat as createChat } from '@/pages/ai-chat/composables/use-chat';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import { getAISuggestions } from '@/api/modules/ai';
 import { flushPromises } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { reactive, effectScope } from 'vue';
+import { locale } from '@/i18n';
+const chatScopes: ReturnType<typeof effectScope>[] = [];
+const useChat: typeof createChat = (...args) => {
+  const scope = effectScope();
+  chatScopes.push(scope);
+  return scope.run(() => createChat(...args))!;
+};
+afterEach(() => {
+  chatScopes.splice(0).forEach(scope => scope.stop());
+  locale.value = 'zh-Hans';
+});
 
 describe('useChat isInitializing', () => {
   beforeEach(() => {
@@ -80,7 +92,9 @@ describe('useChat isInitializing', () => {
     expect(chat.isInitialLoading.value).toBe(false);
     (getAISuggestions as jest.Mock).mockReturnValue(new Promise(() => {}));
     let result: boolean | undefined;
-    const pending = chat.sendMessage('午餐').then(value => { result = value; });
+    const pending = chat.sendMessage('午餐').then(value => {
+      result = value;
+    });
     await flushPromises();
     expect(result).toBe(true);
     await pending;
@@ -151,7 +165,12 @@ describe('useChat isInitializing', () => {
   it('uses message-owned follow-ups for an existing conversation, without fetching generic suggestions', async () => {
     chatStoreMock.messages = [
       { type: 'user', content: [{ type: 'text', text: '清淡午餐' }] },
-      { type: 'ai', content: [{ type: 'text', text: '香菇鸡肉饭' }], suggestions: ['在哪个窗口？'] },
+      {
+        type: 'ai',
+        content: [{ type: 'text', text: '香菇鸡肉饭' }],
+        suggestions: ['在哪个窗口？'],
+        suggestionsLocale: 'zh-Hans',
+      },
     ];
     const chat = useChat();
     await chat.init();
@@ -165,6 +184,59 @@ describe('useChat isInitializing', () => {
     await chat.init();
     expect(chat.suggestions.value).toEqual([]);
     expect(getAISuggestions).not.toHaveBeenCalled();
+  });
+
+  it('refreshes opening suggestions on language change and ignores the old language response', async () => {
+    locale.value = 'zh-Hans';
+    chatStoreMock.sessionId = 'locale-session';
+    let resolveOld!: (value: any) => void;
+    (getAISuggestions as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveOld = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ code: 200, data: { suggestions: ['What is good for lunch?'] } });
+    const scope = effectScope();
+    const chat = scope.run(() => useChat())!;
+    const pending = chat.refreshSuggestions();
+    locale.value = 'en';
+    await flushPromises();
+    resolveOld({ code: 200, data: { suggestions: ['午餐吃什么？'] } });
+    await pending;
+    expect(chat.suggestions.value).toEqual(['What is good for lunch?']);
+    scope.stop();
+    locale.value = 'zh-Hans';
+  });
+
+  it('switches semantic welcome text and hides follow-ups from another language while keeping conversation text', () => {
+    locale.value = 'zh-Hans';
+    chatStoreMock.messages = [
+      {
+        type: 'ai',
+        welcomeScene: 'general_chat',
+        content: [{ type: 'text', text: 'server welcome' }],
+      },
+      { type: 'user', content: [{ type: 'text', text: '午餐' }] },
+      {
+        type: 'ai',
+        content: [{ type: 'text', text: '历史回答' }],
+        suggestions: ['在哪？'],
+        suggestionsLocale: 'zh-Hans',
+      },
+    ];
+    const scope = effectScope();
+    const chat = scope.run(() => useChat())!;
+    expect(chat.suggestions.value).toEqual(['在哪？']);
+    locale.value = 'en';
+    expect(chat.messages.value[0].content[0]).toMatchObject({
+      text: expect.stringContaining('campus food assistant'),
+    });
+    expect(chat.messages.value[2].content[0]).toMatchObject({ text: '历史回答' });
+    expect(chat.suggestions.value).toEqual([]);
+    scope.stop();
+    locale.value = 'zh-Hans';
   });
 
   it('sendMessage logs errors on failure', async () => {

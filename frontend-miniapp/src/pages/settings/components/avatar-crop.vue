@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import { ref, getCurrentInstance } from 'vue';
 import { onLoad, onUnload } from '@dcloudio/uni-app';
@@ -88,7 +89,7 @@ const cropSizePx = Math.max(
 const outputSizePx = 400;
 const ready = ref(false);
 const exporting = ref(false);
-const loadError = ref('');
+const loadError = useLocalizedMessage();
 const originalWidth = ref(0);
 const originalHeight = ref(0);
 const baseDisplayWidth = ref(0);
@@ -115,7 +116,7 @@ async function initWithSrc(inputSrc: string) {
   ready.value = false;
   loadError.value = '';
   if (!inputSrc) {
-    loadError.value = t('account.settings.imageUnavailableGoBackAnd');
+    loadError.value = 'account.settings.imageUnavailableGoBackAnd';
     return;
   }
   loadingSource = inputSrc;
@@ -135,7 +136,7 @@ async function initWithSrc(inputSrc: string) {
     ready.value = true;
   } catch {
     if (!disposed && version === initVersion)
-      loadError.value = t('account.settings.unableToReadImageTry');
+      loadError.value = 'account.settings.unableToReadImageTry';
   } finally {
     if (version === initVersion) loadingSource = '';
   }
@@ -154,7 +155,7 @@ onLoad((options: any) => {
     } catch {}
     void initWithSrc(decoded);
   } else {
-    loadError.value = t('account.settings.imageUnavailableGoBackAnd');
+    loadError.value = 'account.settings.imageUnavailableGoBackAnd';
   }
 });
 

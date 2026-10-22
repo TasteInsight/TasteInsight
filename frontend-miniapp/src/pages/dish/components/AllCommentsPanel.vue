@@ -314,7 +314,7 @@ const confirmDelete = () => {
   uni.showModal({
     title: t('food.deleteReply'),
     content: t('food.thisReplyWillBePermanentlyDeleted'),
-    confirmText: t('food.delete'),
+    confirmText: t('common.modal.delete'),
     success: result => {
       if (
         result.confirm &&

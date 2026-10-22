@@ -203,7 +203,7 @@ async function confirmWithdraw(item: MyUploadItem) {
       uni.showModal({
         title: t('account.profile.withdrawSubmission'),
         content: t('account.profile.withdrawingStopsTheReviewYour'),
-        confirmText: t('account.profile.withdraw'),
+        confirmText: t('common.modal.withdraw'),
         success: result => resolve(result.confirm),
         fail: () => resolve(false),
       })

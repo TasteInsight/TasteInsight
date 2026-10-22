@@ -48,6 +48,22 @@ describe('feedback defaults', () => {
     expect(Object.keys(interceptors.showActionSheet)).toEqual(['invoke']);
   });
 
+  it('uses native-safe English labels and keeps every localized modal action within four characters', () => {
+    const { locale, messages } = require('@/i18n');
+    locale.value = 'en';
+    registerFeedbackDefaults();
+    const options = { title: 'Sign out' };
+    interceptors.showModal.invoke!(options);
+    expect(options).toMatchObject({ confirmText: 'OK', cancelText: 'Back' });
+    for (const catalog of Object.values(messages) as any[]) {
+      for (const label of Object.values(catalog.common.modal) as string[]) {
+        expect(label.length).toBeGreaterThan(0);
+        expect(label.length).toBeLessThanOrEqual(4);
+      }
+    }
+    locale.value = 'zh-Hans';
+  });
+
   it('preserves explicit colors, edit options, labels and callbacks without invoking them', () => {
     registerFeedbackDefaults();
     const options: UniNamespace.ShowModalOptions = {

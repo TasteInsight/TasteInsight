@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t, locale } from '@/i18n';
 // @/api/modules/ai.ts
 import request from '@/utils/request';
 import { createParser, type EventSourceMessage } from 'eventsource-parser';
@@ -233,6 +233,7 @@ export const streamAIChat = (
   const url = `${config.baseUrl}/ai/sessions/${sessionId}/chat/stream`;
   const userStore = useUserStore();
   const sessionVersion = userStore.sessionVersion;
+  const requestLocale = locale.value;
   let isAborted = false;
   let terminalState: 'pending' | 'error' | 'complete' = 'pending';
   let activeAttempt: object | null = null;
@@ -267,6 +268,7 @@ export const streamAIChat = (
     const header: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
+      'Accept-Language': requestLocale,
     };
     if (accessToken) header.Authorization = `Bearer ${accessToken}`;
     let deliveredEvent = false;

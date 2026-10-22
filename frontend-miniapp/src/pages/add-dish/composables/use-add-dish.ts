@@ -1,3 +1,4 @@
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { allergenOptions, loadAllergenCatalog } from '@/utils/allergen-catalog';
 import { t } from '@/i18n';
 import { ref, reactive, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
@@ -179,15 +180,15 @@ export function useAddDish() {
   const selectedCanteen = ref<Canteen | null>(null);
   const loading = ref(false);
   const initializing = ref(false);
-  const initializationError = ref('');
+  const initializationError = useLocalizedMessage();
   const submitting = ref(false);
   const submitted = ref(false);
   const savingDraft = ref(false);
   const draftSaved = ref(false);
   const draftRestored = ref(false);
-  const draftError = ref('');
+  const draftError = useLocalizedMessage();
   const error = ref('');
-  const canteenError = ref('');
+  const canteenError = useLocalizedMessage();
   const validationAttempted = ref(false);
   const busy = computed(
     () => submitting.value || submitted.value || initializing.value || savingDraft.value
@@ -394,7 +395,7 @@ export function useAddDish() {
       syncLocation();
       return true;
     } catch {
-      if (isCurrent()) canteenError.value = t('food.couldNotLoadCanteensTryAgain');
+      if (isCurrent()) canteenError.value = 'food.couldNotLoadCanteensTryAgain';
       return false;
     } finally {
       if (isCurrent()) loading.value = false;
@@ -492,7 +493,7 @@ export function useAddDish() {
   const assetFor = (path: string): DraftImage => images.get(path) || { path, source: 'temporary' };
   const storageFailure = () => {
     draftSaved.value = false;
-    draftError.value = t('food.draftUnsavedStorageIsFullOrPhotosCould');
+    draftError.value = 'food.draftUnsavedStorageIsFullOrPhotosCould';
   };
   const saveDraft = async (): Promise<boolean> => {
     if (disposed || savingDraft.value || submitted.value || !draftKey()) return false;
@@ -598,7 +599,7 @@ export function useAddDish() {
   const initialize = async (route: RouteOptions = options): Promise<boolean> => {
     options = { ...route };
     if (!userStore.isLoggedIn || !userStore.userInfo?.capabilities?.canContribute) {
-      initializationError.value = t('food.verifyYourCampusIdentityToSuggestDishes');
+      initializationError.value = 'food.verifyYourCampusIdentityToSuggestDishes';
       return false;
     }
     ready = false;
@@ -670,7 +671,7 @@ export function useAddDish() {
         )
           conflict.value = 'target';
       } else if (draft && !pending.value)
-        draftError.value = t('food.thisUploadHasChangedYourPreviousDraftWas');
+        draftError.value = 'food.thisUploadHasChangedYourPreviousDraftWas';
       if (pending.value) {
         clientRequestId.value = pending.value.payload.clientRequestId || clientRequestId.value;
         if (!draftRestored.value) {
@@ -684,7 +685,7 @@ export function useAddDish() {
       return isCurrent();
     } catch (err: any) {
       if (isCurrent())
-        initializationError.value = err.message || t('food.couldNotLoadUploadDetailsTryAgain');
+        initializationError.value = err.message || 'food.couldNotLoadUploadDetailsTryAgain';
       return false;
     } finally {
       if (isCurrent()) initializing.value = false;
@@ -895,7 +896,7 @@ export function useAddDish() {
       submitting.value = false;
       initializing.value = false;
       savingDraft.value = false;
-      initializationError.value = t('food.yourAccountHasChangedReopenTheDishSubmission');
+      initializationError.value = 'food.yourAccountHasChangedReopenTheDishSubmission';
     },
     { flush: 'sync' }
   );

@@ -255,6 +255,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import EmptyState from '@/components/EmptyState.vue';
 import { openLogin } from '@/utils/login-navigation';
@@ -320,7 +321,7 @@ const { available: wechatAvailable, authorize: authorizeWechat } =
 const identities = ref<AccountIdentities | null>(null);
 const loading = ref(false);
 const busy = ref(false);
-const loadError = ref('');
+const loadError = useLocalizedMessage();
 const actionError = ref('');
 const showPhoneForm = ref(false);
 const pendingOAuth = ref<PendingCampusOAuth | null>(null);
@@ -445,10 +446,10 @@ async function load() {
     if (methods.status === 'fulfilled') capabilities.value = methods.value.data;
     if (accounts.status === 'fulfilled') identities.value = accounts.value.data;
     if (result.some(item => item.status === 'rejected'))
-      loadError.value = t('account.profile.someIdentityDetailsCouldNot');
+      loadError.value = 'account.profile.someIdentityDetailsCouldNot';
     if (student.status === 'fulfilled') await userStore.fetchProfileAction(ownsResult);
   } catch {
-    if (ownsResult()) loadError.value = t('account.profile.unableToLoadIdentityDetails');
+    if (ownsResult()) loadError.value = 'account.profile.unableToLoadIdentityDetails';
   } finally {
     if (ownsResult()) loading.value = false;
   }

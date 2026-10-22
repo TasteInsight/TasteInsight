@@ -350,7 +350,7 @@ function confirmRemove(type: 'post' | 'comment', targetId: string) {
   uni.showModal({
     title: type === 'post' ? t('social.deletePostQuestion') : t('social.deleteReplyQuestion'),
     content: t('social.deletionPermanent'),
-    confirmText: t('social.delete'),
+    confirmText: t('common.modal.delete'),
     success: async result => {
       if (!result.confirm || !current()) return;
       try {

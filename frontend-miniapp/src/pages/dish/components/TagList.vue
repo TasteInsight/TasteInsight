@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import { ref, watch, onScopeDispose, watchEffect } from 'vue';
 import { onLoad, onReachBottom, onShow } from '@dcloudio/uni-app';
@@ -60,7 +61,7 @@ const dishes = ref<Dish[]>([]);
 const initialized = ref(false);
 const loading = ref(false);
 const loadingMore = ref(false);
-const error = ref('');
+const error = useLocalizedMessage();
 const errorIsAppend = ref(false);
 const page = ref(1);
 const pageSize = ref(10);
@@ -145,11 +146,11 @@ const loadDishes = async (refresh = false) => {
       hasMore.value = page.value < res.data.meta.totalPages;
       initialized.value = true;
     } else {
-      error.value = res.message || t('food.couldNotLoad');
+      error.value = res.message || 'food.couldNotLoad';
     }
   } catch (err) {
     if (!ownsQuery()) return;
-    error.value = t('food.connectionErrorTryAgainLater');
+    error.value = 'food.connectionErrorTryAgainLater';
     console.error(err);
   } finally {
     if (ownsQuery()) {

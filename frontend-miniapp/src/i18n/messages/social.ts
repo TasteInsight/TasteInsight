@@ -1,4 +1,7 @@
 export const zhHans = {
+  welcomeGeneral: '你好！我是你的校园美食助手，今天想吃点什么？',
+  welcomePlanner: '你好！我是你的膳食规划助手。告诉我你的需求，我来帮你制定合理的饮食计划！',
+  welcomeCritic: '你好！我是菜品点评助手。想了解哪道菜的详情和评价？',
   preferenceSaveFailedNetwork: '保存失败，请重试。请检查网络连接。',
   publishFailed: '发布失败，请重试',
   invitePublished: '邀请已发布',
@@ -421,6 +424,9 @@ export const zhHans = {
 };
 
 export const en = {
+  welcomeGeneral: 'Hi! I am your campus food assistant. What would you like to eat today?',
+  welcomePlanner: 'Hi! I can help plan your meals. Tell me what you have in mind.',
+  welcomeCritic: 'Hi! Which dish would you like to explore and read reviews for?',
   preferenceSaveFailedNetwork: 'Failed to save. Try again. Check your network connection.',
   publishFailed: 'Failed to publish. Try again.',
   invitePublished: 'Invitation published',

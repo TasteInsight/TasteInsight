@@ -1,3 +1,4 @@
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
@@ -15,7 +16,7 @@ export function useSettingsProfile(
   const saving = ref(false);
   const loading = ref(true);
   const initialized = ref(false);
-  const loadError = ref('');
+  const loadError = useLocalizedMessage();
   const saved = ref(false);
   const restoredDraft = ref(false);
   const baseline = ref('');
@@ -98,7 +99,7 @@ export function useSettingsProfile(
     } catch (error) {
       if (!isCurrent()) return false;
       loadError.value =
-        error instanceof Error ? error.message : t('account.settings.unableToLoadProfileTry');
+        error instanceof Error ? error.message : 'account.settings.unableToLoadProfileTry';
       return false;
     } finally {
       if (isCurrent()) loading.value = false;
@@ -186,7 +187,7 @@ export function useSettingsProfile(
       saving.value = false;
       saved.value = false;
       restoredDraft.value = false;
-      loadError.value = t('account.settings.yourSignInSessionChanged');
+      loadError.value = 'account.settings.yourSignInSessionChanged';
     },
     { flush: 'sync' }
   );

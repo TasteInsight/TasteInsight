@@ -5,8 +5,8 @@ export function confirmDiscardChanges(dirty: boolean, content: string): Promise<
     uni.showModal({
       title: t('account.common.discardChanges'),
       content,
-      confirmText: t('account.common.discardChanges2'),
-      cancelText: t('account.common.keepEditing'),
+      confirmText: t('common.modal.discard'),
+      cancelText: t('common.modal.edit'),
       success: result => resolve(result.confirm),
       fail: () => resolve(false),
     });

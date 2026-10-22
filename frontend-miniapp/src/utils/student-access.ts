@@ -9,8 +9,8 @@ export function requireStudent(): boolean {
   uni.showModal({
     title: t('account.common.verifyYourCampusIdentity'),
     content: t('account.common.verifyToPostReviewsAnd'),
-    confirmText: t('account.common.verifyNow'),
-    cancelText: t('account.common.keepBrowsing'),
+    confirmText: t('common.modal.verify'),
+    cancelText: t('common.modal.browse'),
     success: result => {
       if (result.confirm) uni.navigateTo({ url: '/pages/profile/identity' });
     },

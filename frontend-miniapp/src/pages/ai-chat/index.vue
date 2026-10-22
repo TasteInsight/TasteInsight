@@ -602,7 +602,7 @@ const handleDeleteHistory = (sessionId: string) => {
       content: t('social.deleteConversationQuestion', {
         p0: item?.title || t('social.conversation'),
       }),
-      confirmText: t('social.delete'),
+      confirmText: t('common.modal.delete'),
       confirmColor: '#660874',
       success: async result => {
         if (!result.confirm || !ownsOperation()) {

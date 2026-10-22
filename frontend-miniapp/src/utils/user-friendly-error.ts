@@ -8,6 +8,7 @@ export function toUserFriendlyErrorMessage(err: unknown): string {
     if (httpMatch) {
       const code = Number(httpMatch[1]);
       if (code === 401) return t('common.errors.expired');
+      if (code === 404) return t('common.errors.missing');
       if (code === 403) return t('common.errors.forbidden');
       if (code === 409) return t('common.errors.conflict');
       if (code === 410) return t('common.errors.gone');
@@ -29,6 +30,18 @@ export function toUserFriendlyErrorMessage(err: unknown): string {
 
 export type HttpRequestError = Error & { statusCode: number; code?: string };
 
+const businessErrorKeys: Record<string, string> = {
+  INVALID_VERIFICATION_CODE: 'invalidCode',
+  VERIFICATION_RATE_LIMITED: 'verificationRateLimit',
+  VERIFICATION_METHOD_DISABLED: 'verificationDisabled',
+  LOGIN_METHOD_DISABLED: 'loginDisabled',
+  IDENTITY_ALREADY_BOUND: 'identityBound',
+  STUDENT_VERIFICATION_REQUIRED: 'studentRequired',
+  DIETARY_CONFLICT: 'dietaryConflict',
+  ACTIVE_DINING_INVITATION: 'activeInvitation',
+  INVALID_CAMPUS_CONFIRMATION: 'invalidCampusConfirmation',
+};
+
 export function createHttpError(statusCode: number, body?: unknown): HttpRequestError {
   const payload =
     body && typeof body === 'object' ? (body as { code?: unknown; message?: unknown }) : {};
@@ -39,11 +52,15 @@ export function createHttpError(statusCode: number, body?: unknown): HttpRequest
     .filter(item => typeof item === 'string')
     .join('；')
     .trim();
-  const isBusinessError = [400, 403, 404, 409, 410, 413, 422, 429].includes(statusCode);
+  const isBusinessError = [400, 403, 409, 410, 413, 422, 429].includes(statusCode);
+  const translationKey =
+    typeof payload.code === 'string' ? businessErrorKeys[payload.code] : undefined;
   const error = new Error(
-    isBusinessError && detail
-      ? detail.slice(0, 300)
-      : toUserFriendlyErrorMessage(new Error(`HTTP ${statusCode}`))
+    translationKey
+      ? t(`common.errors.${translationKey}`)
+      : isBusinessError && detail
+        ? detail.slice(0, 300)
+        : toUserFriendlyErrorMessage(new Error(`HTTP ${statusCode}`))
   ) as HttpRequestError;
   error.statusCode = statusCode;
   if (typeof payload.code === 'string') error.code = payload.code;

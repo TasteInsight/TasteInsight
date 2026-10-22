@@ -17,7 +17,7 @@ export function openNewsOriginal(value: unknown): void {
     uni.showModal({
       title: t('common.news.original'),
       content: t('common.news.copyHint'),
-      confirmText: t('common.news.copy'),
+      confirmText: t('common.modal.copy'),
       success: result => {
         if (result.confirm)
           uni.setClipboardData({

@@ -1,3 +1,4 @@
+import { useLocalizedMessage } from '@/composables/use-localized-message';
 import { t } from '@/i18n';
 import { ref, type Ref } from 'vue';
 import type { GetDishesRequest } from '@/types/api';
@@ -266,11 +267,11 @@ export const useFilter = () => {
 
   const customPriceMin = ref<string>('');
   const customPriceMax = ref<string>('');
-  const priceError = ref<string>('');
+  const priceError = useLocalizedMessage();
 
   const customRatingMin = ref<string>('');
   const customRatingMax = ref<string>('');
-  const ratingError = ref<string>('');
+  const ratingError = useLocalizedMessage();
 
   const customTagInput = ref<string>('');
   const customTags = ref<string[]>([]);
@@ -278,7 +279,7 @@ export const useFilter = () => {
   const customAvoidInput = ref<string>('');
   const customAvoid = ref<string[]>([]);
 
-  const tasteError = ref<string>('');
+  const tasteError = useLocalizedMessage();
 
   const selectedSpicyMin = ref<number>(0);
   const selectedSpicyMax = ref<number>(0);
@@ -346,17 +347,17 @@ export const useFilter = () => {
     const max = maxStr ? Number(maxStr) : 999;
 
     if (minStr && (!Number.isFinite(min!) || min! < 0)) {
-      priceError.value = t('food.enterAMinimumPriceOfZeroOrMore');
+      priceError.value = 'food.enterAMinimumPriceOfZeroOrMore';
       return false;
     }
     if (maxStr && (!Number.isFinite(max!) || max! < 0)) {
-      priceError.value = t('food.enterAMaximumPriceOfZeroOrMore');
+      priceError.value = 'food.enterAMaximumPriceOfZeroOrMore';
       return false;
     }
     if (min > max) {
       priceError.value = maxStr
-        ? t('food.minimumPriceMustBeAtMostTheMaximum')
-        : t('food.enterAMaximumPriceWhenTheMinimumExceeds');
+        ? 'food.minimumPriceMustBeAtMostTheMaximum'
+        : 'food.enterAMaximumPriceWhenTheMinimumExceeds';
       return false;
     }
     return true;
@@ -382,15 +383,15 @@ export const useFilter = () => {
     const max = maxStr ? Number(maxStr) : null;
 
     if (minStr && (isNaN(min!) || min! < 0 || min! > 5)) {
-      ratingError.value = t('food.minimumRatingMustBeBetween0And5');
+      ratingError.value = 'food.minimumRatingMustBeBetween0And5';
       return false;
     }
     if (maxStr && (isNaN(max!) || max! < 0 || max! > 5)) {
-      ratingError.value = t('food.maximumRatingMustBeBetween0And5');
+      ratingError.value = 'food.maximumRatingMustBeBetween0And5';
       return false;
     }
     if (min !== null && max !== null && min > max) {
-      ratingError.value = t('food.minimumRatingMustBeAtMostTheMaximum');
+      ratingError.value = 'food.minimumRatingMustBeAtMostTheMaximum';
       return false;
     }
     return true;
@@ -413,25 +414,25 @@ export const useFilter = () => {
       selectedSpicyMax.value > 0 &&
       selectedSpicyMin.value > selectedSpicyMax.value
     ) {
-      tasteError.value = t('food.maximumSpicinessMustBeAtLeastTheMinimum');
+      tasteError.value = 'food.maximumSpicinessMustBeAtLeastTheMinimum';
     } else if (
       selectedSaltyMin.value > 0 &&
       selectedSaltyMax.value > 0 &&
       selectedSaltyMin.value > selectedSaltyMax.value
     ) {
-      tasteError.value = t('food.maximumSaltinessMustBeAtLeastTheMinimum');
+      tasteError.value = 'food.maximumSaltinessMustBeAtLeastTheMinimum';
     } else if (
       selectedSweetMin.value > 0 &&
       selectedSweetMax.value > 0 &&
       selectedSweetMin.value > selectedSweetMax.value
     ) {
-      tasteError.value = t('food.maximumSweetnessMustBeAtLeastTheMinimum');
+      tasteError.value = 'food.maximumSweetnessMustBeAtLeastTheMinimum';
     } else if (
       selectedOilyMin.value > 0 &&
       selectedOilyMax.value > 0 &&
       selectedOilyMin.value > selectedOilyMax.value
     ) {
-      tasteError.value = t('food.maximumOilinessMustBeAtLeastTheMinimum');
+      tasteError.value = 'food.maximumOilinessMustBeAtLeastTheMinimum';
     }
 
     return !tasteError.value;

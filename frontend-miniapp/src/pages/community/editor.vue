@@ -280,8 +280,8 @@ async function resolveConflict(useLatest: boolean) {
       uni.showModal({
         title: useLatest ? t('social.useLatestQuestion') : t('social.keepChangesQuestion'),
         content: useLatest ? t('social.replaceDraftDescription') : t('social.keepDraftDescription'),
-        confirmText: useLatest ? t('social.useLatest') : t('social.keepAndEdit'),
-        cancelText: t('social.reviewAgain'),
+        confirmText: useLatest ? t('common.modal.latest') : t('common.modal.keep'),
+        cancelText: t('common.modal.review'),
         success: result => resolve(result.confirm),
         fail: () => resolve(false),
       });
