@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MealPlansService } from './meal-plans.service';
 import { PrismaService } from '@/prisma.service';
+import { AllergensService } from '@/allergens/allergens.service';
 import {
   NotFoundException,
   ForbiddenException,
@@ -15,6 +16,7 @@ const mockPrismaService = {
   user: { findUnique: jest.fn() },
   userPreference: { findUnique: jest.fn() },
   diningInvite: { count: jest.fn().mockResolvedValue(0) },
+  mealPlanDish: { findMany: jest.fn().mockResolvedValue([]) },
   mealPlanCompletion: { deleteMany: jest.fn(), upsert: jest.fn() },
   mealPlan: {
     findMany: jest.fn(),
@@ -31,6 +33,10 @@ describe('MealPlansService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.user.findUnique.mockResolvedValue({
+      allergens: [],
+      preferences: null,
+    });
     mockPrismaService.$transaction.mockImplementation(async (operation: any) =>
       operation(mockPrismaService),
     );
@@ -38,6 +44,10 @@ describe('MealPlansService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MealPlansService,
+        {
+          provide: AllergensService,
+          useValue: { expandValues: jest.fn(async (values) => values) },
+        },
         { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();
@@ -106,7 +116,7 @@ describe('MealPlansService', () => {
       mealTime: 'lunch',
       dishes: ['d1'],
     } as any;
-    it('uses current dish associations without locking supply or preferences', async () => {
+    it('uses current dish associations and reads current dietary exclusions', async () => {
       prisma.mealPlan.create.mockResolvedValue({
         id: 'saved',
         userId: 'u1',

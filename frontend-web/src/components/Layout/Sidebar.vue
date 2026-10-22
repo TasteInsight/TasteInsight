@@ -54,7 +54,7 @@
         v-permission="'dish:view'"
         to="/modify-dish"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
-        :class="{ active: $route.path === '/modify-dish' }"
+        :class="{ active: $route.path === '/modify-dish' || $route.path.startsWith('/modify-dish/') }"
       >
         <AppIcon class="iconify" icon="clarity:note-edit-line"></AppIcon>
         <span>菜品修改</span>

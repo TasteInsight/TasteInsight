@@ -8,33 +8,42 @@
     <view v-if="profileSubmission" class="settings-note" role="status">
       {{
         profileSubmission.status === 'rejected'
-          ? `资料审核未通过：${profileSubmission.reason || '请修改后重新提交'}`
-          : '公开资料审核中，通过后展示'
+          ? t('account.profile.profileReviewUnsuccessful', {
+              reason: profileSubmission.reason || t('account.profile.pleaseEditAndResubmit'),
+            })
+          : t('account.profile.publicProfileUnderReviewIt')
       }}
     </view>
     <view class="settings-section">
-      <text class="settings-title">头像</text>
+      <text class="settings-title">{{ t('account.settings.photo') }}</text>
       <button
-        class="avatar-edit settings-button"
+        class="avatar-edit settings-button list-row-action"
+        hover-class="list-row-pressed"
+        :hover-stay-time="80"
         :disabled="!canEdit || selecting || uploading"
         @click="chooseAvatar"
       >
-        <UserAvatar :src="form.avatar" :size="72" label="个人头像" />
+        <UserAvatar :src="form.avatar" :size="72" :label="t('account.profile.profilePhoto')" />
         <view class="avatar-edit-copy">
-          <text class="settings-label">{{ uploading ? '正在上传…' : '更换头像' }}</text>
-          <text class="settings-hint">从相册选择或拍摄照片</text>
+          <text class="settings-label">{{
+            uploading ? t('account.settings.uploading') : t('account.settings.changePhoto')
+          }}</text>
+          <text class="settings-hint">{{ t('account.settings.chooseFromYourAlbumOr') }}</text>
         </view>
-        <text class="iconfont icon-chevronright" aria-hidden="true"></text>
+        <UiIcon name="chevron-right" :size="16" />
       </button>
     </view>
     <view class="settings-section">
-      <label class="settings-title" for="personal-nickname">昵称</label>
+      <label class="settings-title" for="personal-nickname">{{
+        t('account.settings.nickname')
+      }}</label>
       <input
         id="personal-nickname"
         v-model="form.nickname"
         class="settings-field"
         :disabled="!canEdit"
-        placeholder="请输入昵称"
+        :aria-disabled="!canEdit"
+        :placeholder="t('account.settings.enterNickname')"
         maxlength="20"
       />
       <text class="settings-hint nickname-count">{{ form.nickname.length }}/20</text>
@@ -42,10 +51,12 @@
   </SettingsPage>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { usePersonal } from '../composables/use-personal';
 import UserAvatar from '@/components/UserAvatar.vue';
+import UiIcon from '@/components/UiIcon.vue';
 import SettingsPage from './SettingsPage.vue';
 const state = usePersonal();
 const {
@@ -75,7 +86,7 @@ onBackPress(handleBackPress);
   width: 100%;
   justify-content: flex-start;
   gap: 16px;
-  padding: 8px 0;
+  padding-block: 8px;
   border: 0;
   text-align: left;
 }

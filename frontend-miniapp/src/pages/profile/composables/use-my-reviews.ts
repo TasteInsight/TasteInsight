@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getMyReviews } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -40,7 +41,7 @@ export function useMyReviews() {
         const response = await getMyReviews({ page, pageSize });
         if (!isCurrent()) return false;
         if (response.code !== 200 || !response.data) {
-          throw new Error(response.message || '获取评价列表失败');
+          throw new Error(response.message || t('account.profile.unableToLoadReviews'));
         }
         nextItems.push(...response.data.items);
         loadedPage = page;
@@ -54,7 +55,7 @@ export function useMyReviews() {
       return true;
     } catch (err) {
       if (!isCurrent()) return false;
-      error.value = err instanceof Error ? err.message : '获取评价列表失败';
+      error.value = err instanceof Error ? err.message : t('account.profile.unableToLoadReviews');
       return false;
     } finally {
       if (isCurrent()) loading.value = false;

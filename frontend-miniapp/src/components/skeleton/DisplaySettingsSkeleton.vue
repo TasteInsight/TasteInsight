@@ -1,5 +1,9 @@
 <template>
-  <view class="skeleton-form settings-content-skeleton" role="status" aria-label="正在加载显示设置">
+  <view
+    class="skeleton-form settings-content-skeleton"
+    role="status"
+    :aria-label="t('common.skeleton.display')"
+  >
     <view class="settings-skeleton-section">
       <SkeletonBase width="84px" height="24px" />
       <view>
@@ -25,6 +29,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 </script>
 <style scoped>

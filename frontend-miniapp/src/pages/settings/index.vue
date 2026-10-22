@@ -4,6 +4,7 @@
       <button
         class="settings-button settings-menu list-row-action"
         hover-class="list-row-pressed"
+        :hover-stay-time="80"
         @click="loginButton.activate"
         @keydown="loginButton.handleKeydown"
         @keyup="loginButton.handleKeyup"
@@ -11,17 +12,21 @@
         role="button"
         tabindex="0"
       >
-        <UiIcon name="user" :size="19" /><text class="settings-menu-label">登录</text
+        <UiIcon name="user" :size="19" /><text class="settings-menu-label">{{
+          t('account.profile.signIn')
+        }}</text
         ><UiIcon name="chevron-right" :size="16" />
       </button>
     </view>
     <view v-for="group in visibleGroups" :key="group.title" class="settings-section">
-      <text class="settings-hint group-title">{{ group.title }}</text>
+      <text class="settings-group-title">{{ group.title }}</text>
       <button
         v-for="item in group.items"
         :key="item.label"
         class="settings-button settings-menu list-row-action"
         hover-class="list-row-pressed"
+        :hover-stay-time="80"
+        :aria-label="item.valueLabel ? item.label : undefined"
         @click="item.action.activate"
         @keydown="item.action.handleKeydown"
         @keyup="item.action.handleKeyup"
@@ -32,6 +37,7 @@
         <UiIcon :name="item.icon" :size="19" /><text class="settings-menu-label">{{
           item.label
         }}</text
+        ><text v-if="item.valueLabel" class="settings-menu-detail">{{ item.valueLabel }}</text
         ><text v-if="item.trailingLabel" class="settings-menu-detail">{{ item.trailingLabel }}</text
         ><UiIcon v-else name="chevron-right" :size="16" />
       </button>
@@ -39,6 +45,8 @@
     <button
       v-if="isLoggedIn"
       class="settings-button settings-logout"
+      hover-class="settings-button--pressed"
+      :hover-stay-time="80"
       @click="logoutButton.activate"
       @keydown="logoutButton.handleKeydown"
       @keyup="logoutButton.handleKeyup"
@@ -46,11 +54,12 @@
       role="button"
       tabindex="0"
     >
-      <UiIcon name="logout" :size="19" tone="danger" />退出登录
+      <UiIcon name="logout" :size="19" tone="danger" />{{ t('account.profile.signOut') }}
     </button>
   </view>
 </template>
 <script setup lang="ts">
+import { t, languagePreference } from '@/i18n';
 import { computed } from 'vue';
 import UiIcon from '@/components/UiIcon.vue';
 import type { UiIconName } from '@/types/ui-icon';
@@ -64,68 +73,101 @@ type SettingsEntry = {
   icon: UiIconName;
   run: () => void;
   signedIn?: boolean;
+  valueLabel?: () => string;
   trailingLabel?: string;
 };
+const languageLabel = computed(() =>
+  t(
+    {
+      system: 'account.settings.followSystem',
+      'zh-Hans': 'account.settings.simplifiedChinese',
+      en: 'account.settings.english',
+    }[languagePreference.value]
+  )
+);
 const groups: { title: string; signedIn: boolean; items: SettingsEntry[] }[] = [
   {
-    title: '账号与身份',
+    title: 'account.settings.accountAndIdentity',
     signedIn: true,
     items: [
       {
-        label: '个人信息',
+        label: 'account.settings.personalInformation',
         icon: 'user',
         run: () => navigateTo('/pages/settings/components/personal'),
       },
-      { label: '账号与校园身份', icon: 'shield', run: () => navigateTo('/pages/profile/identity') },
+      {
+        label: 'account.profile.accountAndCampusIdentity',
+        icon: 'shield',
+        run: () => navigateTo('/pages/profile/identity'),
+      },
     ],
   },
   {
-    title: '饮食与推荐',
+    title: 'account.settings.foodAndRecommendations',
     signedIn: true,
     items: [
       {
-        label: '过敏原',
+        label: 'account.settings.allergens',
         icon: 'shield',
         run: () => navigateTo('/pages/settings/components/allergens'),
       },
       {
-        label: '饮食偏好',
+        label: 'account.settings.foodPreferences',
         icon: 'star',
         run: () => navigateTo('/pages/settings/components/preferences'),
       },
     ],
   },
   {
-    title: '应用偏好',
-    signedIn: true,
+    title: 'account.settings.appPreferences',
+    signedIn: false,
     items: [
       {
-        label: '显示设置',
+        label: 'account.settings.language',
+        icon: 'language',
+        valueLabel: () => languageLabel.value,
+        run: () => navigateTo('/pages/settings/language'),
+      },
+      {
+        label: 'account.settings.displaySettings',
         icon: 'eye',
+        signedIn: true,
         run: () => navigateTo('/pages/settings/components/display'),
       },
       {
-        label: '通知设置',
+        label: 'account.settings.notificationSettings',
         icon: 'bell',
+        signedIn: true,
         run: () => navigateTo('/pages/settings/components/notifications'),
       },
     ],
   },
   {
-    title: '关于',
-    signedIn: false,
-    items: [{ label: '关于食鉴', icon: 'info', run: () => navigateTo('/pages/settings/about') }],
-  },
-  {
-    title: '反馈与举报',
+    title: 'account.settings.about',
     signedIn: false,
     items: [
-      { label: '项目反馈', icon: 'chat', trailingLabel: '复制链接', run: copyProjectFeedbackLink },
       {
-        label: '我的举报',
+        label: 'account.settings.aboutTasteinsight',
+        icon: 'info',
+        run: () => navigateTo('/pages/settings/about'),
+      },
+    ],
+  },
+  {
+    title: 'account.settings.feedbackAndReports',
+    signedIn: false,
+    items: [
+      {
+        label: 'account.settings.projectFeedback',
+        icon: 'chat',
+        trailingLabel: 'account.settings.copyLink',
+        run: copyProjectFeedbackLink,
+      },
+      {
+        label: 'account.settings.myReports',
         icon: 'shield',
         signedIn: true,
-        run: () => navigateTo('/pages/profile/my-reports/index'),
+        run: () => navigateTo('/pages/profile/records/my-reports/index'),
       },
     ],
   },
@@ -142,7 +184,15 @@ const visibleGroups = computed(() =>
     .filter(group => !group.signedIn || isLoggedIn.value)
     .map(group => ({
       ...group,
-      items: group.items.filter(item => !item.signedIn || isLoggedIn.value),
+      title: t(group.title),
+      items: group.items
+        .filter(item => !item.signedIn || isLoggedIn.value)
+        .map(item => ({
+          ...item,
+          label: t(item.label),
+          valueLabel: item.valueLabel?.(),
+          trailingLabel: item.trailingLabel ? t(item.trailingLabel) : undefined,
+        })),
     }))
 );
 const loginButton = useButtonActivation(openLogin, () => isLoggedIn.value);
@@ -150,42 +200,15 @@ const logoutButton = useButtonActivation(handleLogout, () => !isLoggedIn.value);
 function navigateTo(path: string) {
   uni.navigateTo({
     url: path,
-    fail: () => uni.showToast({ title: '页面跳转失败', icon: 'none' }),
+    fail: () => uni.showToast({ title: t('account.profile.unableToOpenPage'), icon: 'none' }),
   });
 }
 </script>
 <style scoped>
-.settings-section {
-  padding-bottom: 0;
-  margin-bottom: 24px;
-  border-bottom: 0;
-}
-.group-title {
-  margin-bottom: 4px;
-  color: #475467;
-  font-size: 13px;
-  font-weight: 600;
-}
-.settings-menu {
-  min-height: 56px;
-  gap: 12px;
-  font-size: 15px;
-}
-.settings-menu-label {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.settings-menu-detail {
-  flex-shrink: 0;
-  color: #667085;
-  font-size: 13px;
-}
 .settings-logout {
   width: 100%;
   min-height: 48px;
   gap: 8px;
   color: #b42318;
-  font-size: 15px;
 }
 </style>

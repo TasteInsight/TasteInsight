@@ -452,22 +452,20 @@ export class NotificationService {
       uploadIds.length
         ? this.prisma.dishUpload.findMany({
             where: { userId, id: { in: uploadIds } },
-            select: { id: true, name: true },
+            select: { id: true, name: true, nameEn: true },
           })
         : [],
       publicDishIds.length
         ? this.prisma.dish.findMany({
             where: { id: { in: publicDishIds }, status: 'online' },
-            select: { id: true, name: true },
+            select: { id: true, name: true, nameEn: true },
           })
         : [],
     ]);
     const uploadNames = new Map(
-      uploads.map((upload) => [upload.id, upload.name] as const),
+      uploads.map((upload) => [upload.id, upload] as const),
     );
-    const dishNames = new Map(
-      dishes.map((dish) => [dish.id, dish.name] as const),
-    );
+    const dishNames = new Map(dishes.map((dish) => [dish.id, dish] as const));
     const dishIds = new Map(
       reviews.map((review) => [review.id, review.dishId] as const),
     );
@@ -483,9 +481,15 @@ export class NotificationService {
           targetId: item.targetId,
           subject:
             item.targetType === 'dish_upload'
-              ? (uploadNames.get(item.targetId) ?? null)
+              ? (uploadNames.get(item.targetId)?.name ?? null)
               : item.targetType === 'dish'
-                ? (dishNames.get(item.targetId) ?? null)
+                ? (dishNames.get(item.targetId)?.name ?? null)
+                : null,
+          subjectEn:
+            item.targetType === 'dish_upload'
+              ? (uploadNames.get(item.targetId)?.nameEn ?? null)
+              : item.targetType === 'dish'
+                ? (dishNames.get(item.targetId)?.nameEn ?? null)
                 : null,
           rootId: item.rootId,
           dishId:

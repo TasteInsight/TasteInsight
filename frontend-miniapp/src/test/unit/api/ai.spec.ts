@@ -52,11 +52,14 @@ describe('api/modules/ai.ts', () => {
       useUserStore: () => ({ token: 'tok' }),
     }));
 
+    const { locale } = require('@/i18n');
+    locale.value = 'en';
     let savedOnChunk: any = null;
     let savedComplete: any = null;
 
     (global as any).uni = {
       request: (opts: any) => {
+        expect(opts.header['Accept-Language']).toBe('en');
         // call success to simulate connection established
         opts.success && opts.success({});
         savedComplete = opts.complete;

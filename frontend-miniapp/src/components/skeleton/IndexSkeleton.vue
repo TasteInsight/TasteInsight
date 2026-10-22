@@ -1,5 +1,5 @@
 <template>
-  <view class="skeleton-page" role="status" aria-label="正在加载首页">
+  <view class="skeleton-page" role="status" :aria-label="t('common.skeleton.home')">
     <SkeletonBase height="44px" rounded="rounded-full" />
     <view class="index-skeleton-canteens">
       <view v-for="i in 3" :key="i" class="index-skeleton-canteen">
@@ -8,11 +8,15 @@
       </view>
     </view>
     <SkeletonBase width="90px" height="20px" />
-    <view class="skeleton-inline skeleton-filter-row"><SkeletonBase v-for="i in 3" :key="i" width="76px" height="36px" rounded="rounded-full" /></view>
+    <view class="skeleton-inline skeleton-filter-row"
+      ><SkeletonBase v-for="i in 3" :key="i" width="76px" height="36px" rounded="rounded-full"
+    /></view>
     <DishListSkeleton />
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 import DishListSkeleton from './DishListSkeleton.vue';
 </script>

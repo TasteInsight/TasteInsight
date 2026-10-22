@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import dayjs from 'dayjs';
 import type { News } from '@/types/api';
 
@@ -43,7 +44,7 @@ export function useNewsItem() {
    * @param news 新闻对象
    */
   const getNewsTagText = (news: News): string => {
-    return news.canteenName || '校园新闻';
+    return news.canteenName || t('social.campusNews');
   };
 
   /**

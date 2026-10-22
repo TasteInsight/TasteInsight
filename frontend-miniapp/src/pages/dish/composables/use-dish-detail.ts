@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getDishById, getDishesByIds, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -112,14 +113,14 @@ export function useDishDetail() {
         );
         return isCurrent() && results.every(result => result !== false);
       } else {
-        error.value = response.message || '获取菜品详情失败';
+        error.value = response.message || t('food.couldNotLoadDishDetails2');
       }
     } catch (err: any) {
       if (!isCurrent()) return false;
       const debugError =
         err && typeof err === 'object' && 'originalError' in err ? (err as any).originalError : err;
       console.error('获取菜品详情失败:', debugError);
-      error.value = err?.message || '网络开小差了，请稍后再试';
+      error.value = err?.message || t('food.connectionProblemTryAgainLater');
     } finally {
       if (isCurrent()) loading.value = false;
     }
@@ -143,17 +144,19 @@ export function useDishDetail() {
         const response = await getDishesByIds(ids.slice(offset, offset + 200));
         if (!isCurrent()) return false;
         if (response.code !== 200 || !response.data)
-          throw new Error(response.message || '相关规格加载失败，请重试');
+          throw new Error(response.message || t('food.couldNotLoadRelatedOptionsTryAgain'));
         loaded.push(...response.data.items);
       }
       const byId = new Map(loaded.map(item => [item.id, item]));
-      if (ids.some(id => !byId.has(id))) throw new Error('相关规格加载失败，请重试');
+      if (ids.some(id => !byId.has(id)))
+        throw new Error(t('food.couldNotLoadRelatedOptionsTryAgain'));
       subDishes.value = ids.map(id => byId.get(id)!);
       return true;
     } catch (err) {
       if (!isCurrent()) return false;
       console.error('加载子菜品失败', err);
-      error.value = err instanceof Error ? err.message : '相关规格加载失败，请重试';
+      error.value =
+        err instanceof Error ? err.message : t('food.couldNotLoadRelatedOptionsTryAgain');
       return false;
     } finally {
       if (isCurrent()) subDishesLoading.value = false;
@@ -175,15 +178,16 @@ export function useDishDetail() {
       const response = await getDishesByIds([parentId]);
       if (!isCurrent()) return false;
       if (response.code !== 200 || !response.data)
-        throw new Error(response.message || '所属菜品加载失败，请重试');
+        throw new Error(response.message || t('food.couldNotLoadTheParentDishTryAgain'));
       const parent = response.data.items.find(item => item.id === parentId);
-      if (!parent) throw new Error('所属菜品加载失败，请重试');
+      if (!parent) throw new Error(t('food.couldNotLoadTheParentDishTryAgain'));
       parentDish.value = parent;
       return true;
     } catch (err) {
       if (!isCurrent()) return false;
       console.error('加载父菜品失败', err);
-      error.value = err instanceof Error ? err.message : '所属菜品加载失败，请重试';
+      error.value =
+        err instanceof Error ? err.message : t('food.couldNotLoadTheParentDishTryAgain');
       return false;
     } finally {
       if (isCurrent()) parentDishLoading.value = false;
@@ -212,10 +216,11 @@ export function useDishDetail() {
       if (dishId && dish.value?.id === dishId) await fetchDishDetail(dishId);
       if (!isCurrent()) return false;
       onSuccess?.();
-      uni.showToast({ title: '删除成功', icon: 'success' });
+      uni.showToast({ title: t('food.deleted'), icon: 'success' });
       return true;
     } catch (err: any) {
-      if (isCurrent()) uni.showToast({ title: err.message || '删除失败', icon: 'none' });
+      if (isCurrent())
+        uni.showToast({ title: err.message || t('food.couldNotDelete'), icon: 'none' });
       return false;
     } finally {
       if (isCurrent()) deletingReview.value = false;
@@ -232,9 +237,9 @@ export function useDishDetail() {
       if (reviewId) {
         await fetchComments(reviewId);
       }
-      uni.showToast({ title: '删除成功', icon: 'success' });
+      uni.showToast({ title: t('food.deleted'), icon: 'success' });
     } catch (err: any) {
-      uni.showToast({ title: err.message || '删除失败', icon: 'none' });
+      uni.showToast({ title: err.message || t('food.couldNotDelete'), icon: 'none' });
     }
   };
 
@@ -261,9 +266,9 @@ export function useDishDetail() {
             id => id !== dishId
           );
           userStore.updateLocalUserInfo({ myFavoriteDishes: newFavorites });
-          uni.showToast({ title: '已取消收藏', icon: 'none' });
+          uni.showToast({ title: t('food.removedFromFavorites'), icon: 'none' });
         } else {
-          uni.showToast({ title: res.message || '操作失败', icon: 'none' });
+          uni.showToast({ title: res.message || t('food.actionFailed'), icon: 'none' });
         }
       } else {
         // 添加收藏
@@ -273,15 +278,15 @@ export function useDishDetail() {
           // 更新本地用户信息
           const newFavorites = [...(userStore.userInfo?.myFavoriteDishes || []), dishId];
           userStore.updateLocalUserInfo({ myFavoriteDishes: newFavorites });
-          uni.showToast({ title: '收藏成功', icon: 'success' });
+          uni.showToast({ title: t('food.addedToFavorites'), icon: 'success' });
         } else {
-          uni.showToast({ title: res.message || '操作失败', icon: 'none' });
+          uni.showToast({ title: res.message || t('food.actionFailed'), icon: 'none' });
         }
       }
     } catch (err) {
       if (!isCurrent()) return;
       console.error('收藏操作失败', err);
-      uni.showToast({ title: '网络错误', icon: 'none' });
+      uni.showToast({ title: t('food.connectionError'), icon: 'none' });
     } finally {
       if (isCurrent()) favoriteLoading.value = false;
     }

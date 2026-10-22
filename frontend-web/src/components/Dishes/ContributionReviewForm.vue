@@ -34,6 +34,13 @@
             <label for="upload-description" class="block font-medium mb-1 admin-label">菜品描述</label>
             <textarea id="upload-description" v-model="draft.description" rows="4" class="review-input admin-textarea" />
           </div>
+          <TranslationFields
+            v-model:name-en="draft.nameEn"
+            v-model:description-en="draft.descriptionEn"
+            :name="draft.name"
+            :description="draft.description"
+            :busy="busy || uploading"
+          />
           <div>
             <span class="block text-sm font-medium mb-2">菜品图片</span>
             <p v-if="upload.kind === 'update'" class="text-sm text-gray-600 mb-2">图片将追加到原菜品，移除仅影响本次提交。</p>
@@ -112,6 +119,8 @@
 </template>
 
 <script setup lang="ts">
+import { parseAllergenList } from '@/utils/allergen-values'
+import TranslationFields from '@/components/Content/TranslationFields.vue'
 import { nutritionFields, nutritionPayload } from '@/utils/nutrition'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { canteenApi } from '@/api/modules/canteen'
@@ -129,6 +138,8 @@ const draft = reactive({
   protein: props.upload.protein ?? '' as number | '',
   carbohydrate: props.upload.carbohydrate ?? '' as number | '',
   fat: props.upload.fat ?? '' as number | '',
+  nameEn: props.upload.nameEn || '',
+  descriptionEn: props.upload.descriptionEn || '',
   name: props.upload.name, price: props.upload.price as number | '', priceUnit: props.upload.priceUnit || '',
   description: props.upload.description || '', windowId: props.upload.windowId || null,
   images: [...(props.upload.images || [])], availableMealTime: [...(props.upload.availableMealTime || [])],
@@ -141,7 +152,7 @@ const splitList = (value: string) => [...new Set(value.split(/[、,，\n]/).map(
 const content = (): ContributionFields => ({
   ...draft, ...nutritionPayload(draft), name: draft.name.trim(), price: Number(draft.price), priceUnit: draft.priceUnit.trim(), description: draft.description.trim(),
   images: [...draft.images], availableMealTime: [...draft.availableMealTime], availableDates: draft.availableDates.map(range => ({ ...range })),
-  tags: splitList(lists.tags), ingredients: splitList(lists.ingredients), allergens: splitList(lists.allergens),
+  tags: splitList(lists.tags), ingredients: splitList(lists.ingredients), allergens: parseAllergenList(lists.allergens),
 })
 const baseline = content()
 const error = ref('')

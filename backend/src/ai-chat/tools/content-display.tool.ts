@@ -137,6 +137,8 @@ export class ContentDisplayTool implements BaseTool {
           fat: dish.fat,
 
           name: dish.name,
+          nameEn: dish.nameEn,
+          descriptionEn: dish.descriptionEn,
           image: dish.images?.[0] || '',
           rating,
           tags: dish.tags || [],

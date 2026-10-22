@@ -37,6 +37,7 @@ const token = (type: 'user' | 'admin', tokenUse = 'access') =>
 
 const publicControllers = [
   'AIChatController',
+  'AllergensController',
   'CampusIdentityController',
   'CanteensController',
   'CommentsController',
@@ -55,6 +56,8 @@ const publicControllers = [
 ];
 const adminControllers = [
   'AdminAdminsController',
+  'AdminAllergensController',
+  'ContentTranslationsController',
   'AdminCanteensController',
   'AdminCommentsController',
   'AdminConfigController',

@@ -22,6 +22,15 @@
           审核待办
         </button>
         <button
+          v-if="canManageGlobalModeration"
+          type="button"
+          class="admin-tab"
+          :aria-pressed="activeView === 'translation'"
+          @click="showModerationView('translation')"
+        >
+          翻译服务
+        </button>
+        <button
           type="button"
           class="admin-tab"
           :aria-pressed="activeView === 'maintenance'"
@@ -254,6 +263,13 @@
           </div>
         </details>
       </div>
+      <TranslationSettings
+        v-if="canManageGlobalModeration && translationVisited"
+        v-show="activeView === 'translation'"
+        ref="translationSettings"
+        :can-edit="authStore.hasPermission('config:edit')"
+        @dirty="translationDirty = $event"
+      />
       <ContentModerationTasks
         v-if="canManageGlobalModeration && tasksVisited"
         v-show="activeView === 'tasks'"
@@ -450,6 +466,7 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import ContentModerationSettings from '@/components/ContentModerationSettings.vue'
 import ContentModerationTasks from '@/components/ContentModerationTasks.vue'
+import TranslationSettings from '@/components/Content/TranslationSettings.vue'
 import { showConfirm } from '@/composables/useModal'
 import { useNotification } from '@/composables/useNotification'
 
@@ -459,17 +476,30 @@ export default {
     Header,
     ContentModerationSettings,
     ContentModerationTasks,
+    TranslationSettings,
   },
   async beforeRouteLeave() {
-    if (!this.moderationDirty) return true
+    if (!this.moderationDirty && !this.translationDirty) return true
     const leave = await showConfirm(
-      '审核设置有未保存的修改，离开后将丢弃这些修改。',
-      '离开审核设置',
+      '系统配置有未保存的修改，离开后将丢弃这些修改。',
+      '离开系统配置',
       '丢弃并离开',
       '继续编辑',
     )
-    if (leave) this.$refs.moderationSettings?.resetDraft()
+    if (leave) {
+      this.$refs.moderationSettings?.resetDraft()
+      this.$refs.translationSettings?.resetDraft()
+    }
     return leave
+  },
+  watch: {
+    '$route.query.section': {
+      immediate: true,
+      handler(section) {
+        if (section === 'translation' && this.canManageGlobalModeration)
+          this.showModerationView('translation')
+      },
+    },
   },
   setup() {
     const notify = useNotification()
@@ -483,9 +513,12 @@ export default {
     const canViewConfig = computed(() => authStore.hasPermission('config:view'))
     const activeView = ref(canViewConfig.value ? 'settings' : 'maintenance')
     const tasksVisited = ref(false)
+    const translationVisited = ref(false)
+    const translationDirty = ref(false)
     const showModerationView = (view) => {
       activeView.value = view
       if (view === 'tasks') tasksVisited.value = true
+      if (view === 'translation') translationVisited.value = true
     }
     const reviewSaving = ref(false)
     const commentSaving = ref(false)
@@ -569,7 +602,7 @@ export default {
     })
 
     const configDescription = computed(() =>
-      isGlobalAdmin.value ? '管理审核策略、内容待办与系统维护' : '管理授权食堂的审核规则与系统维护',
+      isGlobalAdmin.value ? '管理审核策略、翻译服务与系统维护' : '管理授权食堂的审核规则与系统维护',
     )
 
     const currentCanteenInfo = computed(() => {
@@ -1175,6 +1208,8 @@ export default {
       canManageGlobalModeration,
       activeView,
       tasksVisited,
+      translationVisited,
+      translationDirty,
       showModerationView,
       moderationDirty,
       moderationPolicyState,

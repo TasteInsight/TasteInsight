@@ -1,17 +1,17 @@
 <template>
   <view class="review-overlay" :style="keyboardStyle" @tap="handleClose">
     <view v-if="showResumeDialog" class="resume-dialog" @tap.stop>
-      <text class="sheet-title">继续未完成的评价？</text>
-      <text class="sheet-hint">本地草稿包含上次填写的内容。</text>
+      <text class="sheet-title">{{ t('food.continueYourUnfinishedReview') }}</text>
+      <text class="sheet-hint">{{ t('food.yourSavedDraftContainsYourPreviousTextAnd') }}</text>
       <view class="sheet-actions">
-        <button class="sheet-button" @tap="startNewReview">重新填写</button>
+        <button class="sheet-button" @tap="startNewReview">{{ t('food.startOver') }}</button>
         <button
           class="sheet-button sheet-primary"
           :class="{ 'is-disabled': isResuming }"
           :disabled="isResuming"
           @tap="resumeReview"
         >
-          继续填写
+          {{ t('food.continue') }}
         </button>
       </view>
     </view>
@@ -20,25 +20,27 @@
       class="review-sheet"
       role="dialog"
       aria-modal="true"
-      :aria-label="isEditing ? '修改评价' : '写评价'"
+      :aria-label="isEditing ? t('food.editReview') : t('food.writeAReview')"
       @tap.stop
     >
       <view class="sheet-header">
-        <text class="sheet-title">{{ isEditing ? '修改评价' : '写评价' }}</text>
+        <text class="sheet-title">{{
+          isEditing ? t('food.editReview') : t('food.writeAReview')
+        }}</text>
         <button
           class="sheet-button sheet-close"
-          aria-label="关闭评价"
+          :aria-label="t('food.closeReview')"
           :class="{ 'is-disabled': busy || closing }"
           :disabled="busy || closing"
           @tap="handleClose"
         >
-          关闭
+          {{ t('food.close') }}
         </button>
       </view>
       <scroll-view class="sheet-body" scroll-y :scroll-into-view="scrollIntoView">
         <view class="sheet-content">
           <view class="sheet-field overall-rating">
-            <text class="sheet-label">总体评价</text>
+            <text class="sheet-label">{{ t('food.overallReview') }}</text>
             <text class="sheet-hint">{{ ratingText }}</text>
             <view class="rating-options">
               <button
@@ -46,7 +48,7 @@
                 :key="star"
                 class="sheet-button rating-option"
                 :class="{ selected: star <= rating, 'is-disabled': busy }"
-                :aria-label="'总体评分 ' + star + ' 星'"
+                :aria-label="t('food.overallStars', { rating: star })"
                 :aria-pressed="star === rating"
                 :disabled="busy"
                 @tap="setRating(star)"
@@ -57,22 +59,24 @@
           </view>
           <view v-if="rating > 0" class="sheet-field">
             <view class="flavor-heading">
-              <text class="sheet-label">口味强度（选填）</text>
+              <text class="sheet-label">{{ t('food.tasteIntensityOptional') }}</text>
               <button
                 class="sheet-button"
                 :class="{ 'is-disabled': busy || !hasFlavorSelection }"
                 :disabled="busy || !hasFlavorSelection"
                 @tap="resetFlavorRatings"
               >
-                清除
+                {{ t('food.clear') }}
               </button>
             </view>
-            <text class="sheet-hint">四项全部填写或全部留空；数值越高，口味越强。</text>
+            <text class="sheet-hint">{{ t('food.rateAllFourOrLeaveAllBlankHigher') }}</text>
             <view v-for="option in flavorOptions" :key="option.key" class="flavor-row">
               <view class="flavor-label"
                 ><text>{{ option.label }}</text
                 ><text class="sheet-hint">{{
-                  flavorRatings[option.key] ? '强度 ' + flavorRatings[option.key] : '未设置'
+                  flavorRatings[option.key]
+                    ? t('food.intensityLevel', { level: flavorRatings[option.key] })
+                    : t('food.notSet')
                 }}</text></view
               >
               <view class="flavor-options">
@@ -84,7 +88,7 @@
                     selected: level === flavorRatings[option.key],
                     'is-disabled': busy,
                   }"
-                  :aria-label="option.label + '强度 ' + level + '，共 5 级'"
+                  :aria-label="t('food.tasteIntensityLevel', { label: option.label, level })"
                   :aria-pressed="level === flavorRatings[option.key]"
                   :disabled="busy"
                   @tap="setFlavorRating(option.key, level)"
@@ -93,18 +97,20 @@
                 </button>
               </view>
             </view>
-            <text v-if="showFlavorError && !flavorSelectionComplete" class="sheet-error"
-              >请将四项口味全部填写，或清除全部选择。</text
-            >
+            <text v-if="showFlavorError && !flavorSelectionComplete" class="sheet-error">{{
+              t('food.rateAllFourTasteDimensionsOrClearEvery')
+            }}</text>
           </view>
           <view id="review-content-field" class="sheet-field">
-            <label for="review-content" class="sheet-label">用餐体验（选填）</label>
+            <label for="review-content" class="sheet-label">{{
+              t('food.diningExperienceOptional')
+            }}</label>
             <textarea
               id="review-content"
               v-model="content"
               class="sheet-input review-content-input"
-              aria-label="用餐体验"
-              placeholder="口味、分量或值得分享的细节"
+              :aria-label="t('food.diningExperience')"
+              :placeholder="t('food.shareDetailsAboutTastePortionSizeOrYour')"
               maxlength="500"
               :disabled="busy"
               :adjust-position="false"
@@ -114,8 +120,8 @@
             <text class="sheet-hint character-count">{{ content.length }}/500</text>
           </view>
           <view class="sheet-field">
-            <text class="sheet-label">评价图片（选填）</text>
-            <text class="sheet-hint">最多 3 张，提交评价时上传。</text>
+            <text class="sheet-label">{{ t('food.reviewPhotosOptional') }}</text>
+            <text class="sheet-hint">{{ t('food.upTo3PhotosUploadedWhenYouSubmit') }}</text>
             <view class="review-images">
               <view v-for="(img, index) in images" :key="img.path" class="review-image-item">
                 <image
@@ -126,12 +132,12 @@
                 />
                 <button
                   class="sheet-button image-remove"
-                  :aria-label="'移除第 ' + (index + 1) + ' 张图片'"
+                  :aria-label="t('food.removePhotoNumber', { number: index + 1 })"
                   :class="{ 'is-disabled': busy }"
                   :disabled="busy"
                   @tap.stop="removeImage(index)"
                 >
-                  移除
+                  {{ t('food.remove') }}
                 </button>
               </view>
               <button
@@ -141,7 +147,7 @@
                 :disabled="busy"
                 @tap="handleChooseImage"
               >
-                添加图片
+                {{ t('food.addPhotos') }}
               </button>
             </view>
           </view>
@@ -155,7 +161,7 @@
           :disabled="busy || closing"
           @tap="discardDraft"
         >
-          放弃草稿并关闭
+          {{ t('food.discardDraftAndClose') }}
         </button>
         <button
           class="sheet-button sheet-primary"
@@ -164,7 +170,13 @@
           @tap="handleSubmit"
         >
           {{
-            isSaving ? '保存草稿中…' : submitting ? '提交中…' : isEditing ? '更新评价' : '提交评价'
+            isSaving
+              ? t('food.savingDraft')
+              : submitting
+                ? t('food.submitting')
+                : isEditing
+                  ? t('food.updateReview')
+                  : t('food.submitReview')
           }}
         </button>
       </view>
@@ -173,6 +185,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useReviewForm } from '../composables/use-review';
 import { useSheetKeyboard, useSheetInputScroll } from '../composables/use-sheet-keyboard';
@@ -286,7 +299,7 @@ const handleClose = async () => {
   closing.value = true;
   try {
     if (isEditing.value) {
-      if (!(await confirmDiscardChanges(dirty.value, '评价的修改尚未提交，确定放弃吗？')))
+      if (!(await confirmDiscardChanges(dirty.value, t('food.discardYourReviewChanges'))))
         return false;
     } else if (!showResumeDialog.value) {
       if (rating.value || content.value.trim() || hasFlavorSelection.value || images.value.length) {
@@ -311,7 +324,7 @@ const discardDraft = async () => {
   const owner = userStore.userInfo?.id;
   closing.value = true;
   try {
-    if (!(await confirmDiscardChanges(true, '将放弃这次评价中的文字和图片，确定关闭吗？')))
+    if (!(await confirmDiscardChanges(true, t('food.discardTheTextAndPhotosInThisReview'))))
       return false;
     if (!active || session !== userStore.sessionVersion || owner !== userStore.userInfo?.id)
       return false;

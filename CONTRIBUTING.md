@@ -128,19 +128,19 @@ git diff
 
 1. 代码检查
 
-```bash
-# ESLint 检查
-pnpm lint
+进入对应子项目目录后执行检查，命令以各自的 `package.json` 为准：
 
-# 自动修复可修复的问题
-pnpm lint:fix
+| 子项目 | 类型检查 | 只读 ESLint | 格式检查 | 单元测试与构建 |
+|---|---|---|---|---|
+| `backend` | `pnpm type-check` | `pnpm lint:check` | `pnpm format:check` | `pnpm test:unit --runInBand`、`pnpm build` |
+| `frontend-web` | `pnpm type-check` | `pnpm lint` | 按本项目 Prettier 配置检查修改文件 | `pnpm test:unit`、`pnpm build` |
+| `frontend-miniapp` | `pnpm type-check` | `pnpm lint` | 按本项目 Prettier 配置检查修改文件 | `pnpm test --runInBand --watchman=false`、对应平台 build 命令 |
 
-# TypeScript 类型检查
-pnpm type-check
+自动修复时，后端 `pnpm lint` 会直接修改文件，管理端使用 `pnpm lint:fix`，用户端可使用 `pnpm exec eslint . --fix`。后端格式化使用 `pnpm format`；两端前端可用 `pnpm exec prettier --check <文件>` 检查、`pnpm exec prettier --write <文件>` 格式化选定文件。核对修复后的差异，再执行只读检查。
 
-# 格式化代码
-pnpm format
-```
+`CI - Required Checks` 在 `dev`、`main` 的代码或工作流变更上运行后端与两端前端检查，并执行部署门禁测试。后端工作流包含类型、ESLint、格式、单元测试、构建、隔离数据库 E2E 和 Docker 构建；前端工作流包含管理端及用户端的类型、ESLint、单元测试，管理端构建和用户端微信/H5/App 构建。微信构建继续检查 i18n 运行时和产物质量。
+
+接口、权限、配置、持久化或数据迁移发生变化时，同步更新相应子项目 README、[环境变量参考](./docs/环境变量参考.md)或[环境配置与部署](./docs/环境配置与部署.md)。页面及控件复用约定见[用户端共用界面组件](./frontend-miniapp/README.md#共用界面组件)与[管理端页面样式](./frontend-web/README.md#管理页面样式)。PR 记录本次验证结果，稳定的使用方式与数据规则维护在项目文档中。
 
 1. 提交代码
 

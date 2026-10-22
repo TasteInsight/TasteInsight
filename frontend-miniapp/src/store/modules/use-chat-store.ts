@@ -1,3 +1,4 @@
+import { t, locale, type AppLocale } from '@/i18n';
 import { defineStore } from 'pinia';
 import { ref, reactive, watch } from 'vue';
 import { useUserStore } from './use-user-store';
@@ -29,6 +30,8 @@ export type MealPlanCard = ComponentMealPlanDraft & { appliedStatus?: 'success' 
 export type PreferenceDraftCard = ComponentPreferenceDraft & {
   status?: 'saving' | 'saved' | 'dismissed' | 'failed' | 'stale' | 'invalid';
   error?: string;
+  errorKey?: string;
+  errorParams?: Record<string, string | number>;
 };
 export type ChatDeliveryStatus = 'sending' | 'received' | 'failed' | 'unconfirmed';
 
@@ -160,6 +163,8 @@ export interface ChatMessage {
   isStreaming?: boolean; // 是否正在流式接收中
   replyStatus?: 'failed' | 'stopped' | 'interrupted';
   suggestions?: string[];
+  suggestionsLocale?: AppLocale;
+  welcomeScene?: AIScene;
 }
 
 // 历史会话记录
@@ -252,6 +257,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         historyEntries.value = (cached as ChatHistoryEntry[]).map(entry => ({
           ...entry,
           messages: restoreMessages(entry.messages),
+          title: conversationTitle(entry.messages),
         }));
       }
     } catch (e) {
@@ -278,7 +284,9 @@ export const useChatStore = defineStore('ai-chat', () => {
         for (const draft of segment.data) {
           if (draft.status === 'saving') {
             draft.status = 'failed';
-            draft.error = '上次保存结果未确认，请重试检查最新偏好。';
+            draft.error = undefined;
+            draft.errorKey = 'social.preferenceSaveUnconfirmed';
+            draft.errorParams = undefined;
           }
         }
       }
@@ -286,11 +294,17 @@ export const useChatStore = defineStore('ai-chat', () => {
     return restored;
   }
 
+  function conversationTitle(msgs: ChatMessage[]): string | undefined {
+    const segment = msgs
+      .find(message => message.type === 'user')
+      ?.content?.find(part => part.type === 'text');
+    return segment?.type === 'text' ? segment.text : undefined;
+  }
+
   function upsertHistoryEntry(session: string, scene: AIScene, msgs: ChatMessage[]) {
     if (!session) return;
     const copy = cloneMessages(msgs);
-    const textSeg = copy.find(m => m.type === 'user')?.content?.find(seg => seg.type === 'text');
-    const title = textSeg && textSeg.type === 'text' ? textSeg.text : '对话';
+    const title = conversationTitle(copy);
     const idx = historyEntries.value.findIndex(h => h.sessionId === session);
     const entry: ChatHistoryEntry = {
       sessionId: session,
@@ -372,19 +386,23 @@ export const useChatStore = defineStore('ai-chat', () => {
       const body = plan.confirmAction?.body;
       const { startDate, endDate, mealTime, dishes } = body || {};
       if (!startDate || !endDate || !mealTime || !Array.isArray(dishes) || dishes.length === 0) {
-        throw new Error('后端未返回可直接应用的规划参数（confirmAction.body）');
+        throw new Error(t('social.missingPlanParameters'));
       }
       const response = await getDishesByIds(dishes).catch(() => undefined);
       if (!ownsAccount()) return false;
       const schedule = { startDate, endDate, mealTime };
       let currentPreview = plan.previewData;
       let changeNotices: MealPlanChangeNotice[] = [
-        { kind: 'metadata', message: '菜品最新信息暂时无法读取，可在我的规划中查看' },
+        {
+          kind: 'metadata',
+          message: t('social.dishMetadataUnavailable'),
+          messageKey: 'social.dishMetadataUnavailable',
+        },
       ];
       if (response?.code === 200 && response.data) {
         const currentById = new Map(response.data.items.map(dish => [dish.id, dish]));
         if (dishes.some(id => !currentById.has(id))) {
-          throw new Error('部分菜品已删除，请重新选择菜品后保存规划');
+          throw new Error(t('social.deletedPlanDishes'));
         }
         const currentDishes = dishes.map(id => currentById.get(id)!);
         changeNotices = mealPlanChanges(
@@ -442,17 +460,24 @@ export const useChatStore = defineStore('ai-chat', () => {
         const scene = currentScene.value;
         const ownsAccount = () =>
           owner === historyOwner && accountSession === userStore.sessionVersion;
-        const recordStatus = (status: PreferenceDraftCard['status'], error?: string) => {
+        const recordStatus = (
+          status: PreferenceDraftCard['status'],
+          error?: Pick<PreferenceDraftCard, 'error' | 'errorKey' | 'errorParams'>
+        ) => {
           if (!ownsAccount()) return;
           const updateCard = (target: ChatMessage[]) => {
             const stored = target[message]?.content[segment];
             if (stored?.type === 'card_preferences' && stored.data[card]) {
               stored.data[card].status = status;
-              stored.data[card].error = error;
+              stored.data[card].error = error?.error;
+              stored.data[card].errorKey = error?.errorKey;
+              stored.data[card].errorParams = error?.errorParams;
             }
           };
           draft.status = status;
-          draft.error = error;
+          draft.error = error?.error;
+          draft.errorKey = error?.errorKey;
+          draft.errorParams = error?.errorParams;
           if (sessionId.value === conversation) {
             updateCard(messages.value);
             upsertHistoryEntry(conversation, scene, messages.value);
@@ -488,11 +513,11 @@ export const useChatStore = defineStore('ai-chat', () => {
     )
       return false;
     if (!validPreferenceDraft(draft)) {
-      context.recordStatus('invalid', '建议内容不完整或操作无效，请重新生成偏好建议。');
+      context.recordStatus('invalid', { errorKey: 'social.invalidPreferenceSuggestion' });
       return false;
     }
     if (pendingPreferenceApplications.size) {
-      context.recordStatus('failed', '另一条偏好正在保存，请稍后重试。');
+      context.recordStatus('failed', { errorKey: 'social.preferenceSaveInProgress' });
       return false;
     }
     pendingPreferenceApplications.add(context.key);
@@ -502,7 +527,7 @@ export const useChatStore = defineStore('ai-chat', () => {
     try {
       await userStore.fetchProfileAction(ownsConfirmation);
       if (!ownsConfirmation()) {
-        context.recordStatus('failed', '保存已取消，偏好未修改。');
+        context.recordStatus('failed', { errorKey: 'social.preferenceSaveCancelled' });
         return false;
       }
       const current = preferenceValues(userStore.userInfo || {}, body);
@@ -511,7 +536,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         return true;
       }
       if (!sameValue(current, preferenceValues(draft.previewData.before, body))) {
-        context.recordStatus('stale', '偏好已发生变化，请重新生成建议后再保存。');
+        context.recordStatus('stale', { errorKey: 'social.preferencesChanged' });
         return false;
       }
       await userStore.updateProfileAction(body);
@@ -522,7 +547,13 @@ export const useChatStore = defineStore('ai-chat', () => {
       if (!context.ownsAccount()) return false;
       context.recordStatus(
         'failed',
-        `保存失败，请重试。${error instanceof Error ? error.message : '请检查网络连接。'}`
+        error instanceof Error
+          ? {
+              error: error.message,
+              errorKey: 'social.preferenceSaveFailed',
+              errorParams: { p0: error.message },
+            }
+          : { errorKey: 'social.preferenceSaveFailedNetwork' }
       );
       return false;
     } finally {
@@ -581,6 +612,7 @@ export const useChatStore = defineStore('ai-chat', () => {
               id: Date.now() + Math.random(),
               type: 'ai',
               content: [{ type: 'text', text: res.data.welcomeMessage }],
+              welcomeScene: sceneToUse,
               timestamp: Date.now(),
             });
             upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
@@ -634,6 +666,7 @@ export const useChatStore = defineStore('ai-chat', () => {
       if (pendingSend === submission) pendingSend = null;
     }
     abortChat(false);
+    const requestLocale = locale.value;
 
     // 先在 UI 上显示用户消息。
     const userMessage = addUserMessage(text);
@@ -723,7 +756,7 @@ export const useChatStore = defineStore('ai-chat', () => {
       streamControl = USE_MOCK
         ? (() => {
             // 模拟流式回复。
-            const mockResponse = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。我可以帮你推荐菜品，或者制定饮食计划。`;
+            const mockResponse = t('social.mockResponse', { p0: payload.message });
             const chunks = mockResponse.split('');
             let currentIndex = 0;
             const interval = setInterval(() => {
@@ -750,81 +783,102 @@ export const useChatStore = defineStore('ai-chat', () => {
               },
             };
           })()
-        : streamAIChat(stream.sessionId, payload, {
-            onEvent: (evt: string) => {
-              if (activeStream !== stream) return;
-              currentEvent = evt;
-            },
-            onMessage: (chunk: string) => {
-              if (activeStream !== stream) return;
-              if (currentEvent === 'text_chunk' && chunk) {
-                userMessage.deliveryStatus = 'received';
-                appendText(chunk);
-              }
-            },
-            onJSON: json => {
-              if (activeStream !== stream) return;
+        : streamAIChat(
+            stream.sessionId,
+            payload,
+            {
+              onEvent: (evt: string) => {
+                if (activeStream !== stream) return;
+                currentEvent = evt;
+              },
+              onMessage: (chunk: string) => {
+                if (activeStream !== stream) return;
+                if (currentEvent === 'text_chunk' && chunk) {
+                  userMessage.deliveryStatus = 'received';
+                  appendText(chunk);
+                }
+              },
+              onJSON: json => {
+                if (activeStream !== stream) return;
 
-              if (
-                currentEvent === 'message_received' &&
-                typeof json?.messageId === 'string' &&
-                json.messageId
-              ) {
-                userMessage.deliveryStatus = 'received';
-              }
-              if (
-                currentEvent === 'reply_complete' &&
-                typeof json?.messageId === 'string' &&
-                json.messageId
-              ) {
-                aiMessage.isStreaming = false;
-                aiLoading.value = false;
-                upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
-              }
-              if (
-                currentEvent === 'suggestions' &&
-                !aiMessage.isStreaming &&
-                Array.isArray(json?.suggestions) &&
-                json.suggestions.every((question: unknown) => typeof question === 'string')
-              ) {
-                aiMessage.suggestions = json.suggestions;
-                upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
-              }
-              if (currentEvent === 'new_block') {
-                const segment = json as Exclude<MessageSegment, { type: 'text' }>;
                 if (
-                  segment &&
-                  [
-                    'card_dish',
-                    'card_plan',
-                    'card_preferences',
-                    'card_canteen',
-                    'card_window',
-                  ].includes(segment.type) &&
-                  Array.isArray(segment.data)
+                  currentEvent === 'message_received' &&
+                  typeof json?.messageId === 'string' &&
+                  json.messageId
                 ) {
                   userMessage.deliveryStatus = 'received';
-                  if (segment.type === 'card_preferences') {
-                    aiMessage.content.push({
-                      type: 'card_preferences',
-                      data: segment.data
-                        .filter(isRecord)
-                        .map(
-                          ({ summary, previewData, confirmAction }) =>
-                            ({ summary, previewData, confirmAction }) as PreferenceDraftCard
-                        ),
-                    });
-                  } else aiMessage.content.push(segment);
                 }
-              }
+                if (
+                  currentEvent === 'reply_complete' &&
+                  typeof json?.messageId === 'string' &&
+                  json.messageId
+                ) {
+                  aiMessage.isStreaming = false;
+                  aiLoading.value = false;
+                  upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+                }
+                if (
+                  currentEvent === 'suggestions' &&
+                  !aiMessage.isStreaming &&
+                  Array.isArray(json?.suggestions) &&
+                  json.suggestions.every((question: unknown) => typeof question === 'string')
+                ) {
+                  aiMessage.suggestions = json.suggestions;
+                  aiMessage.suggestionsLocale = requestLocale;
+                  upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+                }
+                if (currentEvent === 'new_block') {
+                  const segment = json as Exclude<MessageSegment, { type: 'text' }>;
+                  if (
+                    segment &&
+                    [
+                      'card_dish',
+                      'card_plan',
+                      'card_preferences',
+                      'card_canteen',
+                      'card_window',
+                    ].includes(segment.type) &&
+                    Array.isArray(segment.data)
+                  ) {
+                    userMessage.deliveryStatus = 'received';
+                    if (segment.type === 'card_preferences') {
+                      aiMessage.content.push({
+                        type: 'card_preferences',
+                        data: segment.data
+                          .filter(isRecord)
+                          .map(
+                            ({ summary, previewData, confirmAction }) =>
+                              ({ summary, previewData, confirmAction }) as PreferenceDraftCard
+                          ),
+                      });
+                    } else if (segment.type === 'card_plan') {
+                      aiMessage.content.push({
+                        ...segment,
+                        data: segment.data.map(plan => ({
+                          ...plan,
+                          changeNotices: plan.changeNotices?.map(notice => {
+                            const { messageKey, messageParams, ...content } = notice;
+                            if (content.kind === 'price') {
+                              const { priceChange, ...legacy } = content;
+                              return legacy;
+                            }
+                            return content;
+                          }),
+                        })),
+                      });
+                    } else aiMessage.content.push(segment);
+                  }
+                }
+              },
+              onError: failStream,
+              onComplete: () => {
+                if (activeStream !== stream) return;
+                if (aiMessage.isStreaming) aiMessage.replyStatus = 'interrupted';
+                finishStream();
+              },
             },
-            onError: failStream,
-            onComplete: () => {
-              if (activeStream !== stream) return;
-              if (aiMessage.isStreaming) aiMessage.replyStatus = 'interrupted';
-              finishStream();
-            },
-          }, transport);
+            transport
+          );
     } catch (error) {
       failStream(error);
       return false;
@@ -841,13 +895,13 @@ export const useChatStore = defineStore('ai-chat', () => {
     try {
       const res = await submitRecommendFeedback(feedback);
       if (res.code === 200) {
-        uni.showToast({ title: '反馈成功', icon: 'success' });
+        uni.showToast({ title: t('social.feedbackSubmitted'), icon: 'success' });
       } else {
-        uni.showToast({ title: res.message || '反馈失败', icon: 'error' });
+        uni.showToast({ title: res.message || t('social.feedbackFailed'), icon: 'error' });
       }
     } catch (error) {
       console.error('Feedback submission error:', error);
-      uni.showToast({ title: '提交反馈失败', icon: 'error' });
+      uni.showToast({ title: t('social.submitFeedbackFailed'), icon: 'error' });
     }
   }
 

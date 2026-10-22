@@ -3,31 +3,31 @@
     <AsyncState
       :loading="loading"
       :has-content="!!post"
-      :error="error"
-      loading-title="正在加载动态…"
+      :error="errorText"
+      :loading-title="t('social.loadingPosts')"
       @retry="load"
     />
     <template v-if="post">
       <PostCard :post="post" detail @manage="managePost" @reply="focusReply" />
       <view class="reply-heading"
-        ><text class="reply-title">回复</text
+        ><text class="reply-title">{{ t('social.reply') }}</text
         ><text v-if="commentsReady" class="campus-hint">{{ totalComments }}</text></view
       >
       <AsyncState
         :loading="commentsLoading"
         :initialized="commentsReady"
         :has-content="comments.length > 0"
-        :error="commentsError"
-        loading-title="正在加载回复…"
-        :empty-title="canReply ? '还没有回复，聊聊你的看法' : '还没有回复，稍后再来看看'"
+        :error="commentsErrorText"
+        :loading-title="t('social.loadingReplies')"
+        :empty-title="canReply ? t('social.noRepliesDiscussion') : t('social.noReplies')"
         empty-icon="chat"
-        retry-text="重试"
+        :retry-text="t('social.retry')"
         @retry="loadComments(commentsFailedAppend)"
       />
       <view v-for="comment in comments" :key="comment.id" class="post-reply">
         <button
           class="campus-button reply-avatar"
-          :aria-label="'查看 ' + comment.userNickname + ' 的主页'"
+          :aria-label="t('social.profileLabel', { name: comment.userNickname })"
           @click="openProfile(comment.userId)"
         >
           <UserAvatar :src="comment.userAvatar" :size="32" :label="comment.userNickname" />
@@ -38,15 +38,15 @@
               {{ comment.userNickname }}</button
             ><button
               class="campus-button reply-menu"
-              :aria-label="'管理 ' + comment.userNickname + ' 的回复'"
+              :aria-label="t('social.manageReplyLabel', { name: comment.userNickname })"
               @click="manageComment(comment)"
             >
               <image src="/static/icons/more-horizontal.png" mode="aspectFit" /></button
           ></view>
           <text v-if="comment.parentComment" class="campus-hint">{{
             comment.parentComment.deleted
-              ? '回复的评论已删除'
-              : '回复 @' + comment.parentComment.userNickname
+              ? t('social.parentReplyDeleted')
+              : t('social.replyToPrefix') + comment.parentComment.userNickname
           }}</text>
           <text class="reply-content" selectable>{{ comment.content }}</text>
           <view class="reply-bottom"
@@ -57,12 +57,12 @@
                 class="campus-button reply-action"
                 :class="{ 'reply-liked': isLiked(comment) }"
                 :aria-pressed="isLiked(comment)"
-                :aria-label="isLiked(comment) ? '取消点赞' : '点赞回复'"
+                :aria-label="isLiked(comment) ? t('social.unlike') : t('social.likeReply')"
                 :disabled="!!pending[comment.id]"
                 @click="toggleLike(comment)"
               >
                 <text class="iconfont icon-heart-outline" aria-hidden="true" />{{
-                  likeCount(comment) || '赞'
+                  likeCount(comment) || t('social.like')
                 }}</button
               ><button
                 v-if="canReply && comment.status === 'approved'"
@@ -70,25 +70,26 @@
                 :disabled="submitting"
                 @click="selectReply(comment)"
               >
-                回复
+                {{ t('social.reply') }}
               </button></view
             ></view
           >
         </view>
       </view>
       <button
-        v-if="!commentsError && hasMore"
+        v-if="!commentsErrorText && hasMore"
         class="campus-button campus-more"
         :disabled="commentsLoading"
         @click="loadComments(true)"
       >
-        {{ commentsLoading ? '加载中…' : '加载更多回复' }}
+        {{ commentsLoading ? t('social.loadingMore') : t('social.loadMoreReplies') }}
       </button>
       <view v-if="canReply" id="post-reply-composer" class="post-composer">
         <view v-if="replyingTo" class="reply-target"
-          ><text class="campus-hint">回复 @{{ replyingTo.userNickname }}</text
+          ><text class="campus-hint"
+            >{{ t('social.replyToPrefix') }}{{ replyingTo.userNickname }}</text
           ><button class="campus-button" :disabled="submitting" @click="replyingTo = null">
-            取消回复
+            {{ t('social.cancelReply') }}
           </button></view
         >
         <view class="reply-composer-row">
@@ -99,8 +100,8 @@
             :disabled="submitting"
             maxlength="500"
             auto-height
-            aria-label="回复内容"
-            placeholder="写下你的回复"
+            :aria-label="t('social.replyContent')"
+            :placeholder="t('social.replyPlaceholder')"
             placeholder-style="color: #667085"
             @blur="replyFocused = false"
           /><button
@@ -108,7 +109,7 @@
             :disabled="!content.trim() || submitting"
             @click="sendReply"
           >
-            {{ submitting ? '发送中…' : '发送' }}
+            {{ submitting ? t('social.sending') : t('social.send') }}
           </button></view
         >
       </view>
@@ -123,6 +124,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { openCampus } from '@/utils/campus-navigation';
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import {
@@ -161,10 +163,16 @@ const id = ref('');
 const post = ref<Post | null>(null);
 const loading = ref(false);
 const error = ref('');
+const errorText = computed(() =>
+  error.value.startsWith('social.') ? t(error.value) : error.value
+);
 const comments = ref<PostComment[]>([]);
 const commentsLoading = ref(false);
 const commentsReady = ref(false);
 const commentsError = ref('');
+const commentsErrorText = computed(() =>
+  commentsError.value.startsWith('social.') ? t(commentsError.value) : commentsError.value
+);
 const page = ref(0);
 const totalPages = ref(0);
 const totalComments = ref(0);
@@ -207,7 +215,7 @@ const openProfile = (userId: string) =>
   uni.navigateTo({ url: `/pages/profile/public?id=${encodeURIComponent(userId)}` });
 async function load() {
   if (!id.value) {
-    error.value = '动态不存在';
+    error.value = 'social.postNotFound';
     return;
   }
   const current = capture();
@@ -217,11 +225,11 @@ async function load() {
   try {
     const response = await getPost(id.value);
     if (!current() || request !== postRequest) return;
-    if (response.code !== 200) throw new Error(response.message || '动态加载失败');
+    if (response.code !== 200) throw new Error(response.message || 'social.loadPostFailed');
     post.value = response.data;
   } catch (cause) {
     if (current() && request === postRequest) {
-      error.value = cause instanceof Error ? cause.message : '动态加载失败，请重试';
+      error.value = cause instanceof Error ? cause.message : 'social.loadPostsRetry';
     }
     return;
   } finally {
@@ -241,7 +249,7 @@ async function loadComments(append = false) {
       pageSize: 20,
     });
     if (!current() || request !== commentsRequest) return;
-    if (response.code !== 200) throw new Error(response.message || '回复加载失败');
+    if (response.code !== 200) throw new Error(response.message || 'social.loadRepliesFailed');
     const incoming = new Set(response.data.items.map(item => item.id));
     comments.value = mergeComments([
       ...(append ? comments.value.filter(item => !incoming.has(item.id)) : []),
@@ -255,7 +263,7 @@ async function loadComments(append = false) {
   } catch (cause) {
     if (current() && request === commentsRequest) {
       commentsFailedAppend = append;
-      commentsError.value = cause instanceof Error ? cause.message : '回复加载失败，请重试';
+      commentsError.value = cause instanceof Error ? cause.message : 'social.loadRepliesRetry';
     }
   } finally {
     if (current() && request === commentsRequest) commentsLoading.value = false;
@@ -285,7 +293,8 @@ async function sendReply() {
       ...(parentCommentId ? { parentCommentId } : {}),
     });
     if (!current()) return;
-    if (![200, 201].includes(response.code)) throw new Error(response.message || '回复发送失败');
+    if (![200, 201].includes(response.code))
+      throw new Error(response.message || t('social.sendReplyFailed'));
     content.value = '';
     replyingTo.value = null;
     replyFocused.value = false;
@@ -297,7 +306,7 @@ async function sendReply() {
   } catch (cause) {
     if (current() && visible)
       uni.showToast({
-        title: cause instanceof Error ? cause.message : '回复发送失败，请重试',
+        title: cause instanceof Error ? cause.message : t('social.sendReplyRetry'),
         icon: 'none',
       });
   } finally {
@@ -312,7 +321,7 @@ function managePost() {
   const current = capture();
   const own = post.value.userId === user.userInfo?.id;
   uni.showActionSheet({
-    itemList: own ? ['编辑动态', '删除动态'] : ['举报动态'],
+    itemList: own ? [t('social.editPost'), t('social.deletePost')] : [t('social.reportPost')],
     success: result => {
       if (!current()) return;
       if (!own) {
@@ -330,7 +339,7 @@ function manageComment(comment: PostComment) {
   const current = capture();
   const own = comment.userId === user.userInfo?.id;
   uni.showActionSheet({
-    itemList: own ? ['删除回复'] : ['举报回复'],
+    itemList: own ? [t('social.deleteReply')] : [t('social.reportReply')],
     success: () => {
       if (current()) own ? confirmRemove('comment', comment.id) : openReport('comment', comment.id);
     },
@@ -339,16 +348,16 @@ function manageComment(comment: PostComment) {
 function confirmRemove(type: 'post' | 'comment', targetId: string) {
   const current = capture();
   uni.showModal({
-    title: type === 'post' ? '删除动态？' : '删除回复？',
-    content: '删除后无法恢复。',
-    confirmText: '删除',
+    title: type === 'post' ? t('social.deletePostQuestion') : t('social.deleteReplyQuestion'),
+    content: t('social.deletionPermanent'),
+    confirmText: t('common.modal.delete'),
     success: async result => {
       if (!result.confirm || !current()) return;
       try {
         const response =
           type === 'post' ? await deletePost(targetId) : await deletePostComment(targetId);
         if (!current()) return;
-        if (response.code !== 200) throw new Error(response.message || '删除失败');
+        if (response.code !== 200) throw new Error(response.message || t('social.deleteFailed'));
         if (type === 'post') {
           leaving = true;
           uni.navigateBack({ fail: () => openCampus() });
@@ -359,7 +368,7 @@ function confirmRemove(type: 'post' | 'comment', targetId: string) {
       } catch (cause) {
         if (current())
           uni.showToast({
-            title: cause instanceof Error ? cause.message : '删除失败，请重试',
+            title: cause instanceof Error ? cause.message : t('social.deleteRetry'),
             icon: 'none',
           });
       }
@@ -377,13 +386,14 @@ async function submitReport(data: ReportRequest) {
         ? await reportPost(target.id, data)
         : await reportPostComment(target.id, data);
     if (!current() || target !== reportTarget.value) return;
-    if (![200, 201].includes(response.code)) throw new Error(response.message || '举报失败');
+    if (![200, 201].includes(response.code))
+      throw new Error(response.message || t('social.reportFailed'));
     reportTarget.value = null;
-    if (visible) uni.showToast({ title: '举报成功', icon: 'success' });
+    if (visible) uni.showToast({ title: t('social.reportSubmitted'), icon: 'success' });
   } catch (cause) {
     if (current() && visible)
       uni.showToast({
-        title: cause instanceof Error ? cause.message : '举报失败，请重试',
+        title: cause instanceof Error ? cause.message : t('social.reportRetry'),
         icon: 'none',
       });
   } finally {
@@ -459,7 +469,7 @@ onBackPress(() => {
   if (!content.value.trim()) return false;
   checkingLeave = true;
   const current = capture();
-  void confirmDiscardChanges(true, '回复尚未发送，确定放弃吗？')
+  void confirmDiscardChanges(true, t('social.discardReply'))
     .then(discard => {
       if (discard && current()) {
         leaving = true;

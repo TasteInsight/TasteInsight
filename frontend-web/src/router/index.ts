@@ -28,6 +28,8 @@ const ExperimentManage = () => import('@/views/ExperimentManage.vue')
 const StudentVerificationManage = () => import('@/views/StudentVerificationManage.vue')
 const CommunityManage = () => import('@/views/CommunityManage.vue')
 
+const AllergenManage = () => import('@/views/AllergenManage.vue')
+
 const routes = [
   { path: '/change-password', name: 'ChangePassword', component: ChangePassword, meta: { requiresAuth: true } },
   {
@@ -74,6 +76,12 @@ const routes = [
         name: 'ModifyDish',
         component: ModifyDish,
         meta: { requiresAuth: true, requiredPermission: 'dish:view', keepAlive: true },
+      },
+      {
+        path: 'modify-dish/allergens',
+        name: 'AllergenManage',
+        component: AllergenManage,
+        meta: { requiresAuth: true, requiredPermission: 'config:view', globalOnly: true },
       },
       {
         path: 'edit-dish/:id',

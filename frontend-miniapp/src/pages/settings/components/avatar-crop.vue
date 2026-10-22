@@ -1,7 +1,9 @@
 <template>
   <view class="page-viewport avatar-crop-page">
     <view class="crop-workspace">
-      <text v-if="!loadError" class="crop-instruction">拖动或双指缩放，调整头像位置</text>
+      <text v-if="!loadError" class="crop-instruction">{{
+        t('account.settings.dragOrPinchToPosition')
+      }}</text>
       <view v-if="loadError" class="crop-error error-feedback" role="alert">
         <text class="error-feedback__message">{{ loadError }}</text>
         <button
@@ -9,7 +11,7 @@
           hover-class="error-feedback__action--pressed"
           @click="initWithSrc(src)"
         >
-          重新加载
+          {{ t('account.login.reload') }}
         </button>
       </view>
       <view
@@ -38,19 +40,29 @@
             <image :src="src" mode="scaleToFill" class="crop-image" draggable="false" />
           </movable-view>
         </movable-area>
-        <text v-if="!ready" class="crop-loading">正在读取图片…</text>
+        <text v-if="!ready" class="crop-loading">{{ t('account.settings.readingImage') }}</text>
         <view class="crop-mask" />
       </view>
     </view>
     <view class="crop-actions">
-      <button class="crop-secondary" :disabled="exporting" @click="handleCancel">取消</button>
+      <button
+        class="settings-button crop-secondary"
+        hover-class="settings-button--pressed"
+        :hover-stay-time="80"
+        :disabled="exporting"
+        @click="handleCancel"
+      >
+        {{ t('account.profile.cancel') }}
+      </button>
       <button
         v-if="!loadError"
-        class="crop-primary"
+        class="settings-button settings-button--primary crop-primary"
+        hover-class="settings-button--pressed"
+        :hover-stay-time="80"
         :disabled="!ready || exporting"
         @click="handleConfirm"
       >
-        {{ exporting ? '生成中…' : '使用头像' }}
+        {{ exporting ? t('account.settings.processing') : t('account.settings.usePhoto') }}
       </button>
     </view>
     <canvas
@@ -63,6 +75,8 @@
 </template>
 
 <script setup lang="ts">
+import { useLocalizedMessage } from '@/composables/use-localized-message';
+import { t } from '@/i18n';
 import { ref, getCurrentInstance } from 'vue';
 import { onLoad, onUnload } from '@dcloudio/uni-app';
 
@@ -75,7 +89,7 @@ const cropSizePx = Math.max(
 const outputSizePx = 400;
 const ready = ref(false);
 const exporting = ref(false);
-const loadError = ref('');
+const loadError = useLocalizedMessage();
 const originalWidth = ref(0);
 const originalHeight = ref(0);
 const baseDisplayWidth = ref(0);
@@ -102,7 +116,7 @@ async function initWithSrc(inputSrc: string) {
   ready.value = false;
   loadError.value = '';
   if (!inputSrc) {
-    loadError.value = '图片不存在，请返回重新选择';
+    loadError.value = 'account.settings.imageUnavailableGoBackAnd';
     return;
   }
   loadingSource = inputSrc;
@@ -121,7 +135,8 @@ async function initWithSrc(inputSrc: string) {
     Object.assign(latestMove, { x: posX.value, y: posY.value, scale: 1 });
     ready.value = true;
   } catch {
-    if (!disposed && version === initVersion) loadError.value = '读取图片失败，请重试';
+    if (!disposed && version === initVersion)
+      loadError.value = 'account.settings.unableToReadImageTry';
   } finally {
     if (version === initVersion) loadingSource = '';
   }
@@ -140,7 +155,7 @@ onLoad((options: any) => {
     } catch {}
     void initWithSrc(decoded);
   } else {
-    loadError.value = '图片不存在，请返回重新选择';
+    loadError.value = 'account.settings.imageUnavailableGoBackAnd';
   }
 });
 
@@ -175,7 +190,7 @@ function handleCancel() {
 async function handleConfirm() {
   if (!ready.value || exporting.value) return;
   exporting.value = true;
-  uni.showLoading({ title: '生成中…' });
+  uni.showLoading({ title: t('account.settings.processing') });
   try {
     const displayScale = (baseDisplayWidth.value * latestMove.scale) / originalWidth.value;
     const width = cropSizePx / displayScale;
@@ -208,7 +223,8 @@ async function handleConfirm() {
     openerEventChannel?.emit('cropped', { tempFilePath: result.tempFilePath });
     uni.navigateBack();
   } catch {
-    if (!disposed) uni.showToast({ title: '生成失败，请重试', icon: 'none' });
+    if (!disposed)
+      uni.showToast({ title: t('account.settings.unableToProcessImageTry'), icon: 'none' });
   } finally {
     if (!disposed && exporting.value) {
       exporting.value = false;
@@ -278,41 +294,11 @@ async function handleConfirm() {
   flex-shrink: 0;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+  padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
   background: #fff;
 }
-.crop-primary,
-.crop-secondary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  margin: 0;
-  padding: 10px 24px;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
-  background: #fff;
-  color: #475467;
-  font-size: 16px;
-  line-height: 1.5;
-}
-.crop-primary {
-  border-color: #660874;
-  background: #660874;
-  color: #fff;
-}
-.crop-primary[disabled],
-.crop-secondary[disabled] {
-  opacity: 0.5;
-}
-.crop-primary::after,
-.crop-secondary::after {
-  border: 0;
-}
-.crop-primary:focus-visible,
-.crop-secondary:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 3px;
+.crop-actions .settings-button {
+  min-width: 96px;
 }
 .crop-canvas {
   position: absolute;

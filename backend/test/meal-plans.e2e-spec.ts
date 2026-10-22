@@ -41,7 +41,7 @@ describe('MealPlansController (e2e)', () => {
     testUserId = loginResponse.body.data.user.id;
 
     // 获取测试菜品ID
-    const dish1 = await prisma.dish.findFirst({ where: { name: '宫保鸡丁' } });
+    const dish1 = await prisma.dish.findFirst({ where: { name: '牛肉面' } });
     testDishId1 = dish1?.id || '';
     const dish2 = await prisma.dish.findFirst({ where: { name: '清蒸鲈鱼' } });
     testDishId2 = dish2?.id || '';
@@ -91,6 +91,29 @@ describe('MealPlansController (e2e)', () => {
       expect(response.body.data.dishes).toEqual([testDishId1, testDishId2]);
 
       testMealPlanId = response.body.data.id;
+    });
+
+    it('rejects dishes that conflict with the current saved dietary preferences', async () => {
+      const dish = await prisma.dish.findFirstOrThrow({
+        where: { name: '宫保鸡丁' },
+      });
+      const count = await prisma.mealPlan.count({
+        where: { userId: testUserId },
+      });
+      const response = await request(app.getHttpServer())
+        .post('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          startDate: '2099-11-01',
+          endDate: '2099-11-01',
+          mealTime: 'lunch',
+          dishes: [dish.id],
+        });
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('DIETARY_CONFLICT');
+      expect(
+        await prisma.mealPlan.count({ where: { userId: testUserId } }),
+      ).toBe(count);
     });
 
     it('should deduplicate dishes', async () => {

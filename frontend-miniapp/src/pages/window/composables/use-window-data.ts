@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getWindowDetail } from '@/api/modules/canteen';
@@ -67,13 +68,14 @@ export function useWindowData() {
       const response = await getWindowDetail(windowId);
       if (!isCurrent()) return false;
       if (response.code !== 200 || !response.data)
-        throw new Error(response.message || '获取窗口详情失败');
+        throw new Error(response.message || t('food.couldNotLoadCounterDetails'));
       windowInfo.value = response.data;
       return true;
     } catch (err) {
       if (!isCurrent()) return false;
       console.error('获取窗口详情失败:', err);
-      headerError.value = err instanceof Error ? err.message : '获取窗口信息失败';
+      headerError.value =
+        err instanceof Error ? err.message : t('food.couldNotLoadCounterInformation');
       return false;
     } finally {
       if (isCurrent()) headerLoading.value = false;
@@ -118,12 +120,12 @@ export function useWindowData() {
         hasMore.value = res.data.meta.page < res.data.meta.totalPages;
         return true;
       } else {
-        throw new Error(res.message || '获取菜品列表失败');
+        throw new Error(res.message || t('food.couldNotLoadDishes2'));
       }
     } catch (err) {
       if (!ownsQuery()) return false;
       console.error('获取窗口菜品失败:', err);
-      error.value = err instanceof Error ? err.message : '获取菜品信息失败';
+      error.value = err instanceof Error ? err.message : t('food.couldNotLoadDishInformation');
       return false;
     } finally {
       if (ownsQuery()) {

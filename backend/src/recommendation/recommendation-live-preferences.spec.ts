@@ -35,6 +35,7 @@ describe('Recommendation current preference boundary', () => {
       null as any,
       null as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     const result = await service.getUserFeaturesWithCache('user');
     expect(result.allergens).toEqual(['花生', '虾']);
@@ -68,6 +69,7 @@ describe('Recommendation current preference boundary', () => {
         null as any,
         null as any,
         null as any,
+        { expandValues: async (values: string[]) => values } as any,
       );
       const result =
         kind === 'personalized'
@@ -88,7 +90,7 @@ describe('Recommendation current preference boundary', () => {
             id: { in: ['shrimp'] },
             AND: expect.arrayContaining([
               { status: 'online' },
-              { NOT: { allergens: { hasSome: ['虾'] } } },
+              { NOT: { allergenKeys: { hasSome: ['虾'] } } },
               { NOT: { ingredients: { hasSome: ['香菜'] } } },
             ]),
           }),

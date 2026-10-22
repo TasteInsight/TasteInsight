@@ -113,10 +113,18 @@ async function streamDraft(proposal: any = draft()) {
 
 test('SSE and account-scoped history carry a proposal without saving or trusting model UI status', async () => {
   const store = useChatStore();
-  const card = await streamDraft({ ...draft(), status: 'saved', error: 'model status' });
+  const card = await streamDraft({
+    ...draft(),
+    status: 'saved',
+    error: 'model status',
+    errorKey: 'social.preferencesChanged',
+    errorParams: { p0: 'model detail' },
+  });
   expect(card).toMatchObject(draft());
   expect(card.status).toBeUndefined();
   expect(card.error).toBeUndefined();
+  expect(card.errorKey).toBeUndefined();
+  expect(card.errorParams).toBeUndefined();
   expect(updateUserProfile).not.toHaveBeenCalled();
   expect(getUserProfile).not.toHaveBeenCalled();
   expect(store.loadSessionFromHistory('conversation-A')).toBe(true);
@@ -236,7 +244,7 @@ test.each(['saved', 'dismissed', 'saving'])(
     restored.loadSessionFromHistory('conversation-A');
     const restoredCard = readCard(restored.messages);
     expect(restoredCard.status).toBe(status === 'saving' ? 'failed' : status);
-    if (status === 'saving') expect(restoredCard.error).toContain('未确认');
+    if (status === 'saving') expect(restoredCard.errorKey).toBe('social.preferenceSaveUnconfirmed');
     else expect(await restored.applyPreferences(restoredCard)).toBe(false);
   }
 );
@@ -259,7 +267,7 @@ test('divergent touched values reject an old proposal without overwriting newer 
   (getUserProfile as jest.Mock).mockResolvedValueOnce({ code: 200, data: latest });
   expect(await store.applyPreferences(card)).toBe(false);
   expect(card.status).toBe('stale');
-  expect(card.error).toContain('重新生成');
+  expect(card.errorKey).toBe('social.preferencesChanged');
   expect(useUserStore().userInfo?.preferences?.tagPreferences).toEqual(['低糖']);
   expect(updateUserProfile).not.toHaveBeenCalled();
 });
@@ -304,7 +312,7 @@ test.each([
   const card = await streamDraft(proposal);
   expect(await store.applyPreferences(card)).toBe(false);
   expect(card.status).toBe('invalid');
-  expect(card.error).toContain('重新生成');
+  expect(card.errorKey).toBe('social.invalidPreferenceSuggestion');
   expect(updateUserProfile).not.toHaveBeenCalled();
   expect(getUserProfile).not.toHaveBeenCalled();
 });

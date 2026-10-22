@@ -80,7 +80,7 @@ test('compact dates retain time and include the year for older notifications', (
 
  test('report results always open the owned result record even after content deletion', () => {
   const report = item({ type: 'report_handled', actor: null, targetType: 'report', targetId: 'report / 1', dishId: null });
-  expect(notificationDestination(report)).toEqual({ url: '/pages/profile/my-reports/index?id=report%20%2F%201' });
+  expect(notificationDestination(report)).toEqual({ url: '/pages/profile/records/my-reports/index?id=report%20%2F%201' });
   expect(notificationTitle(report)).toBe('举报处理结果已更新');
   expect(notificationText(report)).toContain('查看处理详情');
  });

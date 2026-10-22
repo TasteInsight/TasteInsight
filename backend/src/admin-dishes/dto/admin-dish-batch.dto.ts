@@ -1,3 +1,5 @@
+import { parseAllergenValues } from '@/allergens/allergen-values';
+import { DishTranslationFieldsDto } from '@/dishes/dto/dish-translation.dto';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -16,7 +18,7 @@ export enum BatchDishStatus {
   INVALID = 'invalid',
 }
 
-export class BatchParsedDishDto {
+export class BatchParsedDishDto extends DishTranslationFieldsDto {
   @IsOptional()
   @IsString()
   tempId?: string;
@@ -52,7 +54,7 @@ export class BatchParsedDishDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => splitToStringArray(value))
+  @Transform(({ value }) => parseAllergenValues(value))
   allergens?: string[];
 
   @IsNotEmpty()

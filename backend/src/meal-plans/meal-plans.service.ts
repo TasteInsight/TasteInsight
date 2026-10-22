@@ -6,6 +6,8 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { AllergensService } from '@/allergens/allergens.service';
+import { assertDietaryExclusions } from './meal-plan-validation';
 import { Prisma } from '@prisma/client';
 import { isCurrentStudent } from '@/auth/student-status';
 import { CreateMealPlanDto } from './dto/create-meal-plan.dto';
@@ -29,7 +31,37 @@ type SavedPlan = Prisma.MealPlanGetPayload<{ include: typeof planInclude }>;
 
 @Injectable()
 export class MealPlansService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly allergens: AllergensService,
+  ) {}
+
+  private async assertCurrentDietaryExclusions(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    dishIds: string[],
+    endDate: string,
+  ) {
+    if (endDate < campusDate() || !dishIds.length) return;
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: {
+        allergens: true,
+        preferences: { select: { avoidIngredients: true } },
+      },
+    });
+    if (!user) throw new NotFoundException('用户不存在');
+    const avoidIngredients = user.preferences?.avoidIngredients ?? [];
+    if (!user.allergens.length && !avoidIngredients.length) return;
+    const [allergens, dishes] = await Promise.all([
+      this.allergens.expandValues(user.allergens, tx),
+      tx.dish.findMany({
+        where: { id: { in: dishIds } },
+        select: { allergens: true, ingredients: true },
+      }),
+    ]);
+    assertDietaryExclusions(dishes, { allergens, avoidIngredients });
+  }
 
   async assertStudent(
     tx: Pick<Prisma.TransactionClient, 'studentVerification'>,
@@ -39,7 +71,10 @@ export class MealPlansService {
       where: { userId },
     });
     if (!isCurrentStudent(verification)) {
-      throw new ForbiddenException('请先完成有效的学生认证');
+      throw new ForbiddenException({
+        code: 'STUDENT_VERIFICATION_REQUIRED',
+        message: '请先完成有效的学生认证',
+      });
     }
   }
 
@@ -134,6 +169,8 @@ export class MealPlansService {
               select: {
                 id: true,
                 name: true,
+                nameEn: true,
+                descriptionEn: true,
                 images: true,
                 price: true,
                 priceUnit: true,
@@ -176,6 +213,12 @@ export class MealPlansService {
     try {
       mealPlan = await this.prisma.$transaction(async (tx) => {
         if (dto.isPublic) await this.assertStudent(tx, userId);
+        await this.assertCurrentDietaryExclusions(
+          tx,
+          userId,
+          dishIds,
+          mealDate(dto.endDate),
+        );
         return tx.mealPlan.create({
           data: {
             startDate: storedMealDate(dto.startDate),
@@ -252,7 +295,10 @@ export class MealPlansService {
           },
         }))
       ) {
-        throw new ConflictException('请先取消约饭邀请，再修改规划日期或餐次');
+        throw new ConflictException({
+          code: 'ACTIVE_DINING_INVITATION',
+          message: '请先取消约饭邀请，再修改规划日期或餐次',
+        });
       }
       if (scheduleChanged) {
         await tx.mealPlanCompletion.deleteMany({
@@ -264,6 +310,22 @@ export class MealPlansService {
             ],
           },
         });
+      }
+      if (dto.dishes !== undefined || scheduleChanged) {
+        const selected =
+          dto.dishes ??
+          (
+            await tx.mealPlanDish.findMany({
+              where: { mealPlanId: id },
+              select: { dishId: true },
+            })
+          ).map((row) => row.dishId);
+        await this.assertCurrentDietaryExclusions(
+          tx,
+          userId,
+          [...new Set(selected)],
+          endDate,
+        );
       }
       return tx.mealPlan.update({
         where: { id },
@@ -326,7 +388,10 @@ export class MealPlansService {
             },
           })
         ) {
-          throw new ConflictException('请先取消当天的约饭邀请，再标记已吃');
+          throw new ConflictException({
+            code: 'ACTIVE_DINING_INVITATION',
+            message: '请先取消当天的约饭邀请，再标记已吃',
+          });
         }
         await tx.mealPlanCompletion.upsert({
           where: {
@@ -367,7 +432,10 @@ export class MealPlansService {
           },
         })
       ) {
-        throw new ConflictException('请先取消约饭邀请，再删除规划');
+        throw new ConflictException({
+          code: 'ACTIVE_DINING_INVITATION',
+          message: '请先取消约饭邀请，再删除规划',
+        });
       }
       await tx.mealPlan.delete({ where: { id } });
     });

@@ -50,6 +50,15 @@ describe('views/BatchAdd', () => {
     vi.unstubAllGlobals()
   })
 
+  it('shows both descriptions before importing translated content', async () => {
+    const wrapper = shallowMount(BatchAdd, { global: { stubs: { Header: true } } })
+    wrapper.vm.parsedData = [{ status: 'valid', name: '菜品', nameEn: 'Dish', description: '中文描述', descriptionEn: 'Complete English description' }] as any
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('中文描述')
+    expect(wrapper.get('[lang="en"]').text()).toBe('Complete English description')
+    wrapper.unmount()
+  })
+
   it('downloads the returned workbook with an xlsx filename and releases the URL', async () => {
     const workbook = new Blob(['workbook'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     mocks.dishApiMock.downloadBatchTemplate.mockResolvedValue(workbook)

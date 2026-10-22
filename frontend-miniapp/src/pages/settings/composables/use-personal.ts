@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, reactive, ref, onMounted, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { uploadImage } from '@/api/modules/upload';
@@ -52,16 +53,16 @@ export function usePersonal() {
           return;
         }
         uploading.value = true;
-        uni.showLoading({ title: '上传中...' });
+        uni.showLoading({ title: t('account.settings.uploading2') });
         try {
           const result = await uploadImage(filePath);
           if (!ownsSelection()) return;
           form.avatar = result.url;
-          uni.showToast({ title: '头像上传成功', icon: 'success' });
+          uni.showToast({ title: t('account.settings.photoUploaded'), icon: 'success' });
         } catch (error) {
           if (!ownsSelection()) return;
           console.error('上传头像失败:', error);
-          uni.showToast({ title: '头像上传失败', icon: 'none' });
+          uni.showToast({ title: t('account.settings.unableToUploadPhoto'), icon: 'none' });
         } finally {
           if (ownsSelection()) {
             uploading.value = false;
@@ -103,7 +104,11 @@ export function usePersonal() {
               navRes.eventChannel.emit('init', { src: tempFilePath });
             },
             fail: () => {
-              if (ownsSelection()) uni.showToast({ title: '打开裁剪失败，请重试', icon: 'none' });
+              if (ownsSelection())
+                uni.showToast({
+                  title: t('account.settings.unableToOpenCropEditor'),
+                  icon: 'none',
+                });
               finish();
             },
           });
@@ -111,7 +116,7 @@ export function usePersonal() {
         fail: err => {
           if (ownsSelection() && !String(err.errMsg || '').includes('cancel')) {
             console.error('选择图片失败:', err);
-            uni.showToast({ title: '选择图片失败', icon: 'none' });
+            uni.showToast({ title: t('account.settings.unableToSelectImage'), icon: 'none' });
           }
           finish();
         },
@@ -122,7 +127,7 @@ export function usePersonal() {
   async function handleSave(): Promise<boolean> {
     if (!profile.canEdit.value || uploading.value || selecting.value) return false;
     if (!form.nickname.trim()) {
-      uni.showToast({ title: '请输入昵称', icon: 'none' });
+      uni.showToast({ title: t('account.settings.enterNickname'), icon: 'none' });
       return false;
     }
     return profile.saveProfile({

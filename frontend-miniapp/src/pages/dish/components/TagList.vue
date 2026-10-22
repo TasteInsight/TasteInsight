@@ -3,7 +3,7 @@
     <view class="dish-list-heading">
       <text class="dish-list-title">#{{ currentTag }}</text>
       <text class="dish-list-caption">{{
-        canteenName ? canteenName + ' · 相关菜品' : '相关菜品'
+        canteenName ? t('food.relatedInCanteen', { canteen: canteenName }) : t('food.relatedDishes')
       }}</text>
     </view>
     <view class="dish-list-content page-state-content" :aria-busy="loading || loadingMore">
@@ -12,7 +12,7 @@
         :initialized="initialized"
         :has-content="!!dishes.length"
         :error="errorIsAppend ? '' : error"
-        empty-title="暂无相关菜品"
+        :empty-title="t('food.noRelatedDishesYet')"
         empty-icon="search"
         @retry="loadDishes(!errorIsAppend)"
       />
@@ -27,12 +27,14 @@
           :loading="loadingMore"
           has-content
           :error="errorIsAppend ? error : ''"
-          refreshing-title="正在加载更多…"
+          :refreshing-title="t('food.loadingMore')"
           @retry="loadDishes(false)"
         />
         <view v-if="!loading && !loadingMore && !error" class="dish-list-footer">
-          <button v-if="hasMore" class="dish-list-action" @click="loadDishes()">加载更多</button>
-          <text v-else>没有更多了</text>
+          <button v-if="hasMore" class="dish-list-action" @click="loadDishes()">
+            {{ t('food.loadMore') }}
+          </button>
+          <text v-else>{{ t('food.youVeReachedTheEnd') }}</text>
         </view>
       </view>
     </view>
@@ -40,7 +42,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onScopeDispose } from 'vue';
+import { useLocalizedMessage } from '@/composables/use-localized-message';
+import { t } from '@/i18n';
+import { ref, watch, onScopeDispose, watchEffect } from 'vue';
 import { onLoad, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { getDishes } from '@/api/modules/dish';
 import type { Dish } from '@/types/api';
@@ -57,7 +61,7 @@ const dishes = ref<Dish[]>([]);
 const initialized = ref(false);
 const loading = ref(false);
 const loadingMore = ref(false);
-const error = ref('');
+const error = useLocalizedMessage();
 const errorIsAppend = ref(false);
 const page = ref(1);
 const pageSize = ref(10);
@@ -86,12 +90,12 @@ onLoad((options: any) => {
     canteenId.value = options.canteenId;
     canteenName.value = decodeURIComponent(options.canteenName || '');
 
-    uni.setNavigationBarTitle({
-      title: '标签菜品',
-    });
-
     loadDishes(true);
   }
+});
+
+watchEffect(() => {
+  uni.setNavigationBarTitle({ title: t('food.dishesByTag') });
 });
 
 const loadDishes = async (refresh = false) => {
@@ -142,11 +146,11 @@ const loadDishes = async (refresh = false) => {
       hasMore.value = page.value < res.data.meta.totalPages;
       initialized.value = true;
     } else {
-      error.value = res.message || '加载失败';
+      error.value = res.message || 'food.couldNotLoad';
     }
   } catch (err) {
     if (!ownsQuery()) return;
-    error.value = '网络错误，请稍后重试';
+    error.value = 'food.connectionErrorTryAgainLater';
     console.error(err);
   } finally {
     if (ownsQuery()) {

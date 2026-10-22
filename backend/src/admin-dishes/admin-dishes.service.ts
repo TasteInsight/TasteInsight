@@ -1,3 +1,10 @@
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { DishTranslationFieldsDto } from '@/dishes/dto/dish-translation.dto';
+import {
+  normalizeAllergenValues,
+  parseAllergenValues,
+} from '@/allergens/allergen-values';
 import {
   canAccessCanteen,
   canteenScopeFilter,
@@ -46,6 +53,8 @@ type NormalizedExcelRow = {
   windowName?: string;
   windowNumber?: string;
   dishName?: string;
+  nameEn?: string;
+  descriptionEn?: string;
   subDishRaw?: string;
   priceRaw?: any;
   supplyTime?: string;
@@ -91,6 +100,11 @@ export class AdminDishesService {
     窗口编号: 'windowNumber',
     窗口号: 'windowNumber',
     菜品名: 'dishName',
+    菜品英文名: 'nameEn',
+    英文名称: 'nameEn',
+    nameEn: 'nameEn',
+    英文描述: 'descriptionEn',
+    descriptionEn: 'descriptionEn',
     菜品子项: 'subDishRaw',
     价格: 'priceRaw',
     供应时间: 'supplyTime',
@@ -185,6 +199,7 @@ export class AdminDishesService {
     if (keyword) {
       where.OR = [
         { name: { contains: keyword, mode: 'insensitive' } },
+        { nameEn: { contains: keyword, mode: 'insensitive' } },
         { description: { contains: keyword, mode: 'insensitive' } },
         { canteen: { name: { contains: keyword, mode: 'insensitive' } } },
         { window: { name: { contains: keyword, mode: 'insensitive' } } },
@@ -410,6 +425,8 @@ export class AdminDishesService {
     return {
       adminId: adminInfo.id,
       name: createDto.name,
+      nameEn: createDto.nameEn ?? null,
+      descriptionEn: createDto.descriptionEn ?? null,
       tags: createDto.tags || [],
       price: createDto.price,
       calories: createDto.calories ?? null,
@@ -423,7 +440,7 @@ export class AdminDishesService {
       parentDishId: createDto.parentDishId,
       parentUploadId: createDto.parentUploadId,
       ingredients: createDto.ingredients || [],
-      allergens: createDto.allergens || [],
+      allergens: normalizeAllergenValues(createDto.allergens || []),
       spicyLevel: createDto.spicyLevel || 0,
       sweetness: createDto.sweetness || 0,
       saltiness: createDto.saltiness || 0,
@@ -515,6 +532,9 @@ export class AdminDishesService {
 
     // 基本信息
     if (updateDto.name !== undefined) updateData.name = updateDto.name;
+    if (updateDto.nameEn !== undefined) updateData.nameEn = updateDto.nameEn;
+    if (updateDto.descriptionEn !== undefined)
+      updateData.descriptionEn = updateDto.descriptionEn;
     if (updateDto.tags !== undefined) updateData.tags = updateDto.tags;
     if (updateDto.price !== undefined) updateData.price = updateDto.price;
     if (updateDto.calories !== undefined)
@@ -534,7 +554,7 @@ export class AdminDishesService {
     if (updateDto.ingredients !== undefined)
       updateData.ingredients = updateDto.ingredients;
     if (updateDto.allergens !== undefined)
-      updateData.allergens = updateDto.allergens;
+      updateData.allergens = normalizeAllergenValues(updateDto.allergens);
     if (updateDto.spicyLevel !== undefined)
       updateData.spicyLevel = updateDto.spicyLevel;
     if (updateDto.sweetness !== undefined)
@@ -901,6 +921,8 @@ export class AdminDishesService {
         'Tags',
         '主辅料',
         '过敏原',
+        '菜品英文名',
+        '英文描述',
       ],
       [
         '示例食堂',
@@ -915,12 +937,14 @@ export class AdminDishesService {
         '番茄与鸡蛋炒制',
         '家常菜',
         '番茄,鸡蛋',
-        '蛋',
+        '鸡蛋',
+        'Stir-fried tomatoes and eggs',
+        'Tomatoes stir-fried with eggs',
       ],
     ]);
-    data['!cols'] = [18, 12, 18, 12, 20, 24, 14, 24, 20, 36, 24, 24, 24].map(
-      (wch) => ({ wch }),
-    );
+    data['!cols'] = [
+      18, 12, 18, 12, 20, 24, 14, 24, 20, 36, 24, 24, 24, 36, 50,
+    ].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(workbook, data, '菜品导入');
     const instructions = XLSX.utils.aoa_to_sheet([
       ['项目', '填写说明'],
@@ -955,6 +979,11 @@ export class AdminDishesService {
         '选填，用英文逗号分隔，例如早餐、午餐、晚餐、夜宵中的适用时段。',
       ],
       ['菜品描述', '选填，填写菜品介绍。'],
+      ['菜品英文名', '选填，最多200个字符；留空保留已有英文名称。'],
+      [
+        '英文描述',
+        '选填，最多4000个字符；留空保留已有英文描述。清空英文内容可在菜品编辑页完成。',
+      ],
       ['Tags', '选填，用英文逗号分隔多个标签。'],
       ['主辅料', '选填，用英文逗号分隔多种食材。'],
       ['过敏原', '选填，用英文逗号分隔多种过敏原；请按已核实的信息填写。'],
@@ -1198,6 +1227,8 @@ export class AdminDishesService {
     return {
       id: dish.id,
       name: dish.name,
+      nameEn: dish.nameEn ?? null,
+      descriptionEn: dish.descriptionEn ?? null,
       tags: dish.tags,
       price: dish.price,
       calories: dish.calories ?? null,
@@ -1246,6 +1277,8 @@ export class AdminDishesService {
     return {
       id: dishUpload.id,
       name: dishUpload.name,
+      nameEn: dishUpload.nameEn ?? null,
+      descriptionEn: dishUpload.descriptionEn ?? null,
       tags: dishUpload.tags,
       price: dishUpload.price,
       calories: dishUpload.calories ?? null,
@@ -1437,9 +1470,7 @@ export class AdminDishesService {
     const ingredients = (item.ingredients || [])
       .map((v) => v.trim())
       .filter((v) => v.length > 0);
-    const allergens = (item.allergens || [])
-      .map((v) => v.trim())
-      .filter((v) => v.length > 0);
+    const allergens = normalizeAllergenValues(item.allergens || []);
     const subDishNames = (item.subDishNames || [])
       .map((name) => name.trim())
       .filter((name) => name.length > 0);
@@ -1475,6 +1506,12 @@ export class AdminDishesService {
     const description = item.description?.trim() || '';
     const dishData: AdminCreateDishDto = {
       name: dishName,
+      nameEn:
+        item.nameEn === undefined ? undefined : item.nameEn?.trim() || null,
+      descriptionEn:
+        item.descriptionEn === undefined
+          ? undefined
+          : item.descriptionEn?.trim() || null,
       price,
       priceUnit,
       description,
@@ -1504,6 +1541,8 @@ export class AdminDishesService {
           {
             ...dishData,
             name: subDishName,
+            nameEn: undefined,
+            descriptionEn: undefined,
             ...(parent.uploadId
               ? { parentUploadId: parent.uploadId }
               : { parentDishId: parent.dishId }),
@@ -1721,9 +1760,12 @@ export class AdminDishesService {
       if (!upload) throw new BadRequestException('本批次待审记录已不存在');
 
       if (upload.status === 'pending') {
+        const updateData: Prisma.DishUploadUpdateInput = { ...uploadData };
+        if (data.nameEn === undefined) delete updateData.nameEn;
+        if (data.descriptionEn === undefined) delete updateData.descriptionEn;
         await tx.dishUpload.update({
           where: { id: upload.id },
-          data: { ...uploadData, revision: (upload.revision ?? 1) + 1 },
+          data: { ...updateData, revision: (upload.revision ?? 1) + 1 },
         });
       } else if (upload.status === 'approved' && upload.approvedDishId) {
         await this.updateDish(tx, upload.approvedDishId, data, adminInfo);
@@ -2015,8 +2057,18 @@ export class AdminDishesService {
         : [];
     const tags = splitToStringArray(row.tagsRaw);
     const ingredients = splitToStringArray(row.ingredientsRaw);
-    const allergens = splitToStringArray(row.allergensRaw);
+    const allergens = parseAllergenValues(row.allergensRaw);
     const subDishNames = splitToStringArray(row.subDishRaw);
+
+    const translations = plainToInstance(DishTranslationFieldsDto, {
+      nameEn: String(row.nameEn ?? '').trim() || undefined,
+      descriptionEn: String(row.descriptionEn ?? '').trim() || undefined,
+    });
+    for (const error of validateSync(translations)) {
+      errors.push(
+        `${error.property === 'nameEn' ? '英文名称' : '英文描述'}超过长度限制`,
+      );
+    }
 
     const status = errors.length
       ? BatchDishStatus.INVALID
@@ -2028,6 +2080,7 @@ export class AdminDishesService {
     return {
       tempId: randomUUID(),
       name: dishName,
+      ...translations,
       description: row.description ? String(row.description).trim() : undefined,
       price,
       priceUnit: unit,

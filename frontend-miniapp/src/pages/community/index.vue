@@ -1,6 +1,6 @@
 <template>
   <view class="campus-hub page-content page-state-layout">
-    <view class="campus-sections" role="tablist" aria-label="校园内容">
+    <view class="campus-sections" role="tablist" :aria-label="t('social.campusContent')">
       <button
         v-for="item in sections"
         :key="item.key"
@@ -14,7 +14,7 @@
         @keyup="item.handleKeyup"
         @blur="item.clearPress"
       >
-        {{ item.label }}
+        {{ t(item.label) }}
       </button>
     </view>
     <view v-if="visited.posts" v-show="section === 'posts'" class="campus-panel page-state-content">
@@ -33,6 +33,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, nextTick, reactive, ref } from 'vue';
 import { onShow, onHide, onPageScroll, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import PostFeed from './components/PostFeed.vue';
@@ -89,9 +90,9 @@ function selectSection(value: CampusSection) {
 }
 const sections = (
   [
-    { key: 'posts', label: '动态' },
-    { key: 'dining', label: '约饭' },
-    { key: 'news', label: '资讯' },
+    { key: 'posts', label: 'social.posts' },
+    { key: 'dining', label: 'social.diningTogether' },
+    { key: 'news', label: 'social.news' },
   ] as { key: CampusSection; label: string }[]
 ).map(item => ({
   ...item,

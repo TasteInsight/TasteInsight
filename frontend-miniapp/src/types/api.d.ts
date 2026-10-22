@@ -67,7 +67,11 @@ export interface User {
   avatar: string;
   bio?: string;
   capabilities?: { canContribute: boolean };
-  publicProfileSubmission?: { status: string; fields: Record<string, string | null>; reason: string | null } | null;
+  publicProfileSubmission?: {
+    status: string;
+    fields: Record<string, string | null>;
+    reason: string | null;
+  } | null;
   preferences?: UserPreference;
   settings?: UserSettings;
   allergens?: string[];
@@ -256,6 +260,8 @@ export enum Status {
  * Dish
  */
 export interface Dish {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -418,6 +424,7 @@ export interface Favorite {
   dishId: string;
   addedAt: string;
   dishName: string;
+  dishNameEn?: string | null;
   dishImages: string[];
   dishPrice: number;
   priceUnit?: string | null;
@@ -615,6 +622,8 @@ export interface GetDishesRequest {
  * 用户上传菜品请求
  */
 export interface DishUserCreateRequest {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -655,6 +664,8 @@ export interface DishUserCreateRequest {
  * 管理员创建菜品请求
  */
 export interface DishCreateRequest {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -686,6 +697,8 @@ export interface DishCreateRequest {
  * 管理员更新菜品请求
  */
 export interface DishUpdateRequest {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -907,16 +920,38 @@ export interface AdminLoginData {
  * 菜品上传响应数据
  */
 export interface DishUploadData {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   id: string;
   status: DishContributionStatus;
   revision: number;
 }
 
 export type DishContributionStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
-export type DishContributionField = 'name' | 'tags' | 'price' | 'priceUnit' | 'description' | 'images'
-  | 'ingredients' | 'allergens' | 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness'
-  | 'calories' | 'protein' | 'carbohydrate' | 'fat'
-  | 'windowId' | 'windowName' | 'windowNumber' | 'availableMealTime' | 'availableDates';
+export type DishContributionField =
+  | 'name'
+  | 'tags'
+  | 'price'
+  | 'priceUnit'
+  | 'nameEn'
+  | 'descriptionEn'
+  | 'description'
+  | 'images'
+  | 'ingredients'
+  | 'allergens'
+  | 'spicyLevel'
+  | 'sweetness'
+  | 'saltiness'
+  | 'oiliness'
+  | 'calories'
+  | 'protein'
+  | 'carbohydrate'
+  | 'fat'
+  | 'windowId'
+  | 'windowName'
+  | 'windowNumber'
+  | 'availableMealTime'
+  | 'availableDates';
 
 /**
  * 评价列表扩展数据
@@ -934,6 +969,7 @@ export interface ReviewListData extends PaginatedData<Review> {
  */
 export interface MyReviewItem extends Review {
   dishName: string;
+  dishNameEn?: string | null;
   dishImage: string;
   reply?: string;
   replyTime?: string;
@@ -943,6 +979,8 @@ export interface MyReviewItem extends Review {
  * 我的上传列表项
  */
 export interface MyUploadItem {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   calories?: number | null;
   protein?: number | null;
   carbohydrate?: number | null;
@@ -965,6 +1003,8 @@ export interface MyUploadItem {
 }
 
 export interface MyUploadDetail extends Omit<DishUserCreateRequest, 'status' | 'targetDishId'> {
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   id: string;
   name: string;
   status: DishContributionStatus;
@@ -986,6 +1026,7 @@ export interface BrowseHistoryItem {
   dishId: string;
   viewedAt: string;
   dishName: string;
+  dishNameEn?: string | null;
   dishImages: string[];
   dishPrice: number;
   priceUnit?: string | null;
@@ -1038,6 +1079,7 @@ export interface ImageUploadData {
 export interface PendingCommentItem extends Comment {
   reviewContent: string;
   dishName: string;
+  dishNameEn?: string | null;
 }
 
 /**
@@ -1045,6 +1087,7 @@ export interface PendingCommentItem extends Comment {
  */
 export interface PendingReviewItem extends Review {
   dishName: string;
+  dishNameEn?: string | null;
   dishImage: string;
   updatedAt: string;
 }
@@ -1193,6 +1236,7 @@ export interface ComponentDishCard {
     carbohydrate?: number | null;
     fat?: number | null;
     name: string;
+    nameEn?: string | null;
     image: string;
     rating: string;
     tags: string[];
@@ -1229,16 +1273,26 @@ export interface ComponentMealPlanDraftPreviewData {
   dishes: Dish[];
 }
 
-export type MealPlanChangeNotice =
+export type MealPlanChangeNotice = (
   | {
       kind: 'price';
       dishId: string;
       message: string;
       previousPriceLabel: string;
       unitChanged: boolean;
+      priceChange?: {
+        previousPrice: number;
+        currentPrice: number;
+        previousUnit: string;
+        currentUnit: string;
+      };
     }
   | { kind: 'status' | 'supply'; dishId: string; message: string }
-  | { kind: 'budget' | 'metadata'; message: string; dishId?: undefined };
+  | { kind: 'budget' | 'metadata'; message: string; dishId?: undefined }
+) & {
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
+};
 
 export interface ComponentMealPlanDraft {
   changeNotices?: MealPlanChangeNotice[];

@@ -1,6 +1,6 @@
 import { effectScope, reactive } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import { useMyUploads } from '@/pages/profile/my-uploads/composables/use-my-uploads';
+import { useMyUploads } from '@/pages/profile/records/my-uploads/composables/use-my-uploads';
 import { getMyUploads, getMyUpload, withdrawMyUpload } from '@/api/modules/user';
 import {
   notificationDestination,
@@ -51,7 +51,7 @@ test('notification results route to the exact owned contribution', () => {
   ]) {
     const notification = { type, targetType: 'dish_upload', targetId: 'upload / 1' } as any;
     expect(notificationDestination(notification)).toEqual({
-      url: '/pages/profile/my-uploads/index?id=upload%20%2F%201',
+      url: '/pages/profile/records/my-uploads/index?id=upload%20%2F%201',
     });
     expect(notificationText(notification)).toBe(text);
   }

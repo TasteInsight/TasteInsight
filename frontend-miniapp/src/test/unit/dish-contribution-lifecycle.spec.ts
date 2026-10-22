@@ -545,27 +545,90 @@ test('normalizes optional nutrition, preserves zero, and rejects nonfinite or ne
   }
   Object.assign(form.formData, { calories: '0', protein: '12.5', carbohydrate: '', fat: ' ' });
   expect(await form.submitForm()).toBe(true);
-  expect(uploadDish).toHaveBeenCalledWith(expect.objectContaining({ calories: 0, protein: 12.5, carbohydrate: null, fat: null }));
+  expect(uploadDish).toHaveBeenCalledWith(
+    expect.objectContaining({ calories: 0, protein: 12.5, carbohydrate: null, fat: null })
+  );
 });
 
 test('uses changedFields for nutrition clearing and preserves untouched nutrition during target editing', async () => {
-  (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { ...target, calories: 200, protein: 0, carbohydrate: 30, fat: null } });
+  (getDishById as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: { ...target, calories: 200, protein: 0, carbohydrate: 30, fat: null },
+  });
   const form = state();
   await form.initialize({ targetDishId: 'dish' });
   expect(form.formData).toMatchObject({ calories: 200, protein: 0, carbohydrate: 30, fat: '' });
   form.formData.calories = '';
   form.formData.carbohydrate = '30';
   expect(await form.submitForm()).toBe(true);
-  expect(uploadDish).toHaveBeenCalledWith(expect.objectContaining({ changedFields: ['calories'], calories: null, protein: 0, carbohydrate: 30 }));
+  expect(uploadDish).toHaveBeenCalledWith(
+    expect.objectContaining({
+      changedFields: ['calories'],
+      calories: null,
+      protein: 0,
+      carbohydrate: 30,
+    })
+  );
 });
 
 test('restores nutrition in a rejected upload and resubmits the same record with its revision', async () => {
-  (getMyUpload as jest.Mock).mockResolvedValue({ code: 200, data: { ...target, id: 'upload', status: 'rejected', revision: 7, calories: 0, protein: 16.5, carbohydrate: null, fat: 4, rejectReason: '核对分量' } });
+  (getMyUpload as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: {
+      ...target,
+      id: 'upload',
+      status: 'rejected',
+      revision: 7,
+      calories: 0,
+      protein: 16.5,
+      carbohydrate: null,
+      fat: 4,
+      rejectReason: '核对分量',
+    },
+  });
   (updateMyUpload as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'upload' } });
   const form = state();
   await form.initialize({ uploadId: 'upload' });
   expect(form.formData.calories).toBe(0);
   form.formData.protein = '18.5';
   expect(await form.submitForm()).toBe(true);
-  expect(updateMyUpload).toHaveBeenCalledWith('upload', expect.objectContaining({ revision: 7, calories: 0, protein: 18.5, carbohydrate: null, fat: 4 }));
+  expect(updateMyUpload).toHaveBeenCalledWith(
+    'upload',
+    expect.objectContaining({ revision: 7, calories: 0, protein: 18.5, carbohydrate: null, fat: 4 })
+  );
+});
+
+test('uses complete normalized allergen terms for selection and submission', async () => {
+  const form = state();
+  await form.initialize();
+  valid(form);
+  form.customAllergenInput.value = '  Pine\t Nuts  ';
+  form.addCustomAllergen();
+  form.customAllergenInput.value = 'PINE\u3000NUTS';
+  form.addCustomAllergen();
+  expect(form.formData.allergens).toEqual(['Pine Nuts']);
+  expect(form.isAllergenSelected('pine\u00A0nuts')).toBe(true);
+  expect(form.isAllergenSelected('Pine nutshell')).toBe(false);
+  form.toggleAllergen('PINE  NUTS');
+  expect(form.formData.allergens).toEqual([]);
+  form.formData.allergens = [' Private\t\nphrase ', 'PRIVATE  PHRASE', 'Private phrase extra'];
+  expect(await form.submitForm()).toBe(true);
+  expect(uploadDish).toHaveBeenCalledWith(
+    expect.objectContaining({ allergens: ['Private phrase', 'Private phrase extra'] })
+  );
+});
+
+test('compares existing allergen terms with the same normalization when choosing contribution fields', async () => {
+  (getDishById as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: { ...target, allergens: [' Pine\tNuts '] },
+  });
+  const form = state();
+  await form.initialize({ targetDishId: 'dish' });
+  form.formData.allergens = ['PINE  NUTS', 'pine nuts'];
+  form.formData.price = 13;
+  expect(await form.submitForm()).toBe(true);
+  expect(uploadDish).toHaveBeenCalledWith(
+    expect.objectContaining({ changedFields: ['price'], allergens: ['PINE NUTS'] })
+  );
 });

@@ -21,7 +21,7 @@
       </view>
     </scroll-view>
 
-    <view v-if="chips.length" class="filters__applied" aria-label="已应用的筛选条件">
+    <view v-if="chips.length" class="filters__applied" :aria-label="t('food.appliedFilters')">
       <button
         role="button"
         tabindex="0"
@@ -31,7 +31,7 @@
         v-for="chip in chips"
         :key="chip.id"
         class="filter-button filter-chip"
-        :aria-label="'移除' + chip.label"
+        :aria-label="t('food.removeFilter', { label: chip.label })"
         @click="removeChip(chip)"
       >
         <text class="filter-chip__label">{{ chip.label }}</text
@@ -46,7 +46,7 @@
         class="filter-button filter-clear"
         @click="resetAll"
       >
-        清除全部
+        {{ t('food.clearAll') }}
       </button>
     </view>
 
@@ -56,12 +56,12 @@
         class="filter-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="筛选菜品"
+        :aria-label="t('food.filterDishes')"
         @tap.stop
         @touchmove.stop
       >
         <view class="filter-panel__header">
-          <text class="filter-panel__title">筛选菜品</text>
+          <text class="filter-panel__title">{{ t('food.filterDishes') }}</text>
           <button
             role="button"
             tabindex="0"
@@ -69,7 +69,7 @@
             @keyup="handleButtonKeyup($event, closePanel)"
             @blur="clearButtonPress"
             class="filter-button filter-close"
-            aria-label="关闭筛选"
+            :aria-label="t('food.closeFilters')"
             @click="closePanel"
           >
             <view class="filter-close__icon" aria-hidden="true" />
@@ -83,7 +83,7 @@
         >
           <view class="filter-panel">
             <view id="filter-group-price" class="filter-group">
-              <text class="filter-group__title">预算</text>
+              <text class="filter-group__title">{{ t('food.budget') }}</text>
               <view class="filter-options">
                 <button
                   role="button"
@@ -106,32 +106,32 @@
                   {{ option.label }}
                 </button>
               </view>
-              <text class="filter-panel__label">自定义预算</text>
+              <text class="filter-panel__label">{{ t('food.customBudget') }}</text>
               <view class="filter-range">
                 <input
                   v-model="customPriceMin"
                   type="number"
-                  placeholder="最低价"
-                  aria-label="最低价格，元"
+                  :placeholder="t('food.minPrice')"
+                  :aria-label="t('food.minimumPriceInCny')"
                   class="filter-input"
                   @input="onCustomPriceInput"
                 />
-                <text class="filter-range__separator">至</text>
+                <text class="filter-range__separator">{{ t('food.to') }}</text>
                 <input
                   v-model="customPriceMax"
                   type="number"
-                  placeholder="最高价"
-                  aria-label="最高价格，元"
+                  :placeholder="t('food.maxPrice')"
+                  :aria-label="t('food.maximumPriceInCny')"
                   class="filter-input"
                   @input="onCustomPriceInput"
                 />
-                <text class="filter-range__unit">元</text>
+                <text class="filter-range__unit">{{ t('food.cny') }}</text>
               </view>
               <text v-if="priceError" class="filter-error" role="alert">{{ priceError }}</text>
             </view>
 
             <view id="filter-group-rating" class="filter-group">
-              <text class="filter-group__title">评分</text>
+              <text class="filter-group__title">{{ t('food.rating') }}</text>
               <view class="filter-options">
                 <button
                   role="button"
@@ -154,34 +154,34 @@
                   {{ option.label }}
                 </button>
               </view>
-              <text class="filter-panel__label">自定义评分范围</text>
+              <text class="filter-panel__label">{{ t('food.customRatingRange') }}</text>
               <view class="filter-range">
                 <input
                   v-model="customRatingMin"
                   type="digit"
-                  placeholder="最低分"
-                  aria-label="最低评分"
+                  :placeholder="t('food.minRating')"
+                  :aria-label="t('food.minimumRating')"
                   class="filter-input"
                   @input="onCustomRatingInput"
                 />
-                <text class="filter-range__separator">至</text>
+                <text class="filter-range__separator">{{ t('food.to') }}</text>
                 <input
                   v-model="customRatingMax"
                   type="digit"
-                  placeholder="最高分"
-                  aria-label="最高评分"
+                  :placeholder="t('food.maxRating')"
+                  :aria-label="t('food.maximumRating')"
                   class="filter-input"
                   @input="onCustomRatingInput"
                 />
-                <text class="filter-range__unit">分</text>
+                <text class="filter-range__unit">{{ t('food.points') }}</text>
               </view>
-              <text class="filter-panel__hint">评分范围为 0–5 分</text>
+              <text class="filter-panel__hint">{{ t('food.ratingRange05') }}</text>
               <text v-if="ratingError" class="filter-error" role="alert">{{ ratingError }}</text>
             </view>
 
             <view id="filter-group-mealTime" class="filter-group">
-              <text class="filter-group__title">用餐时段</text>
-              <text class="filter-panel__hint">可选择多个餐时</text>
+              <text class="filter-group__title">{{ t('food.mealTimes') }}</text>
+              <text class="filter-panel__hint">{{ t('food.selectMultipleMealTimes') }}</text>
               <view class="filter-options">
                 <button
                   role="button"
@@ -202,10 +202,10 @@
             </view>
 
             <view id="filter-group-taste" class="filter-group">
-              <text class="filter-group__title">口味</text>
-              <text class="filter-panel__hint"
-                >0 表示不限，1–5 表示程度；每项可以只设上限或下限。</text
-              >
+              <text class="filter-group__title">{{ t('food.taste') }}</text>
+              <text class="filter-panel__hint">{{
+                t('food.0MeansAny15IndicatesIntensitySet')
+              }}</text>
               <view v-for="item in tasteFields" :key="item.key" class="taste-range">
                 <view class="taste-range__header">
                   <text class="filter-panel__label">{{ item.label }}</text>
@@ -214,7 +214,7 @@
                   }}</text>
                 </view>
                 <view class="taste-range__slider">
-                  <text class="taste-range__limit">最低</text>
+                  <text class="taste-range__limit">{{ t('food.min') }}</text>
                   <slider
                     role="slider"
                     tabindex="0"
@@ -222,7 +222,7 @@
                     :aria-valuemax="5"
                     :value="item.min"
                     :aria-valuenow="item.min"
-                    :aria-valuetext="item.min === 0 ? '不限' : String(item.min)"
+                    :aria-valuetext="item.min === 0 ? t('food.any') : String(item.min)"
                     @keydown="onTasteKeyboardChange(item.key, $event, item.min, true)"
                     :min="0"
                     :max="5"
@@ -230,14 +230,14 @@
                     activeColor="#660874"
                     backgroundColor="#E5E7EB"
                     :block-size="24"
-                    :aria-label="item.label + '下限'"
+                    :aria-label="t('food.minimumTaste', { label: item.label })"
                     class="taste-range__control"
                     @change="onTasteSliderChange(item.key, $event.detail.value, true)"
                   />
-                  <text class="taste-range__value">{{ item.min || '不限' }}</text>
+                  <text class="taste-range__value">{{ item.min || t('food.any') }}</text>
                 </view>
                 <view class="taste-range__slider">
-                  <text class="taste-range__limit">最高</text>
+                  <text class="taste-range__limit">{{ t('food.max') }}</text>
                   <slider
                     role="slider"
                     tabindex="0"
@@ -245,7 +245,7 @@
                     :aria-valuemax="5"
                     :value="item.max"
                     :aria-valuenow="item.max"
-                    :aria-valuetext="item.max === 0 ? '不限' : String(item.max)"
+                    :aria-valuetext="item.max === 0 ? t('food.any') : String(item.max)"
                     @keydown="onTasteKeyboardChange(item.key, $event, item.max, false)"
                     :min="0"
                     :max="5"
@@ -253,18 +253,18 @@
                     activeColor="#660874"
                     backgroundColor="#E5E7EB"
                     :block-size="24"
-                    :aria-label="item.label + '上限'"
+                    :aria-label="t('food.maximumTaste', { label: item.label })"
                     class="taste-range__control"
                     @change="onTasteSliderChange(item.key, $event.detail.value, false)"
                   />
-                  <text class="taste-range__value">{{ item.max || '不限' }}</text>
+                  <text class="taste-range__value">{{ item.max || t('food.any') }}</text>
                 </view>
               </view>
               <text v-if="tasteError" class="filter-error" role="alert">{{ tasteError }}</text>
             </view>
 
             <view id="filter-group-meat" class="filter-group">
-              <text class="filter-group__title">荤素偏好</text>
+              <text class="filter-group__title">{{ t('food.meatPreference') }}</text>
               <view class="filter-options">
                 <button
                   role="button"
@@ -284,7 +284,7 @@
               </view>
             </view>
             <view id="filter-group-tag" class="filter-group">
-              <text class="filter-group__title">菜品标签</text>
+              <text class="filter-group__title">{{ t('food.dishTags') }}</text>
               <view class="filter-options">
                 <button
                   role="button"
@@ -302,13 +302,13 @@
                   {{ option.label }}
                 </button>
               </view>
-              <text class="filter-panel__label">自定义标签</text>
+              <text class="filter-panel__label">{{ t('food.customTag') }}</text>
               <view class="filter-range">
                 <input
                   v-model="customTagInput"
                   type="text"
-                  placeholder="输入标签名称"
-                  aria-label="自定义标签"
+                  :placeholder="t('food.enterATag')"
+                  :aria-label="t('food.customTag')"
                   class="filter-input"
                   @confirm="addCustomTag"
                 />
@@ -321,7 +321,7 @@
                   class="filter-button filter-add"
                   @click="addCustomTag"
                 >
-                  添加
+                  {{ t('food.add') }}
                 </button>
               </view>
               <view v-if="customTags.length" class="filter-options">
@@ -334,7 +334,7 @@
                   v-for="tag in customTags"
                   :key="tag"
                   class="filter-button filter-chip"
-                  :aria-label="'移除标签' + tag"
+                  :aria-label="t('food.removeTagNamed', { tag })"
                   @click="removeCustomTag(tag)"
                 >
                   <text class="filter-chip__label">{{ tag }}</text
@@ -344,7 +344,7 @@
             </view>
 
             <view id="filter-group-avoid" class="filter-group">
-              <text class="filter-group__title">忌口食材</text>
+              <text class="filter-group__title">{{ t('food.ingredientsToAvoid') }}</text>
               <view class="filter-options">
                 <button
                   role="button"
@@ -362,13 +362,13 @@
                   {{ option.label }}
                 </button>
               </view>
-              <text class="filter-panel__label">自定义忌口食材</text>
+              <text class="filter-panel__label">{{ t('food.customIngredientToAvoid') }}</text>
               <view class="filter-range">
                 <input
                   v-model="customAvoidInput"
                   type="text"
-                  placeholder="输入食材名称"
-                  aria-label="自定义忌口食材"
+                  :placeholder="t('food.enterAnIngredient')"
+                  :aria-label="t('food.customIngredientToAvoid')"
                   class="filter-input"
                   @confirm="addCustomAvoid"
                 />
@@ -381,7 +381,7 @@
                   class="filter-button filter-add"
                   @click="addCustomAvoid"
                 >
-                  添加
+                  {{ t('food.add') }}
                 </button>
               </view>
               <view v-if="customAvoid.length" class="filter-options">
@@ -394,7 +394,7 @@
                   v-for="item in customAvoid"
                   :key="item"
                   class="filter-button filter-chip"
-                  :aria-label="'移除忌口' + item"
+                  :aria-label="t('food.removeAvoidNamed', { ingredient: item })"
                   @click="removeCustomAvoid(item)"
                 >
                   <text class="filter-chip__label">{{ item }}</text
@@ -414,7 +414,7 @@
             class="filter-button filter-reset"
             @click="resetDraft"
           >
-            重置
+            {{ t('food.reset') }}
           </button>
           <button
             role="button"
@@ -425,7 +425,7 @@
             class="filter-button filter-apply"
             @click="applyFilter"
           >
-            确定
+            {{ t('food.apply') }}
           </button>
         </view>
       </view>
@@ -434,6 +434,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useFilter } from '../composables/use-filter';
 import type { GetDishesRequest } from '@/types/api';
@@ -524,13 +525,39 @@ const tasteRanges = [
   {
     key: 'spicy',
     field: 'spicyLevel',
-    label: '辣度',
+    get label() {
+      return t('food.spiciness');
+    },
     min: selectedSpicyMin,
     max: selectedSpicyMax,
   },
-  { key: 'salty', field: 'saltiness', label: '咸度', min: selectedSaltyMin, max: selectedSaltyMax },
-  { key: 'sweet', field: 'sweetness', label: '甜度', min: selectedSweetMin, max: selectedSweetMax },
-  { key: 'oily', field: 'oiliness', label: '油腻度', min: selectedOilyMin, max: selectedOilyMax },
+  {
+    key: 'salty',
+    field: 'saltiness',
+    get label() {
+      return t('food.saltiness');
+    },
+    min: selectedSaltyMin,
+    max: selectedSaltyMax,
+  },
+  {
+    key: 'sweet',
+    field: 'sweetness',
+    get label() {
+      return t('food.sweetness');
+    },
+    min: selectedSweetMin,
+    max: selectedSweetMax,
+  },
+  {
+    key: 'oily',
+    field: 'oiliness',
+    get label() {
+      return t('food.oiliness');
+    },
+    min: selectedOilyMin,
+    max: selectedOilyMax,
+  },
 ] as const;
 const tasteFields = computed(() =>
   tasteRanges.map(item => ({
@@ -558,7 +585,12 @@ const chips = computed<FilterChip[]>(() => {
     result.push({
       id: 'price',
       key: 'price',
-      label: min === 0 ? max + '元以内' : max === 999 ? min + '元以上' : min + '–' + max + '元',
+      label:
+        min === 0
+          ? t('food.priceUpTo', { max })
+          : max === 999
+            ? t('food.priceAtLeast', { min })
+            : t('food.priceRangeValues', { min, max }),
     });
   }
   if (filter.rating) {
@@ -566,7 +598,7 @@ const chips = computed<FilterChip[]>(() => {
     result.push({
       id: 'rating',
       key: 'rating',
-      label: max === 5 ? min + '分以上' : min + '–' + max + '分',
+      label: max === 5 ? t('food.ratingAtLeast', { min }) : t('food.ratingRange', { min, max }),
     });
   }
   for (const value of filter.meatPreference || [])
@@ -577,13 +609,22 @@ const chips = computed<FilterChip[]>(() => {
       label: meatOptions.find(option => option.value === value)?.label || value,
     });
   for (const value of filter.tag || [])
-    result.push({ id: 'tag:' + value, key: 'tag', value, label: '标签：' + value });
+    result.push({
+      id: 'tag:' + value,
+      key: 'tag',
+      value,
+      label: t('food.tagNamed', {
+        tag: tagOptions.find(option => option.value === value)?.label || value,
+      }),
+    });
   for (const value of filter.avoidIngredients || [])
     result.push({
       id: 'avoidIngredients:' + value,
       key: 'avoidIngredients',
       value,
-      label: '忌口：' + value,
+      label: t('food.avoidNamed', {
+        ingredient: avoidOptions.find(option => option.value === value)?.label || value,
+      }),
     });
   tasteRanges.forEach(item => {
     const range = filter[item.field];

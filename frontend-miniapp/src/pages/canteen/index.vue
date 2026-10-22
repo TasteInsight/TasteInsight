@@ -13,7 +13,7 @@
       :class="{ 'dish-list-search--before-state': error && !dishesInitialized }"
       class="dish-list-search"
     >
-      <SearchBar placeholder="搜索这个食堂的菜品" :search-url="searchUrl" />
+      <SearchBar :placeholder="t('food.searchDishesInThisCanteen')" :search-url="searchUrl" />
     </view>
 
     <template v-if="!error || dishesInitialized">
@@ -28,7 +28,9 @@
         />
       </view>
 
-      <view class="dish-list-heading"><text class="dish-list-title">菜品</text></view>
+      <view class="dish-list-heading"
+        ><text class="dish-list-title">{{ t('food.dishes2') }}</text></view
+      >
       <view
         class="dish-list-content page-state-content"
         :aria-busy="dishesLoading || dishesLoadingMore"
@@ -39,8 +41,8 @@
           :initialized="dishesInitialized"
           :has-content="!!dishes.length"
           :error="dishErrorIsAppend ? '' : dishesError"
-          loading-title="正在加载菜品…"
-          empty-title="暂无菜品信息"
+          :loading-title="t('food.loadingDishes')"
+          :empty-title="t('food.noDishInformationYet')"
           empty-icon="search"
           @retry="retryDishes"
         />
@@ -57,15 +59,17 @@
             :loading="dishesLoadingMore"
             has-content
             :error="dishErrorIsAppend ? dishesError : ''"
-            refreshing-title="正在加载更多…"
+            :refreshing-title="t('food.loadingMore')"
             @retry="retryDishes"
           />
           <view class="dish-list-footer">
             <template v-if="hasMore && !dishesError && !dishesLoading && !dishesLoadingMore">
-              <button class="dish-list-action" @click="loadMoreDishes">加载更多</button>
+              <button class="dish-list-action" @click="loadMoreDishes">
+                {{ t('food.loadMore') }}
+              </button>
             </template>
             <template v-else-if="!hasMore && !dishesError && !dishesLoading && !dishesLoadingMore">
-              <text>没有更多了</text>
+              <text>{{ t('food.youVeReachedTheEnd') }}</text>
             </template>
           </view>
         </view>
@@ -87,6 +91,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import {
   onLoad,
@@ -129,7 +134,7 @@ const {
 const currentCanteenId = ref('');
 const searchUrl = computed(
   () =>
-    `/pages/search/index?canteenId=${encodeURIComponent(currentCanteenId.value)}&scopeName=${encodeURIComponent(canteenInfo.value?.name || '当前食堂')}`
+    `/pages/search/index?canteenId=${encodeURIComponent(currentCanteenId.value)}&scopeName=${encodeURIComponent(canteenInfo.value?.name || t('food.thisCanteen'))}`
 );
 const currentFilter = ref<GetDishesRequest['filter']>({});
 const filterBarRef = ref<InstanceType<typeof CanteenFilterBar> | null>(null);

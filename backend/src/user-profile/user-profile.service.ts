@@ -1,3 +1,4 @@
+import { normalizeAllergenValues } from '@/allergens/allergen-values';
 import { contributionModerationText } from '@/content-moderation/moderation.types';
 import { randomUUID } from 'crypto';
 import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
@@ -53,24 +54,6 @@ export class UserProfileService {
     @Optional() private readonly moderation?: ModerationSubmissionService,
     @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {}
-
-  // 创建用户入口（由用户模块负责），缺省值由数据库默认值提供
-  async createUser(openId: string) {
-    return this.prisma.user.create({
-      data: {
-        openId,
-        nickname: `微信用户_${openId.slice(-4)}`,
-        allergens: [],
-        preferences: {
-          create: {},
-        },
-        settings: {
-          create: {},
-        },
-      },
-      include: { settings: true, preferences: true },
-    });
-  }
 
   async getUserProfile(userId: string): Promise<UserProfileResponseDto> {
     const user = await this.prisma.user.findUnique({
@@ -134,6 +117,9 @@ export class UserProfileService {
 
     // 检查是否更新了 allergens（过敏原变化会影响推荐）
     if (userUpdatePayload.allergens !== undefined) {
+      userUpdatePayload.allergens = normalizeAllergenValues(
+        updateDto.allergens!,
+      );
       needRefreshEmbedding = true;
     }
 
@@ -259,7 +245,7 @@ export class UserProfileService {
         take: pageSize,
         orderBy: { createdAt: 'desc' },
         include: {
-          dish: { select: { name: true, images: true } },
+          dish: { select: { name: true, nameEn: true, images: true } },
           user: { select: { nickname: true, avatar: true } },
         },
       }),
@@ -297,6 +283,7 @@ export class UserProfileService {
           dish: {
             select: {
               name: true,
+              nameEn: true,
               images: true,
               price: true,
               priceUnit: true,
@@ -352,6 +339,7 @@ export class UserProfileService {
           dish: {
             select: {
               name: true,
+              nameEn: true,
               images: true,
               price: true,
               priceUnit: true,
@@ -754,6 +742,7 @@ export class UserProfileService {
       status: review.status,
       createdAt: review.createdAt.toISOString(),
       dishName: review.dish.name,
+      dishNameEn: review.dish.nameEn ?? null,
       dishImage: review.dish.images[0] || '',
     };
   }
@@ -763,6 +752,7 @@ export class UserProfileService {
       dishId: favorite.dishId,
       addedAt: favorite.addedAt.toISOString(),
       dishName: favorite.dish.name,
+      dishNameEn: favorite.dish.nameEn ?? null,
       dishImages: favorite.dish.images,
       dishPrice: favorite.dish.price,
       priceUnit: favorite.dish.priceUnit,
@@ -787,6 +777,7 @@ export class UserProfileService {
           ? history.viewedAt.toISOString()
           : history.viewedAt,
       dishName: history.dish.name,
+      dishNameEn: history.dish.nameEn ?? null,
       dishImages: history.dish.images,
       dishPrice: history.dish.price,
       priceUnit: history.dish.priceUnit,
@@ -812,6 +803,8 @@ export class UserProfileService {
 
       id: upload.id,
       name: upload.name,
+      nameEn: upload.nameEn ?? null,
+      descriptionEn: upload.descriptionEn ?? null,
       images:
         this.moderationAssets?.previewImages(upload.images) ?? upload.images,
       canteenName: upload.canteenName,

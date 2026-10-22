@@ -2,8 +2,8 @@ import { effectScope, reactive, type EffectScope } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getMyReviews, getMyFavorites, getBrowseHistory } from '@/api/modules/user';
 import { useMyReviews } from '@/pages/profile/composables/use-my-reviews';
-import { useFavorites } from '@/pages/profile/my-favorites/composables/use-favorites';
-import { useHistory } from '@/pages/profile/history/composables/use-history';
+import { useFavorites } from '@/pages/profile/records/my-favorites/composables/use-favorites';
+import { useHistory } from '@/pages/profile/records/history/composables/use-history';
 import { unfavoriteDish } from '@/api/modules/dish';
 
 jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: jest.fn() }));

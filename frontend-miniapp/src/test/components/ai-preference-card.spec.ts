@@ -1,6 +1,7 @@
 jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { mount, shallowMount } from '@vue/test-utils';
 import { ref, nextTick } from 'vue';
+import { locale } from '@/i18n';
 import PreferenceCard from '@/pages/ai-chat/components/PreferenceCard.vue';
 import ChatPage from '@/pages/ai-chat/index.vue';
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
@@ -194,4 +195,19 @@ test('the real page places preference proposals outside chat bubbles and wires o
   wrapper.unmount();
   jest.clearAllTimers();
   jest.useRealTimers();
+});
+
+test('localizes curated allergen labels while preserving private phrases and submitted values', async () => {
+  const draft = makeDraft();
+  draft.previewData.after.allergens = ['花生', 'Private multiword phrase'];
+  const wrapper = mount(PreferenceCard, { props: { draft } });
+  locale.value = 'en';
+  await nextTick();
+  expect(wrapper.text()).toContain('Peanuts');
+  expect(wrapper.text()).toContain('Private multiword phrase');
+  await save(wrapper).trigger('click');
+  expect(wrapper.emitted('save')).toEqual([[draft]]);
+  expect(draft.previewData.after.allergens).toEqual(['花生', 'Private multiword phrase']);
+  locale.value = 'zh-Hans';
+  wrapper.unmount();
 });

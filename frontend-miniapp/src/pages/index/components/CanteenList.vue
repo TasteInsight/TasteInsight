@@ -2,7 +2,7 @@
   <button
     class="canteen-entry"
     hover-class="canteen-entry--pressed"
-    :aria-label="`浏览${canteen.name}`"
+    :aria-label="t('food.browseCanteen', { name: canteen.name })"
     @click="emit('click')"
   >
     <view class="canteen-entry__photo">
@@ -17,7 +17,7 @@
       />
       <view v-else class="canteen-entry__placeholder" aria-hidden="true">
         <text class="iconfont icon-store canteen-entry__building"></text>
-        <text class="canteen-entry__placeholder-label">暂无照片</text>
+        <text class="canteen-entry__placeholder-label">{{ t('food.noPhotosYet') }}</text>
       </view>
     </view>
     <text class="canteen-entry__name">{{ canteen.name }}</text>
@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import type { Canteen } from '@/types/api';
 

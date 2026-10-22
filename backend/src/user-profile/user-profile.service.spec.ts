@@ -9,7 +9,6 @@ const mockPrismaService = {
   userPreference: { upsert: jest.fn() },
   userSetting: { upsert: jest.fn() },
   user: {
-    create: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
   },
@@ -91,26 +90,6 @@ describe('UserProfileService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  describe('createUser', () => {
-    it('should create a new user', async () => {
-      prisma.user.create.mockResolvedValue({
-        id: 'u1',
-        openId: 'open-id-1',
-        nickname: 'User',
-        avatar: null,
-        preferences: {},
-        settings: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      const result = await service.createUser('open-id-1');
-
-      expect(result).toBeDefined();
-      expect(result.openId).toBe('open-id-1');
-    });
   });
 
   describe('getUserProfile', () => {

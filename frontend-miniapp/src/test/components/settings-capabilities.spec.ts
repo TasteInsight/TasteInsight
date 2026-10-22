@@ -3,8 +3,8 @@ import { mount } from '@vue/test-utils';
 import SettingsPage from '@/pages/settings/components/SettingsPage.vue';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { parse } from '@vue/compiler-sfc';
 import postcss from 'postcss';
+import { zhHans } from '@/i18n/messages/account';
 const props = {
   loading: false,
   initialized: true,
@@ -62,17 +62,16 @@ it('uses the save button as the sole status display and retains the restored dra
 });
 
 it('gives settings-home section headings a semibold hierarchy', () => {
-  const { descriptor } = parse(
-    readFileSync(resolve(__dirname, '../../pages/settings/index.vue'), 'utf8')
+  const stylesheet = readFileSync(
+    resolve(__dirname, '../../pages/settings/settings-page.css'),
+    'utf8'
   );
   const declarations: Record<string, string> = {};
-  descriptor.styles.forEach(style =>
-    postcss.parse(style.content).walkRules('.group-title', rule => {
-      rule.walkDecls(declaration => {
-        declarations[declaration.prop] = declaration.value;
-      });
-    })
-  );
+  postcss.parse(stylesheet).walkRules('.settings-group-title', rule => {
+    rule.walkDecls(declaration => {
+      declarations[declaration.prop] = declaration.value;
+    });
+  });
   expect(Number(declarations['font-weight'])).toBeGreaterThanOrEqual(600);
 });
 
@@ -107,7 +106,10 @@ it('preserves display and notification controls without unsupported support rout
   expect(source('components/display.vue')).toContain('showCalories');
   expect(source('components/display.vue')).toContain('showNutrition');
   expect(source('components/display.vue')).not.toContain('待接入');
-  expect(source('components/display.vue')).toContain('每份热量');
+  expect(source('components/display.vue')).toContain(
+    'account.settings.showAvailableCaloriesPerServing'
+  );
+  expect(zhHans.settings.showAvailableCaloriesPerServing).toContain('每份热量');
   const notifications = source('components/notifications.vue');
   for (const key of [
     'newDishAlert',

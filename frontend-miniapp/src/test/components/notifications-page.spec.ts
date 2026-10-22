@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { reactive, nextTick } from 'vue';
+import { locale } from '@/i18n';
 import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import Page from '@/pages/notifications/index.vue';
 import FloatingActionButton from '@/components/FloatingActionButton.vue';
@@ -91,6 +92,7 @@ test('service messages pair a concise event title with the actual dish subject',
         type: 'upload_approved',
         targetType: 'dish_upload',
         subject: '番茄炖牛肉',
+        subjectEn: 'Tomato beef stew',
       },
       { ...message('new'), actor: null, type: 'new_dish', targetType: 'dish', subject: null },
     ] as any)
@@ -104,6 +106,12 @@ test('service messages pair a concise event title with the actual dish subject',
   expect(rows[0].get('.notification-system .ui-icon').attributes('src')).toBe(
     '/static/icons/ui/shield-primary.png'
   );
+  locale.value = 'en';
+  await nextTick();
+  expect(rows[0].get('.notification-subject').text()).toBe('Tomato beef stew');
+  expect(rows[0].attributes('aria-label')).toContain('Tomato beef stew');
+  locale.value = 'zh-Hans';
+  await nextTick();
   expect(rows[1].get('.notification-copy').text()).toBe('食堂上新');
   expect(rows[1].find('.notification-subject').exists()).toBe(false);
   expect(rows[1].get('.notification-system .ui-icon').attributes('src')).toBe(

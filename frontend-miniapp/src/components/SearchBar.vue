@@ -13,8 +13,8 @@
       :value="modelValue"
       class="discovery-search__input"
       type="search"
-      :placeholder="placeholder"
-      :aria-label="placeholder"
+      :placeholder="searchPlaceholder"
+      :aria-label="searchPlaceholder"
       enterkeyhint="search"
       @input="handleNativeInput"
       @keydown="handleInputKeydown"
@@ -35,9 +35,9 @@
       :focus="focus"
       class="discovery-search__input discovery-search__uni-input"
       type="text"
-      :placeholder="placeholder"
+      :placeholder="searchPlaceholder"
       placeholder-style="color: #667085"
-      :aria-label="placeholder"
+      :aria-label="searchPlaceholder"
       confirm-type="search"
       @input="handleUniInput"
       @confirm="handleUniConfirm"
@@ -50,7 +50,7 @@
       class="discovery-search__button discovery-search__clear"
       :role="isH5 ? 'button' : undefined"
       :tabindex="isH5 ? 0 : undefined"
-      aria-label="清空搜索"
+      :aria-label="t('common.clearSearch')"
       @click="clearInput"
       @keydown="handleActionKeydown"
       @keyup="handleActionKeyup($event, clearInput)"
@@ -67,7 +67,7 @@
       @keyup="handleActionKeyup($event, submitSearch)"
       @blur="actionPressed = false"
     >
-      <text class="discovery-search__action">搜索</text>
+      <text class="discovery-search__action">{{ t('common.search') }}</text>
     </button>
   </view>
   <button
@@ -76,20 +76,22 @@
     hover-class="discovery-search--pressed"
     :role="isH5 ? 'button' : undefined"
     :tabindex="isH5 ? 0 : undefined"
-    :aria-label="placeholder"
+    :aria-label="searchPlaceholder"
     @click="openSearch"
     @keydown="handleActionKeydown"
     @keyup="handleActionKeyup($event, openSearch)"
     @blur="actionPressed = false"
   >
     <uni-icons type="search" size="20" color="#667085" aria-hidden="true" />
-    <text class="discovery-search__label">{{ placeholder }}</text>
-    <text class="discovery-search__action" aria-hidden="true">搜索</text>
+    <text class="discovery-search__label">{{ searchPlaceholder }}</text>
+    <text class="discovery-search__action" aria-hidden="true">{{ t('common.search') }}</text>
   </button>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { t } from '@/i18n';
+
+import { computed, onMounted, ref, watch } from 'vue';
 
 const props = withDefaults(
   defineProps<{
@@ -101,12 +103,13 @@ const props = withDefaults(
   }>(),
   {
     modelValue: '',
-    placeholder: '搜索菜品或食堂',
+    placeholder: '',
     editable: false,
     focus: false,
     searchUrl: '/pages/search/index',
   }
 );
+const searchPlaceholder = computed(() => props.placeholder || t('common.searchPlaceholder'));
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void;
   (event: 'submit'): void;

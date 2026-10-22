@@ -1,6 +1,7 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { getUserProfile } from '@/api/modules/user';
+import { getUserProfile, updateUserProfile } from '@/api/modules/user';
+import { locale } from '@/i18n';
 import { getCanteenList } from '@/api/modules/canteen';
 import DisplayPage from '@/pages/settings/components/display.vue';
 import PreferencesPage from '@/pages/settings/components/preferences.vue';
@@ -21,6 +22,7 @@ jest.mock('@/api/modules/canteen', () => ({ getCanteenList: jest.fn() }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  locale.value = 'zh-Hans';
   Object.assign(uni, {
     getStorageSync: jest.fn(key =>
       key === 'token' ? 'token' : key === 'userInfo' ? JSON.stringify({ id: 'user' }) : undefined
@@ -34,6 +36,48 @@ beforeEach(() => {
     code: 200,
     data: { items: [], meta: { totalPages: 1 } },
   });
+});
+
+afterEach(() => {
+  locale.value = 'zh-Hans';
+});
+
+it('translates allergen presets while preserving their saved values and custom text', async () => {
+  locale.value = 'en';
+  const profile = { id: 'user', allergens: ['花生', '自定义成分'] };
+  (getUserProfile as jest.Mock).mockResolvedValue({ code: 200, data: profile });
+  (updateUserProfile as jest.Mock).mockResolvedValue({ code: 200, data: profile });
+  const wrapper = mount(AllergensPage);
+  try {
+    await flushPromises();
+    const buttons = wrapper.findAll('.settings-options button');
+    expect(buttons.map(button => button.text())).toEqual([
+      'Peanuts',
+      'Milk',
+      'Eggs',
+      'Seafood',
+      'Soy',
+      'Wheat',
+      'Tree nuts',
+      'Sesame',
+      'Mango',
+      'Pineapple',
+      'Kiwi',
+      'Peach',
+      'Broad beans',
+    ]);
+    expect(buttons[0].attributes('aria-pressed')).toBe('true');
+    await buttons.find(button => button.text() === 'Mango')!.trigger('click');
+    locale.value = 'zh-Hans';
+    await flushPromises();
+    expect(buttons[8].text()).toBe('芒果');
+    expect(buttons[8].attributes('aria-pressed')).toBe('true');
+    await wrapper.get('.settings-save-bar button').trigger('click');
+    await flushPromises();
+    expect(updateUserProfile).toHaveBeenCalledWith({ allergens: ['花生', '自定义成分', '芒果'] });
+  } finally {
+    wrapper.unmount();
+  }
 });
 
 it.each([

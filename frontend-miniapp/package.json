@@ -30,7 +30,7 @@
     "build:mp-lark": "uni build -p mp-lark",
     "build:mp-qq": "uni build -p mp-qq",
     "build:mp-toutiao": "uni build -p mp-toutiao",
-    "build:mp-weixin": "uni build -p mp-weixin && pnpm check:mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin && pnpm check:mp-runtime && pnpm check:mp-weixin",
     "build:mp-xhs": "uni build -p mp-xhs",
     "build:quickapp-webview": "uni build -p quickapp-webview",
     "build:quickapp-webview-huawei": "uni build -p quickapp-webview-huawei",
@@ -50,7 +50,8 @@
     "test:perf:remote": "node ../perf/frontend.mjs",
     "type-check:ts": "tsc --noEmit -p tsconfig.core.json",
     "check:mp-weixin": "node scripts/check-mp-code-quality.mjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "check:mp-runtime": "node --disallow-code-generation-from-strings scripts/check-mp-i18n-runtime.cjs"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5020620260917001",

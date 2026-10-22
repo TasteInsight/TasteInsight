@@ -37,6 +37,8 @@ describe('feedback defaults', () => {
       content: '确定退出？',
       confirmColor: '#660874',
       cancelColor: '#667085',
+      confirmText: '确定',
+      cancelText: '取消',
     });
 
     const sheet: UniNamespace.ShowActionSheetOptions = { itemList: ['编辑', '删除'] };
@@ -44,6 +46,22 @@ describe('feedback defaults', () => {
     expect(sheet.itemColor).toBe('#1f2937');
     expect(Object.keys(interceptors.showModal)).toEqual(['invoke']);
     expect(Object.keys(interceptors.showActionSheet)).toEqual(['invoke']);
+  });
+
+  it('uses native-safe English labels and keeps every localized modal action within four characters', () => {
+    const { locale, messages } = require('@/i18n');
+    locale.value = 'en';
+    registerFeedbackDefaults();
+    const options = { title: 'Sign out' };
+    interceptors.showModal.invoke!(options);
+    expect(options).toMatchObject({ confirmText: 'OK', cancelText: 'Back' });
+    for (const catalog of Object.values(messages) as any[]) {
+      for (const label of Object.values(catalog.common.modal) as string[]) {
+        expect(label.length).toBeGreaterThan(0);
+        expect(label.length).toBeLessThanOrEqual(4);
+      }
+    }
+    locale.value = 'zh-Hans';
   });
 
   it('preserves explicit colors, edit options, labels and callbacks without invoking them', () => {

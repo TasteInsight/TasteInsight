@@ -1,3 +1,4 @@
+import { DishTranslationFieldsDto } from '@/dishes/dto/dish-translation.dto';
 import {
   IsNotEmpty,
   IsString,
@@ -20,7 +21,7 @@ import { DishStatus, MealTime } from '@/common/enums';
 import { AvailableDateRangeDto } from '@/dishes/dto/dish.dto';
 import { CONTRIBUTION_FIELDS } from '../contribution-fields';
 
-export class UploadDishDto {
+export class UploadDishDto extends DishTranslationFieldsDto {
   @IsOptional()
   @IsNumber({ allowNaN: false, allowInfinity: false })
   @Min(0)

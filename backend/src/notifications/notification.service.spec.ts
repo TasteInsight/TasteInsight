@@ -191,7 +191,11 @@ describe('NotificationService', () => {
     ]);
     tx.notification.count = jest.fn().mockResolvedValue(3);
     tx.dishUpload = {
-      findMany: jest.fn().mockResolvedValue([{ id: 'mine', name: '番茄炒蛋' }]),
+      findMany: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'mine', name: '番茄炒蛋', nameEn: 'Tomato and eggs' },
+        ]),
     };
     const response = await service.getInbox('author');
     expect(tx.dishUpload.findMany).toHaveBeenCalledTimes(1);
@@ -200,12 +204,20 @@ describe('NotificationService', () => {
         userId: 'author',
         id: { in: ['mine', 'other-owner-or-deleted'] },
       },
-      select: { id: true, name: true },
+      select: { id: true, name: true, nameEn: true },
     });
     expect(response.data.items).toEqual([
-      expect.objectContaining({ id: 'n1', subject: '番茄炒蛋' }),
+      expect.objectContaining({
+        id: 'n1',
+        subject: '番茄炒蛋',
+        subjectEn: 'Tomato and eggs',
+      }),
       expect.objectContaining({ id: 'n2', subject: null }),
-      expect.objectContaining({ id: 'n3', subject: '番茄炒蛋' }),
+      expect.objectContaining({
+        id: 'n3',
+        subject: '番茄炒蛋',
+        subjectEn: 'Tomato and eggs',
+      }),
     ]);
   });
 
@@ -225,15 +237,23 @@ describe('NotificationService', () => {
     ]);
     tx.notification.count = jest.fn().mockResolvedValue(2);
     tx.dish = {
-      findMany: jest.fn().mockResolvedValue([{ id: 'live', name: '红烧牛肉' }]),
+      findMany: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'live', name: '红烧牛肉', nameEn: 'Braised beef' },
+        ]),
     };
     const response = await service.getInbox('author');
     expect(tx.dish.findMany).toHaveBeenCalledWith({
       where: { id: { in: ['live', 'offline'] }, status: 'online' },
-      select: { id: true, name: true },
+      select: { id: true, name: true, nameEn: true },
     });
     expect(response.data.items).toEqual([
-      expect.objectContaining({ id: 'live-notice', subject: '红烧牛肉' }),
+      expect.objectContaining({
+        id: 'live-notice',
+        subject: '红烧牛肉',
+        subjectEn: 'Braised beef',
+      }),
       expect.objectContaining({ id: 'offline-notice', subject: null }),
     ]);
   });

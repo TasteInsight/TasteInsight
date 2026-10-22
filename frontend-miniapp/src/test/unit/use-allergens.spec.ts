@@ -134,4 +134,37 @@ describe('useAllergens', () => {
       allergens: ['Peanut', 'Milk', 'Egg', 'Soy'],
     });
   });
+  it('keeps a typed multiword phrase intact until save', async () => {
+    const state = useAllergens();
+    await new Promise(process.nextTick);
+    state.editAllergens();
+    for (const value of ['Pine', 'Pine ', 'Pine nuts', 'Pine nuts, Milk protein']) {
+      state.displayAllergens.value = value;
+      state.inputAllergens({ detail: { value } });
+      expect(state.displayAllergens.value).toBe(value);
+    }
+    state.finishAllergens();
+    (updateUserProfile as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { allergens: ['Pine nuts', 'Milk protein'] },
+    });
+    await state.handleSave();
+    expect(updateUserProfile).toHaveBeenCalledWith({ allergens: ['Pine nuts', 'Milk protein'] });
+  });
+  it('deduplicates equivalent custom terms during selection and save', async () => {
+    const state = useAllergens();
+    await new Promise(process.nextTick);
+    state.form.allergens = '  Pine\t Nuts , PINE  NUTS；Private\u3000phrase';
+    expect(state.isSelected('pine nuts')).toBe(true);
+    expect(state.isSelected('Pine nutshell')).toBe(false);
+    state.toggleAllergen('PINE\u00A0NUTS');
+    expect(state.form.allergens).toBe('Private phrase');
+    state.form.allergens = '  Pine\t Nuts , PINE  NUTS；Private\u3000phrase';
+    (updateUserProfile as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { allergens: ['Pine Nuts', 'Private phrase'] },
+    });
+    await state.handleSave();
+    expect(updateUserProfile).toHaveBeenCalledWith({ allergens: ['Pine Nuts', 'Private phrase'] });
+  });
 });

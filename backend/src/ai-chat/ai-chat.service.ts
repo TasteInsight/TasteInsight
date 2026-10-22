@@ -50,6 +50,7 @@ export class AIChatService {
   async createSession(
     userId: string,
     dto: CreateSessionDto,
+    language: 'zh' | 'en' = 'zh',
   ): Promise<SessionData> {
     const scene = dto.scene || 'general_chat';
 
@@ -62,7 +63,7 @@ export class AIChatService {
 
     return {
       sessionId: session.id,
-      welcomeMessage: PromptBuilder.getWelcomeMessage(scene),
+      welcomeMessage: PromptBuilder.getWelcomeMessage(scene, language),
     };
   }
 
@@ -73,6 +74,7 @@ export class AIChatService {
     userId: string,
     sessionId: string,
     dto: ChatRequestDto,
+    language: 'zh' | 'en' = 'zh',
   ): Observable<MessageEvent> {
     return new Observable((subscriber) => {
       const controller = new AbortController();
@@ -82,12 +84,13 @@ export class AIChatService {
         dto,
         subscriber,
         controller.signal,
+        language,
       ).catch((error) => {
         if (controller.signal.aborted) return;
         this.logger.error('Stream chat error:', error);
         subscriber.next({
           type: 'error',
-          data: { error: this.getSafeStreamErrorMessage(error) },
+          data: { error: this.getSafeStreamErrorMessage(error, language) },
         });
         subscriber.complete();
       });
@@ -95,7 +98,17 @@ export class AIChatService {
     });
   }
 
-  private getSafeStreamErrorMessage(error: unknown): string {
+  private getSafeStreamErrorMessage(
+    error: unknown,
+    language: 'zh' | 'en',
+  ): string {
+    if (language === 'en') {
+      if (error instanceof HttpException && error.getStatus() === 404)
+        return 'Chat session not found. Please start a new chat.';
+      if (error instanceof HttpException && error.getStatus() === 400)
+        return 'This message could not be processed. Please revise it and try again.';
+      return 'Unable to process your request. Please try again later.';
+    }
     if (error instanceof HttpException && error.getStatus() < 500) {
       return error.message;
     }
@@ -118,6 +131,7 @@ export class AIChatService {
     dto: ChatRequestDto,
     subscriber: Subscriber<MessageEvent>,
     signal: AbortSignal,
+    language: 'zh' | 'en',
   ): Promise<void> {
     // Verify session exists and belongs to user
     const session = await this.prisma.aISession.findFirst({
@@ -163,8 +177,15 @@ export class AIChatService {
     const chatTime = this.getChatTime(dto.clientContext);
 
     // Build initial conversation history with enhanced security prompt
-    const basePrompt = PromptBuilder.getSystemPrompt(session.scene, chatTime);
-    const securePrompt = this.promptSecurity.enhanceSystemPrompt(basePrompt);
+    const basePrompt = PromptBuilder.getSystemPrompt(
+      session.scene,
+      chatTime,
+      language,
+    );
+    const securePrompt = this.promptSecurity.enhanceSystemPrompt(
+      basePrompt,
+      language,
+    );
 
     const conversationMessages: AIMessage[] = [
       {
@@ -421,14 +442,17 @@ export class AIChatService {
       if (assistantContent.length && !signal.aborted) {
         try {
           const raw = await this.openaiProvider.completeChat(
-            buildFollowUpMessages([
-              ...session.messages,
-              {
-                role: 'user',
-                content: [ContentBuilder.text(sanitizedMessage)],
-              },
-              { role: 'assistant', content: assistantContent },
-            ]),
+            buildFollowUpMessages(
+              [
+                ...session.messages,
+                {
+                  role: 'user',
+                  content: [ContentBuilder.text(sanitizedMessage)],
+                },
+                { role: 'assistant', content: assistantContent },
+              ],
+              language,
+            ),
             signal,
           );
           const suggestions = parseFollowUpSuggestions(raw).filter(
@@ -515,6 +539,7 @@ export class AIChatService {
   async getSuggestions(
     userId: string,
     clientContext?: ClientContextDto,
+    language: 'zh' | 'en' = 'zh',
   ): Promise<string[]> {
     // Use client context to determine time, reusing the chat time logic
     const chatTime = this.getChatTime(clientContext);
@@ -531,15 +556,23 @@ export class AIChatService {
       mealTime = 'nightsnack';
     }
 
-    const mealName = this.getMealTimeName(mealTime);
+    const mealName = this.getMealTimeName(mealTime, language);
 
     // Rotating templates for variety
-    const simpleTemplates = [
-      `推荐一些${mealName}`,
-      `${mealName}吃什么好？`,
-      `帮我规划一顿${mealName}`,
-      `我想吃${mealName}，有什么推荐？`,
-    ];
+    const simpleTemplates =
+      language === 'en'
+        ? [
+            `Recommend some ${mealName}`,
+            `What should I have for ${mealName}?`,
+            `Help me plan ${mealName}`,
+            `Any ${mealName} recommendations?`,
+          ]
+        : [
+            `推荐一些${mealName}`,
+            `${mealName}吃什么好？`,
+            `帮我规划一顿${mealName}`,
+            `我想吃${mealName}，有什么推荐？`,
+          ];
 
     // Select one simple suggestion based on time
     // Use hour to deterministically select but rotate throughout the day
@@ -547,14 +580,20 @@ export class AIChatService {
 
     const suggestions = [
       simpleSuggestion,
-      '看看全校最火的菜', // Always popular
+      language === 'en'
+        ? 'Show me popular dishes on campus'
+        : '看看全校最火的菜',
     ];
 
     // Add specific suggestion based on time/context
     if (mealTime === 'lunch' || mealTime === 'dinner') {
-      suggestions.push('帮我生成下周食谱');
+      suggestions.push(
+        language === 'en' ? 'Plan my meals for next week' : '帮我生成下周食谱',
+      );
     } else {
-      suggestions.push('推荐点清淡的');
+      suggestions.push(
+        language === 'en' ? 'Recommend something light' : '推荐点清淡的',
+      );
     }
 
     // Add canteen-specific suggestion with variety
@@ -568,11 +607,18 @@ export class AIChatService {
       const randomCanteen =
         canteens[Math.floor(Math.random() * canteens.length)];
 
-      const canteenTemplates = [
-        `${randomCanteen.name}有什么好吃的？`,
-        `带我去${randomCanteen.name}看看`,
-        `${randomCanteen.name}今天有什么推荐？`,
-      ];
+      const canteenTemplates =
+        language === 'en'
+          ? [
+              `What is good at ${randomCanteen.name}?`,
+              `Show me dishes at ${randomCanteen.name}`,
+              `What do you recommend at ${randomCanteen.name} today?`,
+            ]
+          : [
+              `${randomCanteen.name}有什么好吃的？`,
+              `带我去${randomCanteen.name}看看`,
+              `${randomCanteen.name}今天有什么推荐？`,
+            ];
 
       const canteenSuggestion =
         canteenTemplates[Math.floor(Math.random() * canteenTemplates.length)];
@@ -582,7 +628,17 @@ export class AIChatService {
     return suggestions;
   }
 
-  private getMealTimeName(mealTime: string): string {
+  private getMealTimeName(mealTime: string, language: 'zh' | 'en'): string {
+    if (language === 'en') {
+      return (
+        {
+          breakfast: 'breakfast',
+          lunch: 'lunch',
+          dinner: 'dinner',
+          nightsnack: 'a late-night snack',
+        }[mealTime] || 'a meal'
+      );
+    }
     const names = {
       breakfast: '早餐',
       lunch: '午餐',

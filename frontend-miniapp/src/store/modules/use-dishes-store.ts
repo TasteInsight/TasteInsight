@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import {
@@ -83,7 +84,7 @@ export const useDishesStore = defineStore('dishes', () => {
         dishes.value = append ? [...dishes.value, ...items] : items;
         pagination.value = response.data.meta;
       } else {
-        throw new Error(response.message || '获取菜品列表失败');
+        throw new Error(response.message || t('common.stores.dishesFailed'));
       }
     } catch (err) {
       error.value = toUserFriendlyErrorMessage(err);
@@ -113,7 +114,7 @@ export const useDishesStore = defineStore('dishes', () => {
       if (response.code === 200 && response.data) {
         currentDish.value = response.data;
       } else {
-        throw new Error(response.message || '获取菜品详情失败');
+        throw new Error(response.message || t('common.stores.dishFailed'));
       }
     } catch (err) {
       error.value = toUserFriendlyErrorMessage(err);
@@ -135,13 +136,14 @@ export const useDishesStore = defineStore('dishes', () => {
         // 可以在这里更新菜品状态，例如:
         // const dish = dishes.value.find(d => d.id === dishId);
         // if (dish) dish.isFavorited = true;
-        uni.showToast({ title: '收藏成功', icon: 'success' });
+        uni.showToast({ title: t('common.stores.favorited'), icon: 'success' });
         return true;
       } else {
-        throw new Error(response.message || '收藏失败');
+        throw new Error(response.message || t('common.stores.favoriteFailed'));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '收藏操作失败';
+      const message =
+        err instanceof Error ? err.message : t('common.stores.favoriteOperationFailed');
       console.error(message, err);
       uni.showToast({ title: message, icon: 'none' });
       return false;
@@ -157,13 +159,14 @@ export const useDishesStore = defineStore('dishes', () => {
       const response = await unfavoriteDish(dishId);
       if (response.code === 200) {
         // 更新菜品状态
-        uni.showToast({ title: '已取消收藏', icon: 'success' });
+        uni.showToast({ title: t('common.stores.unfavorited'), icon: 'success' });
         return true;
       } else {
-        throw new Error(response.message || '取消收藏失败');
+        throw new Error(response.message || t('common.stores.unfavoriteFailed'));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '取消收藏操作失败';
+      const message =
+        err instanceof Error ? err.message : t('common.stores.unfavoriteOperationFailed');
       console.error(message, err);
       uni.showToast({ title: message, icon: 'none' });
       return false;
@@ -180,13 +183,13 @@ export const useDishesStore = defineStore('dishes', () => {
     try {
       const response = await uploadDish(dishData);
       if (response.code === 201 && response.data) {
-        uni.showToast({ title: '上传成功，等待审核', icon: 'success' });
+        uni.showToast({ title: t('common.stores.uploaded'), icon: 'success' });
         return response.data;
       } else {
-        throw new Error(response.message || '上传失败');
+        throw new Error(response.message || t('common.stores.uploadFailed'));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '上传操作失败';
+      const message = err instanceof Error ? err.message : t('common.stores.uploadOperationFailed');
       error.value = message;
       console.error(message, err);
       uni.showToast({ title: message, icon: 'none' });

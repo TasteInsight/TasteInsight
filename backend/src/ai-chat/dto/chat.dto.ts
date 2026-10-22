@@ -77,6 +77,8 @@ export interface ComponentDishCard {
     carbohydrate?: number | null;
     fat?: number | null;
     name: string;
+    nameEn?: string | null;
+    descriptionEn?: string | null;
     image: string;
     rating: string;
     tags: string[];

@@ -4,6 +4,8 @@
 export interface DishFeatures {
   id: string;
   name: string;
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   tags: string[];
   price: number;
   canteenId: string;

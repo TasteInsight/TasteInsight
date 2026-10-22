@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, getCurrentScope, onScopeDispose, ref, watch } from 'vue';
 import type { ApiResponse } from '@/types/api';
 import type { VerificationChallenge } from '@/api/modules/auth';
@@ -56,7 +57,8 @@ export function useVerificationCode(
     try {
       const result = await send(target.value.trim());
       if (disposed || version !== requestVersion) return;
-      if (result.code !== 200 || !result.data) throw new Error(result.message || '验证码发送失败');
+      if (result.code !== 200 || !result.data)
+        throw new Error(result.message || t('common.errors.code'));
       now.value = Date.now();
       challengeId.value = result.data.challengeId;
       code.value = '';
@@ -70,7 +72,7 @@ export function useVerificationCode(
       }, 1000);
     } catch (cause) {
       if (!disposed && version === requestVersion)
-        error.value = cause instanceof Error ? cause.message : '验证码发送失败，请重试';
+        error.value = cause instanceof Error ? cause.message : t('common.errors.codeRetry');
     } finally {
       if (!disposed && version === requestVersion) sending.value = false;
     }

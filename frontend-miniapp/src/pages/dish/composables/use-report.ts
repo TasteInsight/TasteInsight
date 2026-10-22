@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { reportReview } from '@/api/modules/review';
 import { reportComment } from '@/api/modules/comment';
@@ -46,13 +47,13 @@ export function useReport() {
           : await reportComment(targetId, { ...data });
       if (!isCurrent()) return false;
       if (response.code !== 200 && response.code !== 201)
-        throw new Error(response.message || '举报失败，请重试');
-      uni.showToast({ title: '举报成功', icon: 'success' });
+        throw new Error(response.message || t('food.couldNotReportTryAgain'));
+      uni.showToast({ title: t('food.reportSubmitted'), icon: 'success' });
       closeReportModal();
       return true;
     } catch (error: any) {
       if (!isCurrent()) return false;
-      uni.showToast({ title: error.message || '举报失败', icon: 'none' });
+      uni.showToast({ title: error.message || t('food.couldNotReport'), icon: 'none' });
       return false;
     } finally {
       if (isCurrent()) submitting.value = false;

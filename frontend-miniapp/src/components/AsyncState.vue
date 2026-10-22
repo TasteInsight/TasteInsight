@@ -23,10 +23,14 @@
         @keyup="retryButton.handleKeyup"
         @blur="retryButton.clearPress"
       >
-        {{ retryText }}
+        {{ retryText || t('common.retry') }}
       </button>
     </template>
-    <EmptyState v-else-if="state === 'loading'" :title="loadingTitle" loading />
+    <EmptyState
+      v-else-if="state === 'loading'"
+      :title="loadingTitle || t('common.loading')"
+      loading
+    />
     <template v-else-if="state === 'empty'">
       <slot name="empty">
         <EmptyState
@@ -37,11 +41,13 @@
         />
       </slot>
     </template>
-    <text v-else>{{ refreshingTitle }}</text>
+    <text v-else>{{ refreshingTitle || t('common.refreshing') }}</text>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import { computed } from 'vue';
 import EmptyState from './EmptyState.vue';
 import type { UiIconName } from '@/types/ui-icon';
@@ -69,12 +75,12 @@ const props = withDefaults(
     hasContent: false,
     error: '',
     errorTitle: '',
-    loadingTitle: '正在加载…',
-    refreshingTitle: '正在更新…',
+    loadingTitle: '',
+    refreshingTitle: '',
     emptyTitle: '',
     emptyIcon: 'info',
     emptyActionText: '',
-    retryText: '重新加载',
+    retryText: '',
   }
 );
 const emit = defineEmits<{ (event: 'retry'): void; (event: 'action'): void }>();

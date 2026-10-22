@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { onLoad, onShow, onHide, onReachBottom } from '@dcloudio/uni-app';
-import MyUploadsPage from '@/pages/profile/my-uploads/index.vue';
+import MyUploadsPage from '@/pages/profile/records/my-uploads/index.vue';
 import FloatingActionButton from '@/components/FloatingActionButton.vue';
 import { getMyUploads, getMyUpload, withdrawMyUpload } from '@/api/modules/user';
 const mockUser = reactive({

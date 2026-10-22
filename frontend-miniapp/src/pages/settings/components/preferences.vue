@@ -6,8 +6,8 @@
     @save="handleSave"
   >
     <view class="settings-section">
-      <text class="settings-title">口味偏好</text>
-      <text class="settings-hint">0 表示未设置，1–5 表示偏好强度。</text>
+      <text class="settings-title">{{ t('account.settings.tastePreferences') }}</text>
+      <text class="settings-hint">{{ t('account.settings.section0MeansUnset15') }}</text>
       <view v-for="taste in tasteOptions" :key="taste.field" class="taste-row">
         <view class="taste-heading"
           ><text class="settings-label">{{ taste.label }}</text
@@ -29,12 +29,14 @@
     </view>
 
     <view class="settings-section">
-      <text class="settings-title">分量</text>
+      <text class="settings-title">{{ t('account.settings.portionSize') }}</text>
       <view class="settings-options">
         <button
           v-for="(label, value) in portionLabels"
           :key="value"
           class="settings-button settings-option"
+          hover-class="settings-button--pressed"
+          :hover-stay-time="80"
           :class="{ 'settings-option--selected': form.portionSize === value }"
           :aria-pressed="form.portionSize === value"
           :disabled="!canEdit"
@@ -46,26 +48,32 @@
     </view>
 
     <view class="settings-section">
-      <text class="settings-title">价格范围</text>
+      <text class="settings-title">{{ t('account.settings.priceRange') }}</text>
       <view class="price-fields">
         <view
-          ><label for="price-min" class="settings-hint">最低价（元）</label
+          ><label for="price-min" class="settings-hint">{{
+            t('account.settings.minimumPriceCny')
+          }}</label
           ><input
             id="price-min"
             v-model.number="form.priceRange.min"
             type="digit"
             class="settings-field"
             :disabled="!canEdit"
+            :aria-disabled="!canEdit"
             :aria-invalid="!!priceRangeError"
         /></view>
         <view
-          ><label for="price-max" class="settings-hint">最高价（元）</label
+          ><label for="price-max" class="settings-hint">{{
+            t('account.settings.maximumPriceCny')
+          }}</label
           ><input
             id="price-max"
             v-model.number="form.priceRange.max"
             type="digit"
             class="settings-field"
             :disabled="!canEdit"
+            :aria-disabled="!canEdit"
             :aria-invalid="!!priceRangeError"
         /></view>
       </view>
@@ -80,6 +88,7 @@
           :value="drafts[group.field]"
           class="settings-field"
           :disabled="!canEdit"
+          :aria-disabled="!canEdit"
           :placeholder="group.placeholder"
           maxlength="30"
           @input="setDraft(group.field, $event)"
@@ -87,10 +96,12 @@
         />
         <button
           class="settings-button"
+          hover-class="settings-button--pressed"
+          :hover-stay-time="80"
           :disabled="!canEdit || !drafts[group.field].trim()"
           @click="group.add"
         >
-          添加
+          {{ t('account.settings.add') }}
         </button>
       </view>
       <view v-if="form[group.field].length" class="settings-tags">
@@ -98,18 +109,20 @@
           <text>{{ item }}</text
           ><button
             class="settings-button settings-tag-remove"
-            :aria-label="'删除' + item"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
+            :aria-label="t('account.settings.deleteItem', { item })"
             :disabled="!canEdit"
             @click="group.remove(index)"
           >
-            <text class="iconfont icon-plus" aria-hidden="true"></text>
+            <UiIcon name="close" :size="16" />
           </button>
         </view>
       </view>
     </view>
 
     <view class="settings-section">
-      <text class="settings-title">偏好食堂</text>
+      <text class="settings-title">{{ t('account.settings.preferredCanteens') }}</text>
       <view v-if="canteensError" class="directory-error error-feedback" role="alert">
         <text class="error-feedback__message">{{ canteensError }}</text
         ><button
@@ -117,12 +130,16 @@
           hover-class="error-feedback__action--pressed"
           @click="loadCanteens"
         >
-          重试食堂列表
+          {{ t('account.settings.retryCanteenList') }}
         </button>
       </view>
-      <text v-else-if="canteensLoading" class="settings-hint">正在加载食堂…</text>
+      <text v-else-if="canteensLoading" class="settings-hint">{{
+        t('account.settings.loadingCanteens')
+      }}</text>
       <UiPicker
         v-else
+        class="settings-picker"
+        :aria-disabled="!canEdit || !canteenList.length"
         mode="selector"
         :range="canteenList"
         range-key="name"
@@ -131,21 +148,25 @@
       >
         <view class="settings-field settings-inline"
           ><text class="canteen-picker-label">{{
-            canteenList.length ? '选择食堂' : '暂无可选食堂'
+            canteenList.length
+              ? t('account.settings.chooseACanteen')
+              : t('account.settings.noCanteensAvailable')
           }}</text
-          ><text class="iconfont icon-chevronright" aria-hidden="true"></text
-        ></view>
+          ><UiIcon name="chevron-down" :size="16"
+        /></view>
       </UiPicker>
       <view v-if="form.canteenPreferences.length" class="settings-tags">
         <view v-for="(id, index) in form.canteenPreferences" :key="id" class="settings-tag">
           <text>{{ getCanteenNameById(id) }}</text
           ><button
             class="settings-button settings-tag-remove"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
             :disabled="!canEdit"
-            :aria-label="'移除' + getCanteenNameById(id)"
+            :aria-label="t('account.settings.removeItem', { item: getCanteenNameById(id) })"
             @click="removeCanteenPreference(index)"
           >
-            <text class="iconfont icon-plus" aria-hidden="true"></text>
+            <UiIcon name="close" :size="16" />
           </button>
         </view>
       </view>
@@ -153,8 +174,10 @@
   </SettingsPage>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import UiPicker from '@/components/UiPicker.vue';
+import UiIcon from '@/components/UiIcon.vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { usePreferences } from '../composables/use-preferences';
 import SettingsPage from './SettingsPage.vue';
@@ -186,36 +209,42 @@ const pageState = computed(() => ({
   saved: state.saved.value,
   restoredDraft: state.restoredDraft.value,
 }));
-const tasteOptions = [
-  { field: 'spiciness', label: '辣度', labels: spicinessLabels },
-  { field: 'sweetness', label: '甜度', labels: tasteLabels },
-  { field: 'saltiness', label: '咸度', labels: tasteLabels },
-  { field: 'oiliness', label: '油腻度', labels: tasteLabels },
-] as const;
-const ingredientGroups = [
-  {
-    field: 'favoriteIngredients',
-    label: '喜好食材',
-    placeholder: '输入喜好的食材',
-    add: state.addFavoriteIngredient,
-    remove: state.removeFavoriteIngredient,
-  },
-  {
-    field: 'meatPreference',
-    label: '肉类偏好',
-    placeholder: '输入偏好的肉类',
-    add: state.addMeatPreference,
-    remove: state.removeMeatPreference,
-  },
-  {
-    field: 'avoidIngredients',
-    label: '不喜欢的食材',
-    placeholder: '输入想避开的食材',
-    add: state.addAvoidIngredient,
-    remove: state.removeAvoidIngredient,
-  },
-] as const;
-type IngredientField = (typeof ingredientGroups)[number]['field'];
+const tasteOptions = computed(
+  () =>
+    [
+      { field: 'spiciness', label: t('account.settings.spiciness'), labels: spicinessLabels.value },
+      { field: 'sweetness', label: t('account.settings.sweetness'), labels: tasteLabels.value },
+      { field: 'saltiness', label: t('account.settings.saltiness'), labels: tasteLabels.value },
+      { field: 'oiliness', label: t('account.settings.oiliness'), labels: tasteLabels.value },
+    ] as const
+);
+const ingredientGroups = computed(
+  () =>
+    [
+      {
+        field: 'favoriteIngredients',
+        label: t('account.settings.favoriteIngredients2'),
+        placeholder: t('account.settings.enterAFavoriteIngredient'),
+        add: state.addFavoriteIngredient,
+        remove: state.removeFavoriteIngredient,
+      },
+      {
+        field: 'meatPreference',
+        label: t('account.settings.meatPreferences'),
+        placeholder: t('account.settings.enterAPreferredMeat'),
+        add: state.addMeatPreference,
+        remove: state.removeMeatPreference,
+      },
+      {
+        field: 'avoidIngredients',
+        label: t('account.settings.dislikedIngredients'),
+        placeholder: t('account.settings.enterAnIngredientToAvoid'),
+        add: state.addAvoidIngredient,
+        remove: state.removeAvoidIngredient,
+      },
+    ] as const
+);
+type IngredientField = (typeof ingredientGroups.value)[number]['field'];
 const draftRefs = {
   favoriteIngredients: state.newFavoriteIngredient,
   meatPreference: state.newMeatPreference,
@@ -233,7 +262,7 @@ onBackPress(handleBackPress);
 </script>
 <style scoped>
 .taste-row {
-  padding-top: 18px;
+  padding-top: 16px;
 }
 .taste-heading {
   display: flex;
@@ -242,12 +271,12 @@ onBackPress(handleBackPress);
   gap: 12px;
 }
 .taste-row slider {
-  margin: 14px 10px 0;
+  margin: 12px 10px 0;
 }
 .price-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 .price-fields .settings-hint {
   margin-bottom: 8px;
@@ -257,9 +286,5 @@ onBackPress(handleBackPress);
 }
 .canteen-picker-label {
   flex: 1;
-}
-.settings-tag-remove .iconfont {
-  display: inline-block;
-  transform: rotate(45deg);
 }
 </style>

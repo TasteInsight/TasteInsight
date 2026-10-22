@@ -41,6 +41,7 @@ describe('Recommendation candidate contracts', () => {
       null as any,
       null as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest
       .spyOn(service, 'getUserFeaturesWithCache')
@@ -82,6 +83,7 @@ describe('Recommendation candidate contracts', () => {
       experiment as any,
       embedding as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest
       .spyOn(service, 'getUserFeaturesWithCache')
@@ -113,6 +115,7 @@ describe('Recommendation candidate contracts', () => {
       null as any,
       embedding as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest
       .spyOn(service, 'getUserFeaturesWithCache')
@@ -210,7 +213,7 @@ describe('Recommendation candidate contracts', () => {
     } as any);
     const filter = prisma.dish.findMany.mock.calls[0][0].where.AND;
     expect(filter).toContainEqual({
-      NOT: { allergens: { hasSome: ['花生'] } },
+      NOT: { allergenKeys: { hasSome: ['花生'] } },
     });
     expect(filter).toContainEqual({
       NOT: { ingredients: { hasSome: ['香菜', '葱'] } },
@@ -232,6 +235,7 @@ describe('Recommendation candidate contracts', () => {
       null as any,
       embedding as any,
       null as any,
+      { expandValues: async (values: string[]) => values } as any,
     );
     jest.spyOn(service, 'getUserFeaturesWithCache').mockResolvedValue({
       ...features,
@@ -266,7 +270,7 @@ describe('Recommendation candidate contracts', () => {
       { windowId: { in: ['requested-window'] } },
       { availableMealTime: { hasSome: ['lunch'] } },
       { price: { gte: 0, lte: 20 } },
-      { NOT: { allergens: { hasSome: ['花生'] } } },
+      { NOT: { allergenKeys: { hasSome: ['花生'] } } },
       { NOT: { ingredients: { hasSome: ['香菜', '葱'] } } },
     ];
     expect(embedding.recallDishesByUserEmbedding).toHaveBeenCalledWith(
@@ -314,7 +318,7 @@ describe('Recommendation candidate contracts', () => {
         { windowId: { in: ['requested-window'] } },
         { availableMealTime: { hasSome: ['lunch'] } },
         { price: { gte: 0, lte: 20 } },
-        { NOT: { allergens: { hasSome: ['花生'] } } },
+        { NOT: { allergenKeys: { hasSome: ['花生'] } } },
         { NOT: { ingredients: { hasSome: ['香菜', '葱'] } } },
         ...(hasCanteen ? [{ canteenId: { in: ['requested-canteen'] } }] : []),
       ];
@@ -365,6 +369,7 @@ describe('Recommendation candidate contracts', () => {
         null as any,
         embedding as any,
         null as any,
+        { expandValues: async (values: string[]) => values } as any,
       );
       jest
         .spyOn(service, 'getUserFeaturesWithCache')

@@ -4,14 +4,15 @@ TasteInsight 后端服务是基于 **NestJS** 框架构建的 RESTful API 服务
 
 ## 技术栈
 
-- **运行时**: Node.js
+- **运行时**: Node.js 22.13+
 - **框架**: NestJS 11
+- **语言**: TypeScript 5.9.3
 - **数据库**: PostgreSQL + Prisma ORM
 - **缓存**: Redis + BullMQ 任务队列
 - **认证**: JWT (JSON Web Token)
 - **文档**: Swagger / OpenAPI
 - **AI 服务**: OpenAI API + Python 嵌入服务
-- **对象存储**: 阿里云 OSS
+- **对象存储**: 本地文件与通用 S3 多实例（AWS S3、腾讯云 COS、阿里云 OSS）
 - **包管理器**: pnpm
 
 ## 项目结构
@@ -31,11 +32,13 @@ backend/
 │   ├── admin-uploads/       # 用户上传菜品审核
 │   ├── admin-windows/       # 窗口管理（管理端）
 │   ├── ai-chat/             # AI 聊天服务
+│   ├── allergens/           # 双语过敏原词表与比较规则
 │   ├── auth/                # 账号、手机号和各端微信身份
 │   ├── campus-identity/     # 校园资格验证与审核
 │   ├── canteens/            # 食堂接口（用户端）
 │   ├── comments/            # 评论接口
 │   ├── common/              # 公共模块（装饰器、守卫等）
+│   ├── content-translations/ # 可选英文建议与独立翻译配置
 │   ├── dish-review-stats-queue/ # 菜品评价统计队列
 │   ├── dish-sync-queue/     # 菜品同步队列
 │   ├── dishes/              # 菜品接口（用户端）
@@ -87,7 +90,8 @@ backend/
 | `user-profile` | 用户信息、偏好设置、浏览历史 |
 | `recommendation` | 个性化菜品推荐 |
 | `ai-chat` | AI 聊天（流式响应）、会话管理 |
-| `upload` | 图片上传（本地存储 / 阿里云 OSS） |
+| `allergens` | 共享双语词表与别名 |
+| `upload` | 图片上传、私有审核图片与通用 S3 多实例存储 |
 
 ### 管理端 API
 
@@ -106,6 +110,8 @@ backend/
 | `admin/posts`、`admin/post-comments` | 帖子与回复列表、审核和删除 |
 | `admin-config` | 系统配置（推荐策略、AI 参数等） |
 | `admin-recommendation` | 推荐系统配置与管理 |
+| `admin/allergens` | 过敏原词表维护 |
+| `content-translations` | 独立翻译配置、服务状态与英文建议 |
 
 ### 后台任务队列
 
@@ -122,16 +128,124 @@ backend/
 | 工具 | 行为 |
 | --- | --- |
 | `recommend_dishes` | `scene` 支持 `guess_like`、`today`、`similar`；相似推荐需要真实 `triggerDishId`，`excludeDishIds` 排除替换前的候选。 |
+| `search_dishes` | 默认查询在售；明确查询下架菜品时使用 `status=offline`，回答保留真实供应状态。 |
 | `get_my_preferences` | 只读取当前用户的饮食偏好和过敏原，不返回账户身份信息。 |
 | `update_preferences` | 生成包含实际前后值的 `card_preferences` 确认草稿，不写入数据库。 |
 | `create_meal_plan` | 生成计划草稿；默认同一食堂，并校验当前供应、饮食限制及显式整餐预算。 |
 | `display_content` | 根据真实数据展示菜品、食堂或计划卡片；计划重校验同样经过工具注册边界。 |
+
+`display_content` 在出卡前重新读取菜品。默认过滤下架内容；显式查询下架菜品或展示本人历史、收藏时，以 `includeOffline=true` 展示并标注实际状态。常规推荐继续筛选在售菜品。
+
+对话 SSE 的 HTTP 状态与流内事件分别处理。HTTP 401 表示请求在业务处理前被鉴权拒绝，客户端在尚未接收事件时可以刷新凭据后重试一次；HTTP 200 中的 provider `error` 属于本次生成失败。`reply_complete` 是回答已完成的标记。主动停止标记为 `stopped`；流正常结束时缺少完成事件，标记为 `interrupted`；网络异常或模型错误标记为 `failed`。这些状态均保留已接收内容。
 
 工具注册时编译 JSON Schema，执行前校验必填字段、类型、枚举、数量和值域，不隐式转换参数或接受未知字段。工具定义声明场景权限，模型可见清单与执行权限一致；`dish_critic` 不提供偏好变更和计划草稿工具。
 
 偏好草稿只在用户点击保存后调用既有 `PUT /user/profile` 接口。前端核对最新字段，处理重复点击、失败重试及账户归属；数据库将组合变更作为一个事务保存。拒绝、保存等卡片状态缓存于当前设备的所属账户。单次用餐条件只影响查询，不自动变成长期偏好。
 
 推荐特征缓存用于复用行为聚合；已保存偏好和过敏原实时读取。相似、个性化列表在分页前按当前菜品和饮食限制重新过滤，避免旧缓存覆盖最新设置。
+
+## 营养信息与资料贡献
+
+营养值按每份菜品记录，新增和读取接口使用下列可选字段：
+
+| 字段 | 含义与单位 |
+|---|---|
+| `calories` | 热量，kcal |
+| `protein` | 蛋白质，g |
+| `carbohydrate` | 碳水化合物，g |
+| `fat` | 脂肪，g |
+
+数值须为大于等于 0 的有限数；`0` 是已知值，`null` 表示尚未提供。更新时省略字段保留原值，显式 `null` 清空；管理端表单的空输入转换为 `null`。客户端依据 `displaySettings.showCalories`、`displaySettings.showNutrition` 控制显示，缺失项保持缺失。
+
+用户可上传新菜品，也可给正式菜品提交资料补全。补全记录保存目标菜品、所选字段和提交时的基准快照，审核通过后写入所选字段。新增和补全共用 `DishUpload`，以 `kind=create/update` 区分。
+
+| 接口 | 行为 |
+|---|---|
+| `POST /dishes/upload` | 登录且具备有效学生资格；新增或提交补全，返回记录 ID、状态和 `revision` |
+| `GET /user/uploads`、`GET /user/uploads/:id` | 当前账号读取自己的记录、状态及审核结果 |
+| `PUT /user/uploads/:id` | 有效学生资格，携带当前 `revision`，修改待审核或未通过记录并重新进入待审核 |
+| `POST /user/uploads/:id/withdraw` | 有效学生资格，携带当前 `revision`，撤回待审核或未通过记录 |
+| `POST /admin/dishes/uploads/:id/approve`、`reject`、`revoke` | 管理员按审核权限与食堂范围批准、拒绝或撤销审核 |
+
+补全请求以 `targetDishId` 和 `changedFields` 指定目标与修改字段；客户端同时携带 `targetDishUpdatedAt` 检测目标变化。所选字段决定本次发布范围；图片在原图基础上追加。用户修改记录时沿用原目标，待审或未通过记录可以重提；存在尚未撤回的子记录时，先处理子记录再撤回父项。
+
+客户端用 UUID `clientRequestId` 标识一次创建请求；同一账号以相同标识和相同内容重试时返回原记录，标识已用于另一份内容时返回 409。更新和撤回使用 `revision` 检测并发变化，旧版本返回 409，客户端刷新后继续操作。
+
+管理员审核页面携带当前版本。发布前比较所选字段与基准快照，目标资料已变化时返回冲突。将新增记录归并到已有正式菜品时，指定 `mergeDishId`、目标 `mergeDishUpdatedAt` 与 `mergeFields`。发布、快照及审核状态在事务中保存。
+
+撤销已发布补全前，再比较本次发布字段与已发布快照；这些字段已有后续修改时返回冲突。通过校验后恢复本次字段的原值，记录回到待审核。撤销新菜品审核时下架关联菜品，保留正式记录与审核历史，并先处理仍上架的子菜品。部署相关迁移见[营养与举报记录升级](../docs/环境配置与部署.md#营养与举报记录升级)。
+
+## 内容国际化接口
+
+菜品与投稿通过 `nameEn`、`descriptionEn` 保存可选英文内容，读取接口同时返回原文与译文，客户端按当前语言逐字段选择。更新时省略英文字段保留原值，显式 `null` 或去掉首尾空白后为空的字符串清空该字段；Excel 导入的空白列按保留原值处理。投稿审批、归并和撤销沿用这些字段的完整快照。
+
+| 接口 | 权限与用途 |
+|---|---|
+| `GET /allergens` | 公开读取中英文词表及别名 |
+| `GET /admin/allergens` | `config:view`，读取词表 |
+| `POST /admin/allergens`、`PUT /admin/allergens/:value` | `GLOBAL` + `config:edit`，创建或维护词条；`:value` 使用词条标识并按 URL 路径参数编码 |
+| `GET /admin/content-translations/status` | `dish:create`、`dish:edit`、`upload:approve`、`config:edit` 中任一权限，只返回 `enabled`、`available` |
+| `POST /admin/content-translations` | 同上，接收 `kind: "dish"` 或 `"allergen"`、`name` 和可选 `description`，返回 `nameEn`、`descriptionEn` 建议 |
+| `GET /admin/content-translations/settings` | `GLOBAL` + `config:view`，读取翻译配置和密钥配置状态 |
+| `PUT /admin/content-translations/settings` | `GLOBAL` + `config:edit`，更新翻译配置 |
+
+配置写入使用 `enabled`、`model`、`baseUrl`、`apiKey`。`enabled` 为 JSON 布尔值；省略字段保持原值，`apiKey: ""` 保留密钥，`apiKey: null` 删除数据库密钥。启用或删除凭据时，在同一事务中检查有效配置；同时保存的启用与凭据变更通过事务锁串行处理。环境托管字段由部署环境修改。
+
+状态中的 `available` 表示服务已启用且必需配置齐全。调用时，服务关闭或配置缺失返回 503，模型请求或结果校验失败返回 502。翻译请求单独创建 provider，输入为当前名称和描述；采用建议后由原有内容接口保存。模型和密钥的来源见[英文翻译服务](../docs/环境变量参考.md#英文翻译服务)，界面操作见[管理端内容维护](../frontend-web/README.md#中英文内容维护)。
+
+## 过敏原匹配与存储
+
+词表包含稳定标识 `value`、中文名 `nameZh`、可选英文名 `nameEn` 和别名 `aliases`。维护时将这些名称关联到同一标识；修改显示名保留旧名及别名，以便已有个人偏好和菜品继续匹配。归一后的名称或别名跨词条重复时，保存返回 409，事务内的词条、别名和审计记录一起回滚。
+
+比较分两步：先去掉首尾空白，将连续空白（含制表符、全角空格等）收为一个普通空格；再按固定的 Unicode 17 Default Full Case Folding 生成比较值。后端、用户端、管理端和 PostgreSQL 使用同一份映射数据，按归一后的完整比较值精确匹配词条及已登记别名。
+
+| 输入比较 | 结果 |
+|---|---|
+| `  TREE   NUTS  ` 与 `tree nuts` | 同一比较值 |
+| `tree nuts` 与 `坚果` | 由词表中同一词条的中英文关系匹配 |
+| `Pine Nuts` 与 `Pine Nutshell` | 分属不同完整词条；显式关联为同一词条别名后才视为同义 |
+| `Milk protein` 与 `Milk` | 同上，按完整词条比较 |
+
+文本列表以逗号、分号、顿号或换行分隔，词条内普通空格保留单词边界。JSON 数组按每一项的完整文本处理。数组按比较值去重，保留首次出现的大小写和原有顺序，显示文本使用归一后的空白。词表外自定义项仍可保存并按完整文本比较，用户端显示其原文。
+
+推荐过滤、AI 偏好及计划草稿、规划保存均复用词表关系和比较值。创建规划，或修改菜品、日期、餐次时，日期包含今天或未来就会重读最新偏好与菜品并校验；纯过去日期的记录保留历史事实。菜品过敏原由维护者核实填写，翻译建议只提供英文内容。
+
+`allergen_aliases.name` 使用 `TEXT`，唯一索引按相同的比较函数判定重名。数据库触发器统一处理 `users`、`dishes`、`dish_uploads` 的实时过敏原数组，覆盖导入和历史快照恢复。`Dish.allergenKeys` 是从实时数组生成的比较值数组，推荐查询使用该列；常规 Prisma 读取默认省略该内部列，业务写入只提供 `allergens`。历史 JSON 快照保留原始数据，恢复写入时经过同一归一规则。
+
+比较数据由 `scripts/generate-allergen-case-fold.mjs` 从固定开发依赖生成，三端生成文件与迁移 SQL 一起核对：
+
+```bash
+# 在 backend 目录执行，只检查生成内容
+node scripts/generate-allergen-case-fold.mjs --check
+```
+
+升级顺序、冲突处理和回退方式见[国际化与过敏原数据升级](../docs/环境配置与部署.md#国际化与过敏原数据升级)。
+
+## 规划生成与确认保存
+
+AI 生成规划建议时，`create_meal_plan` 按当前在售状态、餐次和供应日期检查整段日期覆盖；多个有效供应区间可以合并覆盖，空供应日期表示每天供应。默认同一食堂，显式允许时可跨食堂；提供整餐预算时按菜品价格之和检查。金额按分计算，计价单位随菜品保留。
+
+用户点击 AI 卡片的确认按钮时，前端读取最新菜品并提交保存；保存成功后更新卡片预览，展示价格、计价单位、上下架及供应变化。普通规划编辑展示当前菜品与供餐状态。保存契约为：
+
+| 情形 | 处理 |
+|---|---|
+| 价格、计价单位、供应餐次或日期发生变化 | 保留计划并展示现况提示；AI 卡片同步更新预览 |
+| 点击 AI 卡片确认时读取最新资料失败 | 保留原预览并提示资料未刷新，保存结果以服务端响应为准 |
+| 菜品已删除、日期范围无效、资源归属或公开权限不满足 | 拒绝保存 |
+| 创建规划或修改菜品、日期、餐次，日期包含今天或未来，且最新过敏原或忌口与菜品冲突 | 服务端返回 `DIETARY_CONFLICT`，拒绝保存 |
+| 仅过去日期的记录 | 保留历史记录；移到今天或未来时重新校验 |
+
+确认保存按当前用户提交的日期、餐次和菜品 ID 建立规划；同食堂与预算约束用于生成建议；确认保存后的变化提示包含预算超限。创建规划，或修改菜品、日期、餐次且日期包含今天或未来时，服务端在事务内重读饮食限制并校验；失败时日期、菜品关联和完成记录一起回滚。单独切换公开状态时执行公开权限校验。日期边界统一采用 `Asia/Shanghai`，跨度包含首尾两天。普通规划已保存、随后刷新详情失败时，保留已成功的写入并提供同步重试。
+
+修改日期或餐次时，有尚未开始的公开约饭邀请需先取消，接口返回 `ACTIVE_DINING_INVITATION`；调整范围后清理范围外的完成记录。纯历史记录和当前规划的饮食限制边界见[过敏原匹配与存储](#过敏原匹配与存储)。
+
+## 举报结果与记录保留
+
+`GET /user/reports` 和 `GET /user/reports/:id` 只读取当前账号提交的举报，返回原因、状态、处理结果和处理时间。管理员使用 `report:handle` 并按授权范围处理；删除目标还须具备相应的评价、回复或帖子删除权限。
+
+处理动作包括 `delete_content`、`warn_user`、`reject_report`。前两种将举报记为 `approved`，驳回记为 `rejected`；处理结果写入 `handleResult`，并在同一事务中向举报者创建 `report_handled` 站内通知，通知目标为该举报记录。已处理记录拒绝重复处理。
+
+原内容隐藏或软删除时保留举报；物理删除时相应外键关联设为 `NULL`，举报记录的原始目标类型、目标 ID、处理结果和时间继续保留。从消息或举报列表打开记录时读取处理结果，原内容是否仍可访问由其当前状态决定。用户入口见[举报与反馈](../frontend-miniapp/README.md#举报与反馈)。
 
 ## 环境准备
 
@@ -244,7 +358,8 @@ Compose 从 `--env-file` 选取配置并按角色注入，未设置的可选字�
 | `Canteen` | 食堂 |
 | `Floor` | 楼层 |
 | `Window` | 窗口 |
-| `Dish` | 菜品 |
+| `Dish` | 菜品，含可选英文名、英文描述与生成的过敏原比较值 |
+| `Allergen`、`AllergenAlias` | 共享过敏原词条及唯一别名 |
 | `DishUpload` | 用户或管理员提交的菜品（待审核） |
 | `Review` | 评价 |
 | `Comment` | 评论 |

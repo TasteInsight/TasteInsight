@@ -5,7 +5,7 @@
     hover-class="list-row-pressed"
     role="button"
     tabindex="0"
-    :aria-label="'查看动态：' + post.content"
+    :aria-label="t('account.profile.viewPost', { content: post.content })"
     @click="activate"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -17,13 +17,17 @@
     <view class="profile-post-copy">
       <text class="profile-post-excerpt">{{ post.content }}</text>
       <text v-if="post.status === 'rejected'" class="profile-post-note">{{
-        post.rejectReason || '未通过审核，可在动态详情中修改。'
+        post.rejectReason || t('account.profile.reviewWasUnsuccessfulEditThis')
       }}</text>
       <view class="profile-post-meta">
         <text>{{ date }}</text>
         <view v-if="post.likeCount || post.commentCount" class="profile-post-stats">
-          <text v-if="post.likeCount">{{ post.likeCount }} 赞</text>
-          <text v-if="post.commentCount">{{ post.commentCount }} 回复</text>
+          <text v-if="post.likeCount">{{
+            t('account.profile.likes', { count: post.likeCount })
+          }}</text>
+          <text v-if="post.commentCount">{{
+            t('account.profile.replies', { count: post.commentCount })
+          }}</text>
         </view>
       </view>
     </view>
@@ -31,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import type { Post } from '@/api/modules/social';
@@ -62,7 +67,7 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   width: 100%;
   min-width: 0;
   margin: 0;
-  padding: 0;
+  padding-block: 0;
   overflow: hidden;
   border: 1px solid #eaecf0;
   border-radius: 12px;
@@ -74,6 +79,9 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
 }
 .profile-post-card::after {
   border: 0;
+}
+.profile-post-card:not(.profile-post-card--text) {
+  padding-inline: 0;
 }
 .profile-post-card:not(.profile-post-card--text):focus-visible {
   outline: 2px solid #660874;

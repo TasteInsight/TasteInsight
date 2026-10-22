@@ -340,8 +340,8 @@ export class CampusOAuthService {
     return { completed: true, status: result.status! };
   }
 
-  async login(dto: CampusLoginDto) {
-    return (await this.finish('LOGIN', dto)).user!;
+  async login(dto: CampusLoginDto, language = 'zh') {
+    return (await this.finish('LOGIN', dto, undefined, language)).user!;
   }
 
   async completeBinding(userId: string, dto: CompleteCampusOAuthDto) {
@@ -404,6 +404,7 @@ export class CampusOAuthService {
     purpose: 'LOGIN' | 'VERIFICATION' | 'LOGIN_BIND',
     dto: CompleteCampusOAuthDto | CampusLoginDto,
     userId?: string,
+    language = 'zh',
   ) {
     this.assertConfigured(purpose);
     const now = new Date();
@@ -430,7 +431,10 @@ export class CampusOAuthService {
           data: { completedAt: now },
         });
         if (consumed.count !== 1)
-          throw new BadRequestException('确认码无效或已过期，请重新发起');
+          throw new BadRequestException({
+            code: 'INVALID_CAMPUS_CONFIRMATION',
+            message: '确认码无效或已过期，请重新发起',
+          });
         const attempt = await tx.campusOAuthAttempt.findUniqueOrThrow({
           where: { id: dto.attemptId },
         });
@@ -442,6 +446,7 @@ export class CampusOAuthService {
                 tx,
                 proof.studentSubjectDigest,
                 userId,
+                language,
               );
         const shouldVerify =
           purpose === 'VERIFICATION' ||

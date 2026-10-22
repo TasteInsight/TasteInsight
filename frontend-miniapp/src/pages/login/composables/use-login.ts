@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, getCurrentScope, onScopeDispose, type Ref } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { CampusLoginTicket } from '@/api/modules/auth';
@@ -66,7 +67,7 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
       submitted.value = true;
 
       uni.showToast({
-        title: '登录成功',
+        title: t('account.login.signedIn'),
         icon: 'success',
       });
 
@@ -79,9 +80,9 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
           userStore.isLoggedIn)
       )
         return;
-      let errorMessage = '登录失败，请重试';
+      let errorMessage = t('account.login.signInFailedTryAgain');
       if (error?.errMsg?.includes('login:fail')) {
-        errorMessage = '微信授权未完成，请重试';
+        errorMessage = t('account.login.wechatAuthorizationWasIncompleteTry');
       }
 
       if (!disposed)
@@ -100,7 +101,7 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
   }
 
   async function wechatLogin(): Promise<void> {
-    if (!wechatAvailable.value) throw new Error('当前平台未配置微信登录');
+    if (!wechatAvailable.value) throw new Error(t('account.login.wechatSignInIsUnavailable'));
     return authenticate(authorizeWechat, code =>
       config.platform === 'mp-weixin'
         ? userStore.loginAction(code)
@@ -121,7 +122,7 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
     );
 
   async function testLogin(): Promise<void> {
-    if (!config.testLoginEnabled) throw new Error('开发测试登录未启用');
+    if (!config.testLoginEnabled) throw new Error(t('account.login.developmentTestSignInIs'));
     return authenticate(async () => {
       let identity = uni.getStorageSync('development-login-identity');
       if (!identity) {

@@ -1,3 +1,4 @@
+import { AllergensService } from '@/allergens/allergens.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecommendationService } from './recommendation.service';
 import { PrismaService } from '@/prisma.service';
@@ -105,6 +106,26 @@ describe('RecommendationService', () => {
   let embeddingService: typeof mockEmbeddingService;
   let eventLogger: typeof mockEventLogger;
 
+  it('scores translated names and descriptions with the same search relevance as source text', () => {
+    const context = {
+      keyword: 'Tomato eggs',
+      fields: ['name', 'description'],
+      normalizedKeywords: ['tomato', 'eggs'],
+    };
+    const score = (dish: object) =>
+      (service as any).calculateSearchScore(dish, context);
+    expect(
+      score({
+        name: '原名',
+        nameEn: 'Tomato eggs',
+        descriptionEn: 'Tomato eggs',
+      }),
+    ).toBe(score({ name: 'Tomato eggs', description: 'Tomato eggs' }));
+    expect(score({ name: '原名', nameEn: 'Tomato eggs' })).toBeGreaterThan(
+      score({ name: '原名' }),
+    );
+  });
+
   beforeEach(async () => {
     // Reset all mocks
     Object.values(mockPrisma).forEach((mock) => {
@@ -128,6 +149,10 @@ describe('RecommendationService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RecommendationService,
+        {
+          provide: AllergensService,
+          useValue: { expandValues: async (values: string[]) => values },
+        },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: RecommendationCacheService, useValue: mockCacheService },
         { provide: EmbeddingService, useValue: mockEmbeddingService },
@@ -383,7 +408,7 @@ describe('RecommendationService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { NOT: { allergens: { hasSome: ['花生'] } } },
+              { NOT: { allergenKeys: { hasSome: ['花生'] } } },
             ]),
           }),
         }),

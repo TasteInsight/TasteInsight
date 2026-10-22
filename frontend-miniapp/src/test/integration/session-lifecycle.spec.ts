@@ -487,7 +487,7 @@ describe('chat consumer operation ownership', () => {
             type: 'ai',
             timestamp: 2,
             content: [{ type: 'text', text: 'saved answer' }],
-            suggestions: ['saved follow-up'],
+            suggestions: ['saved follow-up'], suggestionsLocale: 'zh-Hans',
           },
         ],
       },

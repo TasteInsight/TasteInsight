@@ -4,7 +4,7 @@
       <image class="planning-header-icon" src="/static/icons/plan.png" aria-hidden="true" />
       <view class="planning-card-heading">
         <text class="planning-card-title">{{
-          mealText ? `${mealText}规划建议` : '饮食规划建议'
+          mealText ? t('social.mealSuggestion', { p0: mealText }) : t('social.mealPlanSuggestion')
         }}</text>
         <text class="planning-card-date">{{ dateText }}</text>
         <text v-if="collapsed && plan.appliedStatus" class="planning-card-status">{{
@@ -17,14 +17,16 @@
         :hover-stay-time="80"
         role="button"
         tabindex="0"
-        :aria-label="collapsed ? '展开规划建议' : '收起规划建议'"
+        :aria-label="
+          collapsed ? t('social.expandPlanSuggestion') : t('social.collapsePlanSuggestion')
+        "
         :aria-expanded="!collapsed"
         @click="collapsed = !collapsed"
         @keydown="handleToggleKeydown"
         @keyup="handleToggleKeyup"
         @blur="togglePressed = false"
       >
-        {{ collapsed ? '展开' : '收起' }}
+        {{ collapsed ? t('social.expand') : t('social.collapse') }}
         <image
           class="planning-header-icon"
           :src="collapsed ? '/static/icons/chevron-down.png' : '/static/icons/chevron-up.png'"
@@ -44,7 +46,7 @@
         <view v-for="dish in preview.dishes" :key="dish.id" class="planning-dish">
           <view class="planning-dish-info">
             <view class="planning-dish-heading">
-              <text class="planning-dish-name">{{ dish.name }}</text>
+              <text class="planning-dish-name">{{ localizedDishName(dish) }}</text>
               <TagBadge
                 v-if="dishStatusLabel(dish)"
                 :label="dishStatusLabel(dish)"
@@ -69,8 +71,9 @@
                   v-for="notice in priceChanges(dish.id)"
                   :key="notice.kind"
                   class="planning-price-change"
-                  >{{ notice.unitChanged ? '计价方式更新 · ' : '' }}原
-                  {{ notice.previousPriceLabel }}</text
+                  >{{ notice.unitChanged ? t('social.pricingUpdatedPrefix') : ''
+                  }}{{ t('social.previousPricePrefix') }}
+                  {{ mealPlanPreviousPriceLabel(notice) }}</text
                 >
               </view>
               <text
@@ -78,7 +81,9 @@
                 class="planning-dish-rating"
                 :class="{ 'planning-dish-rating-rated': dish.averageRating > 0 }"
                 >{{
-                  dish.averageRating === 0 ? '暂无评分' : `${dish.averageRating.toFixed(1)} 分`
+                  dish.averageRating === 0
+                    ? t('social.noRating')
+                    : t('social.dishRatingValue', { p0: dish.averageRating.toFixed(1) })
                 }}</text
               >
             </view>
@@ -99,9 +104,11 @@
           :key="notice.kind"
           class="planning-dish-supply"
           role="status"
-          >{{ notice.message }}</text
+          >{{ mealPlanNoticeMessage(notice) }}</text
         >
-        <text class="planning-price-total">所列单价合计：¥{{ totalPrice.toFixed(2) }}</text>
+        <text class="planning-price-total"
+          >{{ t('social.listedPriceTotalColon') }}{{ totalPrice.toFixed(2) }}</text
+        >
         <view class="planning-card-actions">
           <button
             class="planning-card-apply"
@@ -126,13 +133,19 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
 import type { ComponentMealPlanDraft, Dish, MealPlanChangeNotice } from '@/types/api';
 import DishNutrition from '@/components/DishNutrition.vue';
 import TagBadge from '@/components/TagBadge.vue';
 import { priceUnitSuffix } from '@/utils/price-display';
-import { mealPlanDishNotices } from '@/utils/meal-plan-changes';
+import {
+  mealPlanDishNotices,
+  mealPlanNoticeMessage,
+  mealPlanPreviousPriceLabel,
+} from '@/utils/meal-plan-changes';
 
 const props = defineProps<{
   plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' };
@@ -176,9 +189,9 @@ const handleApplyKeyup = (event: KeyboardEvent) => {
 };
 
 const appliedButtonText = computed(() => {
-  if (props.plan.appliedStatus === 'success') return '已加入';
-  if (props.plan.appliedStatus === 'failed') return '加入失败，重试';
-  return '加入我的规划';
+  if (props.plan.appliedStatus === 'success') return t('social.added');
+  if (props.plan.appliedStatus === 'failed') return t('social.addFailedRetry');
+  return t('social.addToPlans');
 });
 
 const preview = computed(() => props.plan.previewData);
@@ -191,54 +204,58 @@ const priceChanges = (dishId: string) =>
 const generalNotices = computed(() =>
   (props.plan.changeNotices || []).filter(notice => !notice.dishId)
 );
-const dishStatusLabel = (dish: Dish) =>
-  dish.status === 'offline'
-    ? '已下架'
-    : props.plan.changeNotices?.find(
-        notice => notice.kind === 'status' && notice.dishId === dish.id
-      )?.message || '';
+const dishStatusLabel = (dish: Dish) => {
+  if (dish.status === 'offline') return t('social.unavailable');
+  const notice = props.plan.changeNotices?.find(
+    item => item.kind === 'status' && item.dishId === dish.id
+  );
+  return notice ? mealPlanNoticeMessage(notice) : '';
+};
 const dishSupplyNotices = (dish: Dish) => [
   ...new Set([
     ...mealPlanDishNotices(dish, preview.value),
     ...(props.plan.changeNotices || [])
       .filter(notice => notice.kind === 'supply' && notice.dishId === dish.id)
-      .map(notice => notice.message),
+      .map(notice => mealPlanNoticeMessage(notice)),
   ]),
 ];
 const changeSummary = computed(() => {
-  const names = new Map((preview.value?.dishes || []).map(dish => [dish.id, dish.name]));
+  const names = new Map(
+    (preview.value?.dishes || []).map(dish => [dish.id, localizedDishName(dish)])
+  );
   const groups = new Map<string, string[]>();
   for (const notice of props.plan.changeNotices || []) {
     const name = notice.dishId ? names.get(notice.dishId) || '' : '';
     const messages = groups.get(name) || [];
-    messages.push(notice.message);
+    messages.push(mealPlanNoticeMessage(notice));
     groups.set(name, messages);
   }
   return Array.from(
     groups,
-    ([name, messages]) => `${name ? name + '：' : ''}${messages.join('，')}`
-  ).join('；');
+    ([name, messages]) =>
+      `${name ? name + t('social.noticeNameSeparator') : ''}${messages.join(t('social.noticeSeparator'))}`
+  ).join(t('social.groupSeparator'));
 });
 
 const mealTimeMap: Record<string, string> = {
-  breakfast: '早餐',
-  lunch: '午餐',
-  dinner: '晚餐',
-  nightsnack: '夜宵',
+  breakfast: 'social.breakfast',
+  lunch: 'social.lunch',
+  dinner: 'social.dinner',
+  nightsnack: 'social.lateNight',
 };
 
 const dateText = computed(() => {
   const p = preview.value;
-  if (!p?.startDate) return '饮食规划建议';
-  const startText = dayjs(p.startDate).format('MM月DD日');
+  if (!p?.startDate) return t('social.mealPlanSuggestion');
+  const startText = dayjs(p.startDate).format(t('social.shortDateFormat'));
   const dateText =
     p.endDate && p.endDate !== p.startDate
-      ? `${startText} — ${dayjs(p.endDate).format('MM月DD日')}`
+      ? `${startText} — ${dayjs(p.endDate).format(t('social.shortDateFormat'))}`
       : startText;
   return dateText;
 });
 const mealText = computed(() =>
-  preview.value ? mealTimeMap[preview.value.mealTime] || '用餐' : ''
+  preview.value ? t(mealTimeMap[preview.value.mealTime] || 'social.meal') : ''
 );
 
 const totalPrice = computed(() => {

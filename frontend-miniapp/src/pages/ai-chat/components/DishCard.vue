@@ -1,9 +1,11 @@
 <template>
   <view
-    class="dish-recommendation"
+    class="dish-recommendation list-row-action"
+    hover-class="list-row-pressed"
+    :hover-stay-time="80"
     role="button"
     tabindex="0"
-    :aria-label="`查看菜品：${dish.dish.name}`"
+    :aria-label="t('social.viewDish', { p0: localizedDishName(dish.dish) })"
     @click="goToDishDetail"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -12,8 +14,12 @@
     <view class="dish-recommendation-main">
       <view class="dish-recommendation-info">
         <view class="dish-recommendation-heading"
-          ><text class="dish-recommendation-name">{{ dish.dish.name }}</text
-          ><TagBadge v-if="dish.dish.status === 'offline'" label="已下架" tone="neutral" /><view
+          ><text class="dish-recommendation-name">{{ localizedDishName(dish.dish) }}</text
+          ><TagBadge
+            v-if="dish.dish.status === 'offline'"
+            :label="t('social.unavailable')"
+            tone="neutral"
+          /><view
             class="dish-recommendation-rating"
             :class="{ 'dish-recommendation-rating-rated': numericRating > 0 }"
             ><image
@@ -46,6 +52,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import TagBadge from '@/components/TagBadge.vue';
 import DishNutrition from '@/components/DishNutrition.vue';
@@ -58,7 +66,7 @@ const numericRating = computed(() => {
   return Number.isFinite(rating) && rating > 0 ? rating : 0;
 });
 const formattedRating = computed(() =>
-  numericRating.value > 0 ? numericRating.value.toFixed(1) : '暂无评分'
+  numericRating.value > 0 ? numericRating.value.toFixed(1) : t('social.noRating')
 );
 const goToDishDetail = () => {
   if (props.dish.dish.id) uni.navigateTo({ url: `/pages/dish/index?id=${props.dish.dish.id}` });
@@ -82,12 +90,11 @@ const handleKeyup = (event: KeyboardEvent) => {
 .dish-recommendation {
   box-sizing: border-box;
   width: 100%;
-  padding: 16px 14px;
+  padding-block: 16px;
   margin-bottom: 0;
   background: #fff;
   cursor: pointer;
   overflow-wrap: anywhere;
-  transition: background-color 140ms ease-out;
 }
 .dish-recommendation-main {
   display: flex;
@@ -153,17 +160,5 @@ const handleKeyup = (event: KeyboardEvent) => {
   color: #667085;
   font-size: 16px;
   line-height: 1.65;
-}
-.dish-recommendation:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: -2px;
-}
-.dish-recommendation:active {
-  background: #f7f8fa;
-}
-@media (hover: hover) {
-  .dish-recommendation:hover {
-    background: #f7f8fa;
-  }
 }
 </style>

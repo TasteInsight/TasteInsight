@@ -4,17 +4,27 @@
       class="plan-sheet"
       role="dialog"
       aria-modal="true"
-      :aria-label="isEdit ? '编辑规划' : initialDishes?.length ? '加入这一餐' : '新建规划'"
+      :aria-label="
+        isEdit
+          ? t('common.plan.edit')
+          : initialDishes?.length
+            ? t('common.plan.join')
+            : t('common.plan.create')
+      "
       @tap.stop
       @touchmove.stop
     >
       <view class="plan-header">
         <text class="plan-title">{{
-          isEdit ? '编辑规划' : initialDishes?.length ? '加入这一餐' : '新建规划'
+          isEdit
+            ? t('common.plan.edit')
+            : initialDishes?.length
+              ? t('common.plan.join')
+              : t('common.plan.create')
         }}</text>
         <button
           class="plan-button plan-close"
-          aria-label="关闭规划"
+          :aria-label="t('common.plan.close')"
           :disabled="submitting"
           @tap="handleClose"
         >
@@ -30,14 +40,14 @@
         <view class="plan-form">
           <view class="plan-section">
             <view class="plan-section-heading">
-              <text class="plan-label">用餐日期</text>
+              <text class="plan-label">{{ t('common.plan.diningDate') }}</text>
               <button
                 class="plan-button plan-text-button"
                 :aria-expanded="multiDay"
                 data-testid="plan-multi-day"
                 @tap="toggleMultiDay"
               >
-                {{ multiDay ? '改为单日' : '安排多日' }}
+                {{ multiDay ? t('common.plan.singleDay') : t('common.plan.multipleDays') }}
               </button>
             </view>
             <view class="plan-date-row">
@@ -48,7 +58,9 @@
                 @change="onStartDateChange"
               >
                 <view class="plan-field"
-                  ><text class="plan-hint">{{ multiDay ? '开始日期' : '日期' }}</text
+                  ><text class="plan-hint">{{
+                    multiDay ? t('common.plan.start') : t('common.plan.date')
+                  }}</text
                   ><text>{{ formData.startDate }}</text></view
                 >
               </UiPicker>
@@ -61,13 +73,14 @@
                 data-testid="plan-end-date"
               >
                 <view class="plan-field"
-                  ><text class="plan-hint">结束日期</text><text>{{ formData.endDate }}</text></view
+                  ><text class="plan-hint">{{ t('common.plan.end') }}</text
+                  ><text>{{ formData.endDate }}</text></view
                 >
               </UiPicker>
             </view>
           </view>
           <view class="plan-section">
-            <text class="plan-label">餐次</text>
+            <text class="plan-label">{{ t('common.plan.meal') }}</text>
             <view class="plan-meals">
               <button
                 v-for="option in mealTimeOptions"
@@ -80,28 +93,32 @@
                 {{ option.label }}
               </button>
             </view>
-            <text v-if="!isEdit" class="plan-hint">已预选建议餐次，可以修改</text>
+            <text v-if="!isEdit" class="plan-hint">{{ t('common.plan.suggested') }}</text>
           </view>
           <view class="plan-section">
             <view class="plan-section-heading"
-              ><text class="plan-label">这一餐的菜品</text
-              ><text class="plan-hint">{{ selectedDishes.length }} 道</text></view
+              ><text class="plan-label">{{ t('common.plan.dishes') }}</text
+              ><text class="plan-hint">{{
+                t('common.plan.dishCount', { count: selectedDishes.length })
+              }}</text></view
             >
-            <text v-if="!selectedDishes.length" class="plan-empty">请选择至少一道菜品</text>
+            <text v-if="!selectedDishes.length" class="plan-empty">{{
+              t('common.plan.chooseDish')
+            }}</text>
             <view v-for="dish in selectedDishes" :key="dish.id" class="plan-selected-dish">
               <view class="plan-dish-copy"
-                ><text class="plan-dish-name">{{ dish.name }}</text
+                ><text class="plan-dish-name">{{ localizedDishName(dish) }}</text
                 ><text class="plan-hint"
-                  >{{ dish.canteenName || '食堂信息暂缺'
+                  >{{ dish.canteenName || t('common.plan.noCanteen')
                   }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
-                ><DishNutrition :dish="dish" /></view
-              >
+                ><DishNutrition :dish="dish"
+              /></view>
               <button
                 class="plan-button plan-remove"
-                :aria-label="'移除' + dish.name"
+                :aria-label="t('common.plan.removeDish', { name: localizedDishName(dish) })"
                 @tap="removeDish(dish.id)"
               >
-                移除
+                {{ t('common.plan.remove') }}
               </button>
             </view>
             <button
@@ -109,7 +126,7 @@
               :aria-expanded="showAddDishes"
               @tap="showAddDishes = !showAddDishes"
             >
-              {{ showAddDishes ? '收起菜品选择' : '添加其他菜品' }}
+              {{ showAddDishes ? t('common.plan.hidePicker') : t('common.plan.addOthers') }}
             </button>
           </view>
           <view v-if="showAddDishes" class="plan-section plan-picker-section">
@@ -117,19 +134,23 @@
               <input
                 v-model="searchKeyword"
                 class="plan-search-input"
-                :placeholder="selectedWindow ? '搜索当前窗口菜品' : '搜索菜名'"
-                aria-label="搜索菜名"
+                :placeholder="
+                  selectedWindow ? t('common.plan.searchCounter') : t('common.plan.searchDish')
+                "
+                :aria-label="t('common.plan.searchDish')"
                 @confirm="handleSearch"
               />
               <button
                 v-if="searchKeyword"
                 class="plan-button plan-clear"
-                aria-label="清空搜索"
+                :aria-label="t('common.clearSearch')"
                 @tap="clearSearch"
               >
                 ×
               </button>
-              <button class="plan-button plan-search-button" @tap="handleSearch">搜索</button>
+              <button class="plan-button plan-search-button" @tap="handleSearch">
+                {{ t('common.search') }}
+              </button>
             </view>
             <view class="plan-location-filters">
               <UiPicker
@@ -139,12 +160,14 @@
                 :value="selectedCanteenIndex"
                 :disabled="!canteenList.length"
                 range-key="name"
-                aria-label="选择食堂"
+                :aria-label="t('common.plan.chooseCanteen')"
                 @change="onCanteenChange"
                 ><view class="plan-select">
                   <text class="plan-select-label">{{
                     selectedCanteen?.name ||
-                    (canteenLoading && !canteenList.length ? '正在加载食堂…' : '全部食堂')
+                    (canteenLoading && !canteenList.length
+                      ? t('common.plan.loadingCanteens')
+                      : t('common.plan.allCanteens'))
                   }}</text>
                   <uni-icons
                     class="plan-select-icon"
@@ -162,11 +185,14 @@
                 :value="selectedWindowIndex"
                 :disabled="windowLoading || !windowList.length"
                 range-key="name"
-                aria-label="选择窗口"
+                :aria-label="t('common.plan.chooseCounter')"
                 @change="onWindowChange"
                 ><view class="plan-select">
                   <text class="plan-select-label">{{
-                    selectedWindow?.name || (windowLoading ? '正在加载窗口…' : '全部窗口')
+                    selectedWindow?.name ||
+                    (windowLoading
+                      ? t('common.plan.loadingCounters')
+                      : t('common.plan.allCounters'))
                   }}</text>
                   <uni-icons
                     class="plan-select-icon"
@@ -182,7 +208,7 @@
               class="plan-button plan-text-button"
               @tap="clearLocation"
             >
-              清除位置筛选
+              {{ t('common.plan.clearLocation') }}
             </button>
             <view v-if="canteenError" class="plan-feedback error-feedback" role="alert">
               <text class="error-feedback__message">{{ canteenError }}</text>
@@ -191,7 +217,7 @@
                 hover-class="error-feedback__action--pressed"
                 @tap="loadCanteens"
               >
-                重新加载食堂
+                {{ t('common.plan.reloadCanteens') }}
               </button>
             </view>
             <view v-if="windowError" class="plan-feedback error-feedback" role="alert">
@@ -201,10 +227,10 @@
                 hover-class="error-feedback__action--pressed"
                 @tap="retryWindows"
               >
-                重新加载窗口
+                {{ t('common.plan.reloadCounters') }}
               </button>
             </view>
-            <view v-if="dishLoading" class="plan-empty">正在加载菜品…</view>
+            <view v-if="dishLoading" class="plan-empty">{{ t('common.plan.loadingDishes') }}</view>
             <view v-if="dishError" class="plan-feedback error-feedback" role="alert">
               <text class="error-feedback__message">{{ dishError }}</text>
               <button
@@ -212,13 +238,13 @@
                 hover-class="error-feedback__action--pressed"
                 @tap="retryDishPage"
               >
-                重新加载
+                {{ t('common.retry') }}
               </button>
             </view>
             <view v-if="!dishLoading && !dishError && !dishList.length" class="plan-empty">{{
               selectedCanteen || submittedKeyword
-                ? '未找到菜品，试试其他关键词或窗口'
-                : '搜索菜名，或选择食堂和窗口'
+                ? t('common.plan.noResults')
+                : t('common.plan.searchHint')
             }}</view>
             <button
               v-for="dish in dishList"
@@ -228,16 +254,16 @@
               @tap="toggleDishSelection(dish)"
             >
               <view class="plan-dish-copy"
-                ><text class="plan-dish-name">{{ dish.name }}</text
+                ><text class="plan-dish-name">{{ localizedDishName(dish) }}</text
                 ><text class="plan-hint"
-                  >{{ dish.canteenName || '食堂信息暂缺'
+                  >{{ dish.canteenName || t('common.plan.noCanteen')
                   }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
                 ><text class="plan-hint"
                   >¥{{ dish.price }}{{ priceUnitSuffix(dish.priceUnit) }}</text
-                ><DishNutrition :dish="dish" /></view
-              >
+                ><DishNutrition :dish="dish"
+              /></view>
               <text class="plan-result-action">{{
-                isDishSelected(dish.id) ? '已添加' : '添加'
+                isDishSelected(dish.id) ? t('common.plan.added') : t('common.plan.add')
               }}</text>
               <image
                 v-if="dish.images?.[0] && !failedImages[dish.images[0]]"
@@ -248,25 +274,25 @@
                 @error="failedImages[dish.images[0]] = true"
               />
             </button>
-            <view v-if="loadingMore" class="plan-empty">加载更多…</view>
+            <view v-if="loadingMore" class="plan-empty">{{ t('common.plan.loadingMore') }}</view>
             <button
               v-else-if="hasMore && !dishLoading && !dishError"
               class="plan-button plan-add-toggle"
               @tap="loadNextPage"
             >
-              加载更多菜品
+              {{ t('common.plan.loadMore') }}
             </button>
             <view
               v-else-if="!dishLoading && !dishError && !hasMore && dishList.length"
               class="plan-empty"
-              >没有更多菜品了</view
+              >{{ t('common.plan.endResults') }}</view
             >
           </view>
         </view>
       </scroll-view>
       <view class="plan-footer">
         <button class="plan-button plan-cancel" :disabled="submitting" @tap="handleClose">
-          取消
+          {{ t('common.cancel') }}
         </button>
         <button
           class="plan-button plan-save"
@@ -275,7 +301,7 @@
           data-testid="plan-save"
           @tap="handleSubmit"
         >
-          {{ submitting ? '提交中...' : '确认保存' }}
+          {{ submitting ? t('common.plan.submitting') : t('common.plan.save') }}
         </button>
       </view>
     </view>
@@ -283,6 +309,9 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
+import { t } from '@/i18n';
+
 import { ref, watch, computed, onMounted, onScopeDispose } from 'vue';
 import UiPicker from '@/components/UiPicker.vue';
 import DishNutrition from '@/components/DishNutrition.vue';
@@ -394,12 +423,15 @@ const beginDishRequest = () => {
 };
 
 // 用餐时间选项
-const mealTimeOptions = [
-  { label: '早餐', value: 'breakfast' },
-  { label: '午餐', value: 'lunch' },
-  { label: '晚餐', value: 'dinner' },
-  { label: '夜宵', value: 'nightsnack' },
-] as const;
+const mealTimeOptions = computed(
+  () =>
+    [
+      { label: t('common.plan.breakfast'), value: 'breakfast' },
+      { label: t('common.plan.lunch'), value: 'lunch' },
+      { label: t('common.plan.dinner'), value: 'dinner' },
+      { label: t('common.plan.snack'), value: 'nightsnack' },
+    ] as const
+);
 
 const loadCanteens = async () => {
   const token = ++canteenRequestToken;
@@ -415,13 +447,14 @@ const loadCanteens = async () => {
       const response = await getCanteenList({ page, pageSize: 50 });
       if (!isCurrent()) return;
       if (response.code !== 200 || !response.data)
-        throw new Error(response.message || '加载食堂失败');
+        throw new Error(response.message || t('common.plan.loadCanteensFailed'));
       items.push(...response.data.items);
       total = response.data.meta.totalPages;
     }
     canteenList.value = items;
   } catch (err) {
-    if (isCurrent()) canteenError.value = err instanceof Error ? err.message : '加载食堂失败';
+    if (isCurrent())
+      canteenError.value = err instanceof Error ? err.message : t('common.plan.loadCanteensFailed');
   } finally {
     if (isCurrent()) canteenLoading.value = false;
   }
@@ -441,8 +474,8 @@ const resetForm = () => {
   const suggestedMeal =
     available.some(meal => meal === suggested) || available.length === 0
       ? suggested
-      : mealTimeOptions.find(option => available.some(meal => meal === option.value))?.value ||
-        suggested;
+      : mealTimeOptions.value.find(option => available.some(meal => meal === option.value))
+          ?.value || suggested;
   formData.value = {
     startDate: plan ? dayjs(plan.startDate).format('YYYY-MM-DD') : today,
     endDate: plan ? dayjs(plan.endDate).format('YYYY-MM-DD') : today,
@@ -532,18 +565,19 @@ const onCanteenChange = async (e: any) => {
       const response = await getWindowList(selectedCanteen.value.id, { page: 1, pageSize: 50 });
       if (!isCurrent()) return;
       if (response.code !== 200 || !response.data)
-        throw new Error(response.message || '加载窗口失败');
+        throw new Error(response.message || t('common.plan.loadCountersFailed'));
       windowList.value = response.data.items;
       for (let page = 2; page <= response.data.meta.totalPages; page += 1) {
         const next = await getWindowList(selectedCanteen.value.id, { page, pageSize: 50 });
         if (!isCurrent()) return;
-        if (next.code !== 200 || !next.data) throw new Error(next.message || '加载窗口失败');
+        if (next.code !== 200 || !next.data)
+          throw new Error(next.message || t('common.plan.loadCountersFailed'));
         windowList.value = [...windowList.value, ...next.data.items];
       }
     } catch (err) {
       if (!isCurrent()) return;
       console.error('加载窗口列表失败:', err);
-      windowError.value = err instanceof Error ? err.message : '加载窗口失败';
+      windowError.value = err instanceof Error ? err.message : t('common.plan.loadCountersFailed');
     } finally {
       if (isCurrent()) windowLoading.value = false;
     }
@@ -650,13 +684,13 @@ const loadDishPage = async (
       currentPage.value = page;
       totalPages.value = response.data.meta?.totalPages ?? page;
     } else {
-      throw new Error(response.message || '加载菜品失败，请重试');
+      throw new Error(response.message || t('common.plan.loadDishesFailed'));
     }
   } catch (err) {
     if (!isCurrent()) return;
 
     console.error('加载菜品失败:', err);
-    dishError.value = err instanceof Error ? err.message : '加载菜品失败，请重试';
+    dishError.value = err instanceof Error ? err.message : t('common.plan.loadDishesFailed');
   } finally {
     if (!isCurrent()) return;
     dishLoading.value = false;
@@ -698,7 +732,7 @@ const handleClose = async () => {
   try {
     const confirmed = await confirmDiscardChanges(
       formSnapshot() !== baseline.value,
-      '当前规划尚未保存，确定放弃修改吗？'
+      t('common.plan.discard')
     );
     if (!confirmed || !isCurrent()) return false;
     emit('close');
@@ -719,7 +753,7 @@ const handleSubmit = () => {
     !formData.value.endDate
   ) {
     uni.showToast({
-      title: '请完整填写表单',
+      title: t('common.plan.incomplete'),
       icon: 'none',
     });
     return;
@@ -728,14 +762,14 @@ const handleSubmit = () => {
   const end = new Date(formData.value.endDate);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     uni.showToast({
-      title: '日期格式不正确',
+      title: t('common.plan.invalidDate'),
       icon: 'none',
     });
     return;
   }
   if (end < start) {
     uni.showToast({
-      title: '结束日期不能早于开始日期',
+      title: t('common.plan.dateOrder'),
       icon: 'none',
     });
     return;

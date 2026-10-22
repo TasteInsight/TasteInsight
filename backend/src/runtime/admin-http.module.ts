@@ -1,3 +1,7 @@
+import { ContentTranslationsModule } from '@/content-translations/content-translations.module';
+import { ContentTranslationsController } from '@/content-translations/content-translations.controller';
+import { AllergensModule } from '@/allergens/allergens.module';
+import { AdminAllergensController } from '@/allergens/allergens.controller';
 import { ModerationAdminController } from '@/content-moderation/moderation-admin.controller';
 import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
 import { Module } from '@nestjs/common';
@@ -27,6 +31,8 @@ import { AdminUploadController } from '@/upload/upload.controller';
 
 @Module({
   imports: [
+    ContentTranslationsModule,
+    AllergensModule,
     ModerationProcessingModule,
     AuthModule,
     AdminAdminsModule,
@@ -45,6 +51,8 @@ import { AdminUploadController } from '@/upload/upload.controller';
     SocialModule,
   ],
   controllers: [
+    ContentTranslationsController,
+    AdminAllergensController,
     ModerationAdminController,
     AdminConfigController,
     AdminSocialController,

@@ -1,5 +1,5 @@
 import { effectScope, reactive } from 'vue';
-import { useMyReports } from '@/pages/profile/my-reports/use-my-reports';
+import { useMyReports } from '@/pages/profile/records/my-reports/use-my-reports';
 import { getMyReports, getMyReport } from '@/api/modules/user';
 const mockUser = reactive({ sessionVersion: 1, isLoggedIn: true, userInfo: { id: 'A' } });
 jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => mockUser }));

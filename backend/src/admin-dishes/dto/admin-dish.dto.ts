@@ -1,3 +1,4 @@
+import { DishTranslationFieldsDto } from '@/dishes/dto/dish-translation.dto';
 import {
   IsString,
   IsNumber,
@@ -35,6 +36,8 @@ export enum MealTime {
 export class AdminDishDto {
   id: string;
   name: string;
+  nameEn?: string | null;
+  descriptionEn?: string | null;
   tags: string[];
   price: number;
   priceUnit: string | null;
@@ -146,7 +149,7 @@ export class AdminGetDishReviewsDto {
   status?: 'pending' | 'approved' | 'rejected';
 }
 
-export class AdminCreateDishDto {
+export class AdminCreateDishDto extends DishTranslationFieldsDto {
   @IsNotEmpty()
   @IsString()
   name: string;
@@ -277,7 +280,7 @@ export class AdminCreateDishDto {
   status?: DishStatus;
 }
 
-export class AdminUpdateDishDto {
+export class AdminUpdateDishDto extends DishTranslationFieldsDto {
   @IsOptional()
   @IsString()
   name?: string;

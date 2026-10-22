@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { reactive, ref, onMounted, computed, getCurrentScope, onScopeDispose } from 'vue';
 import { getCanteenList } from '@/api/modules/canteen';
 import { useSettingsProfile } from './use-settings-profile';
@@ -22,13 +23,27 @@ export interface PreferencesForm {
 }
 
 // 口味标签常量
-export const TASTE_LABELS = ['未设置', '清淡', '适中', '偏重', '很重', '极重'];
-export const SPICINESS_LABELS = ['未设置', '微辣', '中辣', '重辣', '特辣', '变态辣'];
-export const PORTION_LABELS: Record<'small' | 'medium' | 'large', string> = {
-  small: '小份',
-  medium: '中份',
-  large: '大份',
-};
+const TASTE_LABELS = computed(() => [
+  t('account.settings.unset'),
+  t('account.settings.light'),
+  t('account.settings.moderate'),
+  t('account.settings.strong'),
+  t('account.settings.veryStrong'),
+  t('account.settings.intense'),
+]);
+const SPICINESS_LABELS = computed(() => [
+  t('account.settings.unset'),
+  t('account.settings.mild'),
+  t('account.settings.medium'),
+  t('account.settings.hot2'),
+  t('account.settings.extraHot'),
+  t('account.settings.extreme'),
+]);
+const PORTION_LABELS = computed<Record<'small' | 'medium' | 'large', string>>(() => ({
+  small: t('account.settings.small'),
+  medium: t('account.settings.medium2'),
+  large: t('account.settings.large'),
+}));
 export const REVERSE_PORTION_LABELS: Record<string, 'small' | 'medium' | 'large'> = {
   小份: 'small',
   中份: 'medium',
@@ -113,7 +128,7 @@ export function usePreferences() {
         const response = await getCanteenList({ page, pageSize: 100 });
         if (directoryDisposed) return false;
         if (response.code !== 200 || !response.data)
-          throw new Error(response.message || '食堂列表加载失败');
+          throw new Error(response.message || t('account.settings.unableToLoadCanteens'));
         directory.push(...response.data.items);
         totalPages = response.data.meta.totalPages;
         page++;
@@ -122,7 +137,8 @@ export function usePreferences() {
       return true;
     } catch (error) {
       if (!directoryDisposed) {
-        canteensError.value = error instanceof Error ? error.message : '食堂列表加载失败';
+        canteensError.value =
+          error instanceof Error ? error.message : t('account.settings.unableToLoadCanteens');
       }
       return false;
     } finally {
@@ -132,9 +148,10 @@ export function usePreferences() {
 
   const priceRangeError = computed(() => {
     const { min, max } = form.priceRange;
-    if (!Number.isFinite(min) || !Number.isFinite(max)) return '请填写有效的最低价和最高价';
-    if (min < 0 || max < 0) return '价格不能小于 0';
-    if (min > max) return '最低价格不能高于最高价格';
+    if (!Number.isFinite(min) || !Number.isFinite(max))
+      return t('account.settings.enterValidMinimumAndMaximum');
+    if (min < 0 || max < 0) return t('account.settings.pricesMustBe0Or');
+    if (min > max) return t('account.settings.minimumPriceMustBeAt');
     return '';
   });
 
@@ -150,7 +167,7 @@ export function usePreferences() {
     if (!value) return;
 
     if (form.favoriteIngredients.includes(value)) {
-      uni.showToast({ title: '已存在该食材', icon: 'none' });
+      uni.showToast({ title: t('account.settings.ingredientAlreadyAdded'), icon: 'none' });
       return;
     }
     form.favoriteIngredients.push(value);
@@ -169,7 +186,7 @@ export function usePreferences() {
     if (!value) return;
 
     if (form.meatPreference.includes(value)) {
-      uni.showToast({ title: '已存在该肉类', icon: 'none' });
+      uni.showToast({ title: t('account.settings.meatAlreadyAdded'), icon: 'none' });
       return;
     }
     form.meatPreference.push(value);
@@ -190,7 +207,7 @@ export function usePreferences() {
 
     const canteenId = selectedCanteen.id;
     if (form.canteenPreferences.includes(canteenId)) {
-      uni.showToast({ title: '已存在该食堂', icon: 'none' });
+      uni.showToast({ title: t('account.settings.canteenAlreadyAdded'), icon: 'none' });
       return;
     }
     form.canteenPreferences.push(canteenId);
@@ -202,7 +219,7 @@ export function usePreferences() {
 
   function getCanteenNameById(canteenId: string): string {
     const canteen = canteenList.value.find(c => c.id === canteenId);
-    return canteen ? canteen.name : '食堂信息暂不可用';
+    return canteen ? canteen.name : t('account.settings.canteenDetailsUnavailable');
   }
 
   /**
@@ -213,7 +230,7 @@ export function usePreferences() {
     if (!value) return;
 
     if (form.avoidIngredients.includes(value)) {
-      uni.showToast({ title: '已存在该食材', icon: 'none' });
+      uni.showToast({ title: t('account.settings.ingredientAlreadyAdded'), icon: 'none' });
       return;
     }
     form.avoidIngredients.push(value);

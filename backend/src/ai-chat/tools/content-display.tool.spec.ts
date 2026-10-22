@@ -28,6 +28,7 @@ describe('ContentDisplayTool', () => {
         {
           provide: RecommendationService,
           useValue: {
+            expandAllergenValues: async (values) => values,
             getUserFeaturesWithCache: async () => ({
               allergens: [],
               preferences: null,

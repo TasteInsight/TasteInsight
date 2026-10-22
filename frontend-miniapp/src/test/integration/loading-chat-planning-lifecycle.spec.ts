@@ -160,7 +160,7 @@ describe('chat loading lifecycle', () => {
     expectBlankChat(wrapper);
     creation.resolve(session('ready', '欢迎来聊聊午餐'));
     await flushPromises();
-    expect(wrapper.text()).toContain('欢迎来聊聊午餐');
+    expect(wrapper.text()).toContain('我是你的校园美食助手');
     expect(wrapper.findComponent(InputBar).get('textarea').element).toBe(textarea.element);
     expect(wrapper.findComponent(InputBar).props('modelValue')).toBe('尚未发送的问题');
     suggestions.resolve(ok({ suggestions: [] }));

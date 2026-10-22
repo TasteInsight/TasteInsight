@@ -9,8 +9,8 @@
         <IconButton
           v-if="canPublish || plan.isPublic"
           :name="plan.isPublic ? 'eye' : 'eye-off'"
-          :label="plan.isPublic ? '设为私密' : '公开这份计划'"
-          :title="plan.isPublic ? '设为私密' : '公开这份计划'"
+          :label="plan.isPublic ? t('social.makePrivate') : t('social.makePlanPublic')"
+          :title="plan.isPublic ? t('social.makePrivate') : t('social.makePlanPublic')"
           :tone="plan.isPublic ? 'primary' : 'muted'"
           :pressed="!!plan.isPublic"
           @click="emit('privacy')" />
@@ -18,13 +18,13 @@
         <IconButton
           v-if="!isHistory"
           name="edit"
-          label="编辑规划"
-          title="编辑规划"
+          :label="t('social.editPlan')"
+          :title="t('social.editPlan')"
           :disabled="!plan.dishesReady"
           @click="emit('edit')" /><IconButton
           name="trash"
-          label="删除规划"
-          title="删除规划"
+          :label="t('social.deletePlan')"
+          :title="t('social.deletePlan')"
           @click="emit('delete')" /></view
     ></view>
     <view v-for="dish in plan.dishes" :key="dish.id" class="meal-card-dish">
@@ -38,10 +38,13 @@
       />
       <view class="meal-card-copy"
         ><view class="meal-card-name-row"
-          ><text class="meal-card-name">{{ dish.name }}</text
-          ><TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" /></view
+          ><text class="meal-card-name">{{ localizedDishName(dish) }}</text
+          ><TagBadge
+            v-if="dish.status === 'offline'"
+            :label="t('social.unavailable')"
+            tone="neutral" /></view
         ><text class="meal-card-location"
-          >{{ dish.canteenName || '食堂信息暂缺'
+          >{{ dish.canteenName || t('social.canteenUnavailable')
           }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
         ><text
           v-for="notice in mealPlanDishNotices(dish, plan)"
@@ -54,15 +57,19 @@
           ><text
             class="meal-card-rating"
             :class="{ 'meal-card-rating-rated': dish.averageRating > 0 }"
-            >{{ dish.averageRating ? dish.averageRating.toFixed(1) + '分' : '暂无评分' }}</text
+            >{{
+              dish.averageRating
+                ? t('social.ratingValue', { p0: dish.averageRating.toFixed(1) })
+                : t('social.noRating')
+            }}</text
           ></view
         ></view
       >
     </view>
     <view class="meal-card-footer"
       ><text v-if="plan.dishesReady" class="meal-card-total"
-        >单价合计 ¥{{ totalPrice.toFixed(2) }}</text
-      ><text v-else class="meal-card-status">菜品资料尚未完整载入</text
+        >{{ t('social.unitPriceTotal') }}{{ totalPrice.toFixed(2) }}</text
+      ><text v-else class="meal-card-status">{{ t('social.dishDetailsIncomplete') }}</text
       ><button
         v-if="!isHistory || occurrenceDate"
         class="meal-card-button meal-card-complete"
@@ -71,21 +78,21 @@
       >
         {{
           plan.isCompleted
-            ? '撤销已吃'
+            ? t('social.undoEaten')
             : actionDate > today
-              ? '尚未到用餐日'
+              ? t('social.mealDateNotReached')
               : occurrenceDate
-                ? '标记当天已吃'
-                : '标记已吃'
+                ? t('social.markDateEaten')
+                : t('social.markEaten')
         }}</button
       ><text v-else class="meal-card-status">{{
-        plan.isCompleted ? '已标记吃过' : '未标记吃过'
+        plan.isCompleted ? t('social.markedEaten') : t('social.notMarkedEaten')
       }}</text></view
     >
     <!-- #ifndef MP-WEIXIN -->
     <view v-if="canPublish && !plan.isExpired" class="meal-card-sharing" @tap.stop>
       <button class="meal-card-button meal-card-invite" @click="emit('invite')">
-        <UiIcon name="users" :size="18" />发起约饭
+        <UiIcon name="users" :size="18" />{{ t('social.createInvite') }}
       </button>
     </view>
     <!-- #endif -->
@@ -93,6 +100,8 @@
 </template>
 
 <script setup lang="ts">
+import { localizedDishName } from '@/utils/dish-localization';
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import dayjs from 'dayjs';
@@ -129,14 +138,19 @@ const emit = defineEmits<{
   (e: 'invite'): void;
 }>();
 const failedImages = ref<Record<string, boolean>>({});
-const mealTimeMap = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', nightsnack: '夜宵' };
-const mealTimeText = computed(() => mealTimeMap[props.plan.mealTime] || '用餐');
+const mealTimeMap = {
+  breakfast: 'social.breakfast',
+  lunch: 'social.lunch',
+  dinner: 'social.dinner',
+  nightsnack: 'social.lateNight',
+};
+const mealTimeText = computed(() => t(mealTimeMap[props.plan.mealTime] || 'social.meal'));
 const totalPrice = computed(() => props.plan.dishes.reduce((sum, dish) => sum + dish.price, 0));
 const dateText = computed(() => {
-  const start = dayjs(props.plan.startDate).format('MM月DD日');
+  const start = dayjs(props.plan.startDate).format(t('social.shortDateFormat'));
   return dayjs(props.plan.startDate).isSame(props.plan.endDate, 'day')
     ? start
-    : start + ' — ' + dayjs(props.plan.endDate).format('MM月DD日');
+    : start + ' — ' + dayjs(props.plan.endDate).format(t('social.shortDateFormat'));
 });
 </script>
 

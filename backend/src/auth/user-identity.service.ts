@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma.service';
 import { mockAuthEnabled } from '@/environment';
@@ -24,10 +24,12 @@ export class UserIdentityService {
     private readonly http: HttpService,
   ) {}
 
-  async phone(target: string, userId?: string) {
+  async phone(target: string, userId?: string, language = 'zh') {
     return this.resolve(
       [{ provider: 'PHONE', issuer: 'global', subject: target }],
       userId,
+      undefined,
+      language,
     );
   }
 
@@ -61,6 +63,7 @@ export class UserIdentityService {
     code: string,
     platform: WechatPlatform = 'mp-weixin',
     userId?: string,
+    language = 'zh',
   ) {
     assertLoginMethodEnabled(
       platform === 'app' ? 'wechatApp' : 'wechatMiniapp',
@@ -89,6 +92,7 @@ export class UserIdentityService {
         [{ provider: 'WECHAT_OPENID', issuer: 'development', subject: openId }],
         userId,
         openId,
+        language,
       );
     }
     const appId = this.config.get<string>(
@@ -139,6 +143,7 @@ export class UserIdentityService {
       identities,
       userId,
       platform === 'mp-weixin' ? data.openid : undefined,
+      language,
     );
   }
 
@@ -146,19 +151,31 @@ export class UserIdentityService {
     identities: Identity[],
     userId?: string,
     legacyOpenId?: string,
+    language = 'zh',
   ) {
     return this.prisma.$transaction((tx) =>
-      this.resolveInTransaction(tx, identities, userId, legacyOpenId),
+      this.resolveInTransaction(tx, identities, userId, legacyOpenId, language),
     );
   }
 
-  async campus(tx: Prisma.TransactionClient, subject: string, userId?: string) {
+  async campus(
+    tx: Prisma.TransactionClient,
+    subject: string,
+    userId?: string,
+    language = 'zh',
+  ) {
     const identity = {
       provider: 'CAMPUS_OAUTH',
       issuer: this.config.get<string>('CAMPUS_OAUTH_ISSUER', ''),
       subject,
     };
-    return this.resolveInTransaction(tx, [identity], userId);
+    return this.resolveInTransaction(
+      tx,
+      [identity],
+      userId,
+      undefined,
+      language,
+    );
   }
 
   private async resolveInTransaction(
@@ -166,6 +183,7 @@ export class UserIdentityService {
     identities: Identity[],
     userId?: string,
     legacyOpenId?: string,
+    language = 'zh',
   ) {
     const locks = identities.map(
       (identity) =>
@@ -222,7 +240,7 @@ export class UserIdentityService {
       : await tx.user.create({
           data: {
             ...(legacyOpenId ? { openId: legacyOpenId } : {}),
-            nickname: '新用户',
+            nickname: `${language === 'zh' ? '食友' : 'Foodie'}_${randomUUID().slice(-12)}`,
             preferences: { create: {} },
             settings: { create: {} },
           },

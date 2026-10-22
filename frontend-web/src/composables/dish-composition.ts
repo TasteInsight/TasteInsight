@@ -10,6 +10,8 @@ export const createDishForm = () => ({
   windowName: '',
   windowNumber: '',
   name: '',
+  nameEn: '',
+  descriptionEn: '',
   price: 0,
   calories: null as number | null | string,
   protein: null as number | null | string,

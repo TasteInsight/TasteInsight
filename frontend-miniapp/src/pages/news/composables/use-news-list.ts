@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, ref, onMounted, reactive, getCurrentScope, onScopeDispose, watch } from 'vue';
 import { getNewsList } from '@/api/modules/news';
 import type { News } from '@/types/api';
@@ -13,6 +14,9 @@ export function useNewsList(initialParams = {}, isActive: () => boolean = () => 
   const finished = ref(false); // 是否加载完毕
   const isRefreshing = ref(false); // 下拉刷新状态
   const error = ref('');
+  const errorText = computed(() =>
+    error.value.startsWith('social.') ? t(error.value) : error.value
+  );
   let disposed = false;
   let failedReset = true;
   let mounted = false;
@@ -64,11 +68,11 @@ export function useNewsList(initialParams = {}, isActive: () => boolean = () => 
         return true;
       } else {
         console.error('获取新闻列表失败:', res.message);
-        error.value = '新闻加载失败，请重试';
+        error.value = 'social.loadNewsRetry';
       }
     } catch (cause) {
       console.error('API请求错误:', cause);
-      if (!disposed) error.value = '新闻加载失败，请重试';
+      if (!disposed) error.value = 'social.loadNewsRetry';
     } finally {
       loading.value = false;
       isRefreshing.value = false; // 结束刷新
@@ -95,7 +99,7 @@ export function useNewsList(initialParams = {}, isActive: () => boolean = () => 
     needsInitialLoad,
     finished,
     isRefreshing,
-    error,
+    error: errorText,
     meta,
     refresh,
     loadMore,

@@ -187,3 +187,14 @@ describe('Contribution nutrition contract', () => {
     ).rejects.toThrow('缺少补全字段');
   });
 });
+
+it('compares migrated allergen arrays with original snapshots without rewriting history', () => {
+  const snapshot = contributionSnapshot({
+    allergens: ['  Pine\tNuts ', 'PINE NUTS'],
+  });
+  expect(snapshot.allergens).toEqual(['  Pine\tNuts ', 'PINE NUTS']);
+  expect(sameValue(['Pine Nuts'], snapshot.allergens, 'allergens')).toBe(true);
+  expect(sameValue(['Pine Nuts extra'], snapshot.allergens, 'allergens')).toBe(
+    false,
+  );
+});

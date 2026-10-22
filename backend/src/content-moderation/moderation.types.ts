@@ -53,10 +53,13 @@ export function contributionModerationText(
   upload: Pick<
     DishUpload,
     'name' | 'description' | 'priceUnit' | 'tags' | 'ingredients' | 'allergens'
-  >,
+  > &
+    Partial<Pick<DishUpload, 'nameEn' | 'descriptionEn'>>,
 ): string {
   return [
     upload.name,
+    upload.nameEn,
+    upload.descriptionEn,
     upload.description,
     upload.priceUnit,
     ...upload.tags,

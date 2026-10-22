@@ -107,7 +107,7 @@ describe('Batch Excel template HTTP contract', () => {
       description: '番茄与鸡蛋炒制',
       tags: ['家常菜'],
       ingredients: ['番茄', '鸡蛋'],
-      allergens: ['蛋'],
+      allergens: ['鸡蛋'],
       status: 'valid',
     });
   });

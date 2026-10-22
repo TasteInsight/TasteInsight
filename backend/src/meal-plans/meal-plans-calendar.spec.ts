@@ -6,6 +6,7 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { MealPlansService } from './meal-plans.service';
+import { AllergensService } from '@/allergens/allergens.service';
 import { MealPlanQueryDto } from './dto/meal-plan-query.dto';
 
 const saved = () => ({
@@ -32,6 +33,7 @@ function fixture() {
       create: jest.fn().mockResolvedValue(saved()),
       delete: jest.fn(),
     },
+    mealPlanDish: { findMany: jest.fn().mockResolvedValue([]) },
     mealPlanCompletion: { upsert: jest.fn(), deleteMany: jest.fn() },
     diningInvite: { count: jest.fn().mockResolvedValue(0) },
     studentVerification: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -40,7 +42,13 @@ function fixture() {
   prisma.$transaction.mockImplementation(async (operation) =>
     operation(prisma),
   );
-  return { prisma, service: new MealPlansService(prisma as never) };
+  return {
+    prisma,
+    service: new MealPlansService(
+      prisma as never,
+      new AllergensService(prisma as never),
+    ),
+  };
 }
 
 describe('meal plan calendar contract', () => {

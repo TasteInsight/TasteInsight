@@ -14,7 +14,11 @@
           v-if="isLoggedIn"
           name="bell"
           :size="20"
-          :label="unreadCount ? '消息，' + unreadCount + ' 条未读' : '消息'"
+          :label="
+            unreadCount
+              ? t('account.profile.messagesWithUnread', { count: unreadCount })
+              : t('account.profile.messages2')
+          "
           @click="navigateTo('/pages/notifications/index')"
         >
           <text v-if="unreadCount" class="profile-unread" aria-hidden="true">{{
@@ -24,7 +28,7 @@
         <IconButton
           name="settings"
           :size="20"
-          label="设置"
+          :label="t('account.profile.settings')"
           @click="navigateTo('/pages/settings/index')"
         />
       </view>
@@ -34,12 +38,12 @@
       :loading="loading"
       :has-content="!!userInfo"
       :error="error"
-      loading-title="正在加载个人资料…"
+      :loading-title="t('account.profile.loadingProfile')"
       @retry="refreshPage"
     />
     <ProfileBioEditor v-if="editingBio && userInfo" ref="bioEditor" @close="editingBio = false" />
     <template v-if="isLoggedIn && (!error || userInfo)">
-      <view class="profile-utilities" aria-label="个人记录">
+      <view class="profile-utilities" :aria-label="t('account.profile.personalRecords')">
         <button
           class="profile-button profile-utility"
           @click="favoritesButton.activate"
@@ -49,7 +53,7 @@
           role="button"
           tabindex="0"
         >
-          <UiIcon name="bookmark" :size="18" /><text>收藏</text>
+          <UiIcon name="bookmark" :size="18" /><text>{{ t('account.profile.favorites') }}</text>
         </button>
         <button
           class="profile-button profile-utility"
@@ -60,7 +64,7 @@
           role="button"
           tabindex="0"
         >
-          <UiIcon name="history" :size="18" /><text>历史</text>
+          <UiIcon name="history" :size="18" /><text>{{ t('account.profile.history') }}</text>
         </button>
         <button
           class="profile-button profile-utility"
@@ -71,11 +75,11 @@
           role="button"
           tabindex="0"
         >
-          <UiIcon name="edit" :size="18" /><text>上传</text>
+          <UiIcon name="edit" :size="18" /><text>{{ t('account.profile.uploads') }}</text>
         </button>
       </view>
       <view class="profile-tab-row">
-        <view class="profile-tabs" role="tablist" aria-label="我的内容">
+        <view class="profile-tabs" role="tablist" :aria-label="t('account.profile.myContent')">
           <!-- #ifndef MP-WEIXIN -->
           <button
             class="profile-button profile-tab"
@@ -88,7 +92,7 @@
             @blur="postsTabButton.clearPress"
             tabindex="0"
           >
-            动态
+            {{ t('account.profile.posts') }}
           </button>
           <!-- #endif -->
           <button
@@ -102,7 +106,7 @@
             @blur="reviewsTabButton.clearPress"
             tabindex="0"
           >
-            评价
+            {{ t('account.profile.reviews') }}
           </button>
           <button
             class="profile-button profile-tab"
@@ -115,14 +119,14 @@
             @blur="plansTabButton.clearPress"
             tabindex="0"
           >
-            计划
+            {{ t('account.profile.plans') }}
           </button>
         </view>
         <!-- #ifndef MP-WEIXIN -->
         <IconButton
           v-if="activeTab === 'posts'"
           name="plus"
-          label="写动态"
+          :label="t('account.profile.createPost')"
           :size="20"
           tone="primary"
           @click="compose"
@@ -140,8 +144,8 @@
           :initialized="postsReady"
           :has-content="!!posts.length"
           :error="postsError"
-          loading-title="正在加载动态…"
-          empty-title="还没有动态"
+          :loading-title="t('account.profile.loadingPosts')"
+          :empty-title="t('account.profile.noPostsYet')"
           empty-icon="chat"
           @retry="retryPosts"
         />
@@ -159,7 +163,7 @@
           role="button"
           :tabindex="postsLoading ? -1 : 0"
         >
-          加载更多
+          {{ t('account.profile.loadMore') }}
         </button>
       </view>
       <!-- #endif -->
@@ -173,10 +177,10 @@
           :initialized="reviewsReady"
           :has-content="!!reviews.length"
           :error="reviewsError"
-          loading-title="正在加载评价…"
-          empty-title="还没有评价"
+          :loading-title="t('account.profile.loadingReviews')"
+          :empty-title="t('account.profile.noReviewsYet')"
           empty-icon="star"
-          empty-action-text="去选菜"
+          :empty-action-text="t('account.profile.browseDishes')"
           @action="openHome"
           @retry="retryReviews"
         />
@@ -197,7 +201,7 @@
           role="button"
           :tabindex="reviewsLoading ? -1 : 0"
         >
-          加载更多
+          {{ t('account.profile.loadMore') }}
         </button>
       </view>
       <ProfilePlans
@@ -219,6 +223,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { openLogin } from '@/utils/login-navigation';
 
 import { nextTick, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -422,25 +427,34 @@ onBackPress(() => {
   return true;
 });
 function navigateTo(path: string) {
-  uni.navigateTo({ url: path, fail: () => uni.showToast({ title: '页面跳转失败', icon: 'none' }) });
+  uni.navigateTo({
+    url: path,
+    fail: () => uni.showToast({ title: t('account.profile.unableToOpenPage'), icon: 'none' }),
+  });
 }
 function manageProfile() {
   if (!active || !visible.value || !isLoggedIn.value || !userInfo.value) return;
   const session = user.sessionVersion;
   const actions = [
-    { label: '头像与昵称', run: () => navigateTo('/pages/settings/components/personal') },
     {
-      label: '个人简介',
+      label: t('account.profile.photoAndNickname'),
+      run: () => navigateTo('/pages/settings/components/personal'),
+    },
+    {
+      label: t('account.profile.bio'),
       run: () => {
         editingBio.value = true;
       },
     },
-    { label: '账号与校园身份', run: () => navigateTo('/pages/profile/identity') },
+    {
+      label: t('account.profile.accountAndCampusIdentity'),
+      run: () => navigateTo('/pages/profile/identity'),
+    },
   ];
   // #ifndef MP-WEIXIN
   const ownerId = userInfo.value.id;
   actions.push({
-    label: '访客预览',
+    label: t('account.profile.previewPublicProfile'),
     run: () => navigateTo('/pages/profile/public?id=' + encodeURIComponent(ownerId)),
   });
   // #endif
@@ -471,9 +485,9 @@ function manageProfile() {
 const handleLogin = () => openLogin();
 const openDish = (id: string) => navigateTo('/pages/dish/index?id=' + encodeURIComponent(id));
 const openHome = () => uni.switchTab({ url: '/pages/index/index' });
-const favoritesButton = useButtonActivation(() => navigateTo('/pages/profile/my-favorites/index'));
-const historyButton = useButtonActivation(() => navigateTo('/pages/profile/history/index'));
-const uploadsButton = useButtonActivation(() => navigateTo('/pages/profile/my-uploads/index'));
+const favoritesButton = useButtonActivation(() => navigateTo('/pages/profile/records/my-favorites/index'));
+const historyButton = useButtonActivation(() => navigateTo('/pages/profile/records/history/index'));
+const uploadsButton = useButtonActivation(() => navigateTo('/pages/profile/records/my-uploads/index'));
 const reviewsTabButton = useButtonActivation(() => {
   void setTab('reviews');
 });

@@ -1,3 +1,7 @@
+import {
+  allergenComparisonKey,
+  normalizeAllergenValues,
+} from '@/allergens/allergen-values';
 import { canonicalModerationImageUrls } from '@/upload/moderation-image-url';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Prisma, Dish } from '@prisma/client';
@@ -5,6 +9,8 @@ import { createHash } from 'crypto';
 
 export const CONTRIBUTION_FIELDS = [
   'name',
+  'nameEn',
+  'descriptionEn',
   'tags',
   'price',
   'priceUnit',
@@ -35,6 +41,8 @@ const dishFields = [
   'floorName',
 ];
 const nullableFields = new Set([
+  'nameEn',
+  'descriptionEn',
   'calories',
   'protein',
   'carbohydrate',
@@ -93,7 +101,9 @@ export function sameValue(
   const comparable = (value: unknown) =>
     field === 'images' && Array.isArray(value)
       ? canonicalModerationImageUrls(value)
-      : value;
+      : field === 'allergens' && Array.isArray(value)
+        ? normalizeAllergenValues(value).map(allergenComparisonKey)
+        : value;
   return (
     JSON.stringify(comparable(left) ?? null) ===
     JSON.stringify(comparable(right) ?? null)
@@ -125,13 +135,15 @@ export function changedDishData(
             ...(target.images ?? []),
             ...(upload.images ?? []),
           ])
-        : field === 'floorId'
-          ? (upload.window?.floorId ?? null)
-          : field === 'floorLevel'
-            ? (upload.window?.floor?.level ?? null)
-            : field === 'floorName'
-              ? (upload.window?.floor?.name ?? null)
-              : (upload[field] ?? null),
+        : field === 'allergens'
+          ? normalizeAllergenValues(upload.allergens ?? [])
+          : field === 'floorId'
+            ? (upload.window?.floorId ?? null)
+            : field === 'floorLevel'
+              ? (upload.window?.floor?.level ?? null)
+              : field === 'floorName'
+                ? (upload.window?.floor?.name ?? null)
+                : (upload[field] ?? null),
     ]),
   );
 }
@@ -269,13 +281,15 @@ export async function prepareContribution(
   }
   return {
     name: source.name?.trim() || '未命名菜品',
+    nameEn: source.nameEn?.trim() || null,
+    descriptionEn: source.descriptionEn?.trim() || null,
     tags: source.tags ?? [],
     price: source.price,
     priceUnit: source.priceUnit ?? null,
     description: source.description ?? null,
     images: canonicalModerationImageUrls(source.images ?? []),
     ingredients: source.ingredients ?? [],
-    allergens: source.allergens ?? [],
+    allergens: normalizeAllergenValues(source.allergens ?? []),
     spicyLevel: source.spicyLevel ?? 0,
     sweetness: source.sweetness ?? 0,
     saltiness: source.saltiness ?? 0,

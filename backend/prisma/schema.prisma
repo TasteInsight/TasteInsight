@@ -14,10 +14,10 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   openId    String?  @unique
-  nickname  String
+  nickname  String   @default(dbgenerated("('食友_'::text || substr((gen_random_uuid())::text, 25, 12))"))
   avatar    String?
   bio       String?
-  allergens String[] @default([]) // 过敏原列表
+  allergens String[] @default([]) @db.Citext // 过敏原列表
 
   // 关联关系
   preferences            UserPreference?
@@ -362,10 +362,12 @@ model Floor {
 model Dish {
   id          String   @id @default(cuid())
   name        String
+  nameEn      String?
   tags        String[]
   price       Float
   priceUnit   String?
   description String?
+  descriptionEn String?
   images      String[]
 
   // 每份营养信息：热量 kcal，其余 g
@@ -382,7 +384,8 @@ model Dish {
 
   // 食材信息
   ingredients String[]
-  allergens   String[]
+  allergens   String[] @db.Citext
+  allergenKeys String[] @default(dbgenerated("allergen_comparison_keys(allergens)"))
 
   // 口味信息
   spicyLevel Int @default(0) // 0-5 辣度等级
@@ -447,10 +450,12 @@ model DishUpload {
 
   // 菜品信息（与Dish模型类似）
   name        String
+  nameEn      String?
   tags        String[]
   price       Float
   priceUnit   String?
   description String?
+  descriptionEn String?
   images      String[]
 
   // 每份营养信息：热量 kcal，其余 g
@@ -460,7 +465,7 @@ model DishUpload {
   fat          Float?
 
   ingredients String[]
-  allergens   String[]
+  allergens   String[] @db.Citext
 
   // 口味信息
   spicyLevel Int @default(0) // 0-5 辣度等级
@@ -1243,4 +1248,24 @@ model ContentModerationReceipt {
   createdAt DateTime @default(now())
 
   @@map("content_moderation_receipts")
+}
+
+model Allergen {
+  value     String @id
+  nameZh    String
+  nameEn    String?
+  aliases   AllergenAlias[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("allergens")
+}
+
+model AllergenAlias {
+  name          String @id
+  allergenValue String
+  allergen      Allergen @relation(fields: [allergenValue], references: [value], onDelete: Cascade)
+
+  @@index([allergenValue])
+  @@map("allergen_aliases")
 }

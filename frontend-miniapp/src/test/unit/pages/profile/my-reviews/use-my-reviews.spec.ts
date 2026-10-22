@@ -1,4 +1,4 @@
-describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
+describe('pages/profile/composables/use-my-reviews.ts', () => {
   const MODULE_PATH = '@/pages/profile/composables/use-my-reviews';
 
   beforeEach(() => {

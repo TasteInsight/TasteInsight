@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { getPosts, type Post } from '@/api/modules/social';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -8,6 +9,9 @@ export function usePostFeed(source: () => { mine?: boolean; authorId?: string } 
   const loading = ref(false);
   const initialized = ref(false);
   const error = ref('');
+  const errorText = computed(() =>
+    error.value.startsWith('social.') ? t(error.value) : error.value
+  );
   const page = ref(0);
   const totalPages = ref(1);
   const hasMore = computed(() => page.value < totalPages.value);
@@ -49,7 +53,7 @@ export function usePostFeed(source: () => { mine?: boolean; authorId?: string } 
         options.mine
       );
       if (!current()) return;
-      if (response.code !== 200) throw new Error(response.message || '动态加载失败');
+      if (response.code !== 200) throw new Error(response.message || 'social.loadPostFailed');
       const previous = append ? posts.value : [];
       const incoming = new Set(response.data.items.map(item => item.id));
       posts.value = [...previous.filter(item => !incoming.has(item.id)), ...response.data.items];
@@ -59,7 +63,7 @@ export function usePostFeed(source: () => { mine?: boolean; authorId?: string } 
     } catch (cause) {
       if (current()) {
         failedAppend = append;
-        error.value = cause instanceof Error ? cause.message : '动态加载失败，请重试';
+        error.value = cause instanceof Error ? cause.message : 'social.loadPostsRetry';
       }
     } finally {
       if (current()) loading.value = false;
@@ -71,5 +75,5 @@ export function usePostFeed(source: () => { mine?: boolean; authorId?: string } 
     invalidate();
   });
   const retry = () => load(failedAppend);
-  return { posts, loading, initialized, error, hasMore, load, retry, reset, invalidate };
+  return { posts, loading, initialized, error: errorText, hasMore, load, retry, reset, invalidate };
 }

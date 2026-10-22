@@ -1,5 +1,9 @@
 <template>
-  <view class="skeleton-form settings-content-skeleton" role="status" aria-label="正在加载通知设置">
+  <view
+    class="skeleton-form settings-content-skeleton"
+    role="status"
+    :aria-label="t('common.skeleton.notifications')"
+  >
     <view class="settings-skeleton-section">
       <view v-for="item in 4" :key="item" class="skeleton-inline settings-skeleton-row">
         <view class="skeleton-copy"
@@ -17,6 +21,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 </script>
 <style scoped>

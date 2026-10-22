@@ -1,15 +1,24 @@
 <template>
   <view v-if="visible" class="invite-overlay" @tap="close" @touchmove.stop.prevent>
-    <view class="invite-sheet" role="dialog" aria-modal="true" aria-label="发起约饭" @tap.stop>
+    <view
+      class="invite-sheet"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('social.createInvite')"
+      @tap.stop
+    >
       <view class="invite-heading"
-        ><text>发起约饭</text
-        ><button class="invite-button" aria-label="关闭邀请" :disabled="saving" @click="close">
-          关闭
+        ><text>{{ t('social.createInvite') }}</text
+        ><button
+          class="invite-button"
+          :aria-label="t('social.closeInvite')"
+          :disabled="saving"
+          @click="close"
+        >
+          {{ t('social.close') }}
         </button></view
       >
-      <text class="invite-hint"
-        >发布后，其他人可看到这次用餐的日期、时间、食堂和人数。不会公开你的其他计划或联系方式。</text
-      >
+      <text class="invite-hint">{{ t('social.invitePrivacy') }}</text>
       <view class="invite-fields">
         <UiPicker
           mode="date"
@@ -20,12 +29,14 @@
           @change="date = $event.detail.value"
         >
           <view class="invite-field"
-            ><text>日期</text><text>{{ date }}</text></view
+            ><text>{{ t('social.date') }}</text
+            ><text>{{ date }}</text></view
           >
         </UiPicker>
         <UiPicker mode="time" :value="time" :disabled="saving" @change="time = $event.detail.value">
           <view class="invite-field"
-            ><text>见面时间（北京时间）</text><text>{{ time }}</text></view
+            ><text>{{ t('social.meetTime') }}</text
+            ><text>{{ time }}</text></view
           >
         </UiPicker>
         <UiPicker
@@ -37,9 +48,10 @@
           @change="canteenIndex = Number($event.detail.value)"
         >
           <view class="invite-field"
-            ><text>用餐食堂</text
+            ><text>{{ t('social.diningHall') }}</text
             ><text>{{
-              canteens[canteenIndex]?.name || (loading ? '正在加载…' : '请选择食堂')
+              canteens[canteenIndex]?.name ||
+              (loading ? t('social.loading') : t('social.selectCanteen'))
             }}</text></view
           >
         </UiPicker>
@@ -51,19 +63,20 @@
           @change="capacityIndex = Number($event.detail.value)"
         >
           <view class="invite-field"
-            ><text>总人数（包括自己）</text><text>{{ capacities[capacityIndex] }} 人</text></view
+            ><text>{{ t('social.totalPeople') }}</text
+            ><text>{{ t('social.peopleCount', { count: capacities[capacityIndex] }) }}</text></view
           >
         </UiPicker>
       </view>
-      <view v-if="error" class="invite-error error-feedback" role="alert"
-        ><text class="error-feedback__message">{{ error }}</text
+      <view v-if="errorText" class="invite-error error-feedback" role="alert"
+        ><text class="error-feedback__message">{{ errorText }}</text
         ><button
           v-if="!canteens.length"
           class="error-feedback__action"
           hover-class="error-feedback__action--pressed"
           @click="loadCanteens"
         >
-          重试
+          {{ t('social.retry') }}
         </button></view
       >
       <button
@@ -71,13 +84,14 @@
         :disabled="saving || loading || !canteens.length"
         @click="publish"
       >
-        {{ saving ? '发布中…' : '确认公开这次邀请' }}
+        {{ saving ? t('social.publishing') : t('social.confirmPublishInvite') }}
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch, onScopeDispose } from 'vue';
 import UiPicker from '@/components/UiPicker.vue';
 import { getCanteenList } from '@/api/modules/canteen';
@@ -103,6 +117,9 @@ const capacityIndex = ref(0);
 const loading = ref(false);
 const saving = ref(false);
 const error = ref('');
+const errorText = computed(() =>
+  error.value.startsWith('social.') ? t(error.value) : error.value
+);
 let generation = 0;
 let disposed = false;
 const startDate = computed(() => (props.plan ? planDateKey(props.plan.startDate) : campusToday()));
@@ -130,7 +147,8 @@ async function loadCanteens() {
     const preferred = items.findIndex(item => item.id === props.plan?.dishes[0]?.canteenId);
     canteenIndex.value = Math.max(0, preferred);
   } catch (cause) {
-    if (current()) error.value = cause instanceof Error ? cause.message : '食堂加载失败，请重试';
+    if (current())
+      error.value = cause instanceof Error ? cause.message : 'social.canteensLoadFailed';
   } finally {
     if (current()) loading.value = false;
   }
@@ -168,10 +186,10 @@ async function publish() {
       capacity: capacities[capacityIndex.value],
     });
     if (!current()) return;
-    uni.showToast({ title: '邀请已发布', icon: 'success' });
+    uni.showToast({ title: t('social.invitePublished'), icon: 'success' });
     emit('saved');
   } catch (cause) {
-    if (current()) error.value = cause instanceof Error ? cause.message : '发布失败，请重试';
+    if (current()) error.value = cause instanceof Error ? cause.message : 'social.publishFailed';
   } finally {
     if (current()) saving.value = false;
   }

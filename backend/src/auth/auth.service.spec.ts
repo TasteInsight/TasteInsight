@@ -118,6 +118,8 @@ describe('AuthService', () => {
       expect(mockIdentities.wechat).toHaveBeenCalledWith(
         'provider-code',
         'app',
+        undefined,
+        'zh',
       );
       expect(result.data.user).toEqual(profile);
       expect(result.data.token.accessToken).toBe('mock-token');
@@ -146,7 +148,11 @@ describe('AuthService', () => {
         'challenge',
         '123456',
       );
-      expect(mockIdentities.phone).toHaveBeenCalledWith('+8613812345678');
+      expect(mockIdentities.phone).toHaveBeenCalledWith(
+        '+8613812345678',
+        undefined,
+        'zh',
+      );
     });
 
     it('never resolves identities or signs tokens after an invalid OTP', async () => {

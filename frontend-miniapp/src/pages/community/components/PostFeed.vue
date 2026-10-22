@@ -1,7 +1,7 @@
 <template>
   <view class="campus-page page-state-content" :aria-busy="loading">
     <view class="campus-heading">
-      <view class="campus-tabs" role="tablist" aria-label="动态范围"
+      <view class="campus-tabs" role="tablist" :aria-label="t('social.postScope')"
         ><button
           class="campus-button campus-tab"
           :class="{ 'campus-selected': !mine }"
@@ -13,7 +13,7 @@
           @keyup="latestAction.handleKeyup"
           @blur="latestAction.clearPress"
         >
-          最新</button
+          {{ t('social.latest') }}</button
         ><button
           class="campus-button campus-tab"
           :class="{ 'campus-selected': mine }"
@@ -25,19 +25,24 @@
           @keyup="mineAction.handleKeyup"
           @blur="mineAction.clearPress"
         >
-          我的
+          {{ t('social.mine') }}
         </button></view
       >
-      <IconButton name="edit" label="发动态" title="发动态" @click="compose" />
+      <IconButton
+        name="edit"
+        :label="t('social.createPost')"
+        :title="t('social.createPost')"
+        @click="compose"
+      />
     </view>
-    <LoginGate :required="mine" title="登录后查看我的动态" icon="chat">
+    <LoginGate :required="mine" :title="t('social.myPostsLogin')" icon="chat">
       <AsyncState
         :loading="loading"
         :initialized="initialized"
         :has-content="posts.length > 0"
         :error="error"
-        loading-title="正在加载动态…"
-        :empty-title="mine ? '还没有发布动态' : '还没有校园动态'"
+        :loading-title="t('social.loadingPosts')"
+        :empty-title="mine ? t('social.noOwnPosts') : t('social.noCampusPosts')"
         empty-icon="chat"
         @retry="retry"
       />
@@ -48,12 +53,13 @@
         :disabled="loading"
         @click="load(true)"
       >
-        {{ loading ? '加载中…' : '加载更多' }}
+        {{ loading ? t('social.loadingMore') : t('social.loadMore') }}
       </button>
     </LoginGate>
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { requireStudent } from '@/utils/student-access';

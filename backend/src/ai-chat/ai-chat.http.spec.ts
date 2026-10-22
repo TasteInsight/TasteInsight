@@ -53,7 +53,13 @@ describe('AI chat HTTP stream lifecycle', () => {
     }>((resolve, reject) => {
       const req = httpRequest(
         url,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9,zh;q=0.5',
+          },
+        },
         (res) => {
           let text = '';
           let ready = false;
@@ -97,5 +103,11 @@ describe('AI chat HTTP stream lifecycle', () => {
       expect(await stream.done).toContain('event: reply_complete');
     }
     expect(teardown).toHaveBeenCalledTimes(2);
+    expect(service.streamChat).toHaveBeenCalledWith(
+      'test-user',
+      'test-session',
+      { message: '午餐吃什么？' },
+      'en',
+    );
   });
 });

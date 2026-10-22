@@ -216,7 +216,7 @@ test('compact profile header preserves biography and verified identity through o
 
 test('settings group account, food, app and public information while keeping reports at the bottom', async () => {
   const wrapper = mountPage(SettingsPage);
-  expect(wrapper.findAll('.group-title').map(item => item.text())).toEqual([
+  expect(wrapper.findAll('.settings-group-title').map(item => item.text())).toEqual([
     '账号与身份',
     '饮食与推荐',
     '应用偏好',
@@ -232,7 +232,7 @@ test('settings group account, food, app and public information while keeping rep
     ['显示设置', '/pages/settings/components/display'],
     ['通知设置', '/pages/settings/components/notifications'],
     ['关于食鉴', '/pages/settings/about'],
-    ['我的举报', '/pages/profile/my-reports/index'],
+    ['我的举报', '/pages/profile/records/my-reports/index'],
   ];
   for (const [label, path] of destinations) {
     await wrapper
@@ -254,6 +254,7 @@ test('guests can reach agreements through about and use feedback while private d
   await flushPromises();
   expect(wrapper.findAll('.settings-menu').map(item => item.text())).toEqual([
     '登录',
+    '语言跟随系统',
     '关于食鉴',
     '项目反馈复制链接',
   ]);

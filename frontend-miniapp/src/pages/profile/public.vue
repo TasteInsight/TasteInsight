@@ -4,7 +4,7 @@
       :loading="loading"
       :has-content="!!profile"
       :error="error"
-      loading-title="正在加载主页…"
+      :loading-title="t('account.profile.loadingProfile2')"
       @retry="loadProfile"
     />
     <template v-if="profile">
@@ -13,12 +13,17 @@
           class="public-identity"
           ><text class="public-name">{{ profile.nickname }}</text
           ><text v-if="profile.isVerifiedStudent" class="public-verified"
-            ><UiIcon name="shield" :size="15" tone="primary" />已认证学生</text
+            ><UiIcon name="shield" :size="15" tone="primary" />{{
+              t('account.profile.verifiedStudent2')
+            }}</text
           ></view
         ></view
       >
       <text v-if="profile.bio" class="public-bio">{{ profile.bio }}</text>
-      <view class="campus-tabs public-tabs" role="tablist" aria-label="主页内容"
+      <view
+        class="campus-tabs public-tabs"
+        role="tablist"
+        :aria-label="t('account.profile.profileContent')"
         ><button
           class="campus-button campus-tab"
           :class="{ 'campus-selected': tab === 'posts' }"
@@ -30,7 +35,7 @@
           @keyup="postsTabButton.handleKeyup"
           @blur="postsTabButton.clearPress"
         >
-          动态</button
+          {{ t('account.profile.posts') }}</button
         ><button
           class="campus-button campus-tab"
           :class="{ 'campus-selected': tab === 'plans' }"
@@ -42,7 +47,7 @@
           @keyup="plansTabButton.handleKeyup"
           @blur="plansTabButton.clearPress"
         >
-          公开计划
+          {{ t('account.profile.publicPlans') }}
         </button></view
       >
       <template v-if="tab === 'posts'">
@@ -51,8 +56,8 @@
           :initialized="postsReady"
           :has-content="!!posts.length"
           :error="postsError"
-          loading-title="正在加载动态…"
-          empty-title="还没有公开动态"
+          :loading-title="t('account.profile.loadingPosts')"
+          :empty-title="t('account.profile.noPublicPostsYet')"
           empty-icon="chat"
           @retry="retryPosts"
         />
@@ -68,7 +73,7 @@
           @keyup="postsMoreButton.handleKeyup"
           @blur="postsMoreButton.clearPress"
         >
-          加载更多动态
+          {{ t('account.profile.loadMorePosts') }}
         </button>
       </template>
       <template v-else>
@@ -77,8 +82,8 @@
           :initialized="plansReady"
           :has-content="!!plans.length"
           :error="plansError"
-          loading-title="正在加载计划…"
-          empty-title="还没有公开计划"
+          :loading-title="t('account.profile.loadingPlans')"
+          :empty-title="t('account.profile.noPublicPlansYet')"
           empty-icon="calendar"
           @retry="loadPlans(plansFailedAppend)"
         />
@@ -86,7 +91,9 @@
           ><view class="public-plan-heading"
             ><text class="public-plan-date"
               >{{ plan.startDate
-              }}{{ plan.endDate !== plan.startDate ? ' 至 ' + plan.endDate : '' }}</text
+              }}{{
+                plan.endDate !== plan.startDate ? t('account.profile.to') + plan.endDate : ''
+              }}</text
             ><text class="campus-hint">{{ mealNames[plan.mealTime] }}</text></view
           ><button
             v-for="dish in plan.dishes"
@@ -106,8 +113,11 @@
               @error="failedImages[dish.images[0]] = true"
             /><view class="public-dish-text"
               ><view class="public-dish-heading"
-                ><text class="public-dish-name">{{ dish.name }}</text
-                ><TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" /></view
+                ><text class="public-dish-name">{{ localizedDishName(dish) }}</text
+                ><TagBadge
+                  v-if="dish.status === 'offline'"
+                  :label="t('account.profile.unavailable')"
+                  tone="neutral" /></view
               ><text class="campus-hint">{{ dish.canteenName }} · {{ dish.windowName }}</text
               ><DishNutrition :dish="dish" /></view
             ><UiIcon name="chevron-right" :size="16" /></button
@@ -123,13 +133,16 @@
           @keyup="plansMoreButton.handleKeyup"
           @blur="plansMoreButton.clearPress"
         >
-          加载更多安排
+          {{ t('account.profile.loadMoreMeals') }}
         </button>
       </template>
     </template>
   </view>
 </template>
 <script setup lang="ts">
+import { useLocalizedMessage } from '@/composables/use-localized-message';
+import { localizedDishName } from '@/utils/dish-localization';
+import { t } from '@/i18n';
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import UserAvatar from '@/components/UserAvatar.vue';
@@ -152,7 +165,7 @@ const user = useUserStore();
 const id = ref('');
 const profile = ref<PublicProfile | null>(null);
 const loading = ref(false);
-const error = ref('');
+const error = useLocalizedMessage();
 const tab = ref<'posts' | 'plans'>('posts');
 const {
   posts,
@@ -173,7 +186,12 @@ const plansMore = ref(false);
 let plansPage = 0;
 let plansFailedAppend = false;
 const failedImages = ref<Record<string, boolean>>({});
-const mealNames = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', nightsnack: '夜宵' };
+const mealNames = computed(() => ({
+  breakfast: t('account.profile.breakfast'),
+  lunch: t('account.profile.lunch'),
+  dinner: t('account.profile.dinner'),
+  nightsnack: t('account.profile.lateNightSnack'),
+}));
 let active = true;
 let visible = true;
 let epoch = 0;
@@ -186,7 +204,7 @@ const capture = () => {
 };
 async function loadProfile() {
   if (!id.value) {
-    error.value = '用户不存在';
+    error.value = 'account.profile.userNotFound';
     return;
   }
   const current = capture();
@@ -196,14 +214,16 @@ async function loadProfile() {
   try {
     const response = await getPublicProfile(id.value);
     if (!current() || request !== profileRequest) return;
-    if (response.code !== 200) throw new Error(response.message || '主页加载失败');
+    if (response.code !== 200)
+      throw new Error(response.message || t('account.profile.unableToLoadProfile'));
     profile.value = response.data;
     loading.value = false;
     if (tab.value === 'posts') await loadPosts();
     else await loadPlans();
   } catch (cause) {
     if (current() && request === profileRequest) {
-      error.value = cause instanceof Error ? cause.message : '主页加载失败，请重试';
+      error.value =
+        cause instanceof Error ? cause.message : 'account.profile.unableToLoadProfileTry';
     }
   } finally {
     if (current() && request === profileRequest) loading.value = false;
@@ -219,7 +239,8 @@ async function loadPlans(append = false) {
   try {
     const response = await getPublicMealPlans(id.value, { page: nextPage, pageSize: 20 });
     if (!current() || request !== plansRequest) return;
-    if (response.code !== 200) throw new Error(response.message || '饮食安排加载失败');
+    if (response.code !== 200)
+      throw new Error(response.message || t('account.profile.unableToLoadMealSchedule'));
     const incoming = new Set(response.data.items.map(item => item.id));
     plans.value = [
       ...(append ? plans.value.filter(item => !incoming.has(item.id)) : []),
@@ -231,7 +252,8 @@ async function loadPlans(append = false) {
   } catch (cause) {
     if (current() && request === plansRequest) {
       plansFailedAppend = append;
-      plansError.value = cause instanceof Error ? cause.message : '饮食安排加载失败，请重试';
+      plansError.value =
+        cause instanceof Error ? cause.message : t('account.profile.unableToLoadMealSchedule2');
     }
   } finally {
     if (current() && request === plansRequest) plansLoading.value = false;

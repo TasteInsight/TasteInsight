@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue'; // 引入 ref 和 computed
 import { wechatLogin, getUserProfile, updateUserProfile } from '@/api/modules/user';
@@ -40,7 +41,11 @@ export const useUserStore = defineStore('user', () => {
   /**
    * 用户昵称，带默认值
    */
-  const nickname = computed(() => userInfo.value?.nickname || '游客');
+  const nickname = computed(
+    () =>
+      userInfo.value?.nickname ||
+      (isLoggedIn.value ? t('account.common.user') : t('account.common.guest'))
+  );
 
   // ==================== Actions ====================
 
@@ -60,7 +65,7 @@ export const useUserStore = defineStore('user', () => {
 
       // 最低要求：必须拿到 accessToken
       if (!newToken?.accessToken) {
-        throw new Error('登录失败：未获取到有效的 token');
+        throw new Error(t('account.common.signInFailedNoValid'));
       }
 
       // 先保存 token（以便后续请求能够携带 token 拉取 profile）
@@ -72,7 +77,7 @@ export const useUserStore = defineStore('user', () => {
         const safeUser: User = {
           id: user.id || '',
           openId: user.openId || '',
-          nickname: user.nickname || '用户',
+          nickname: user.nickname || '',
           avatar: user.avatar || '',
           preferences: user.preferences || {},
           allergens: user.allergens || [],
@@ -92,7 +97,7 @@ export const useUserStore = defineStore('user', () => {
               return userInfo.value;
             }
           } catch (err) {
-            throw new Error('用户信息不完整');
+            throw new Error(t('account.common.userInformationIsIncomplete'));
           }
         }
 
@@ -111,7 +116,7 @@ export const useUserStore = defineStore('user', () => {
         if (userInfo.value) {
           return userInfo.value;
         }
-        throw new Error('登录失败：未能获取到用户信息');
+        throw new Error(t('account.common.signInFailedUnableTo'));
       } catch (err) {
         // 清理已存 token
         if (sessionVersion.value === loginSession) resetSession(preserveCampusLogin);
@@ -158,7 +163,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function assertCurrentSession(expectedSession: number): void {
-    if (sessionVersion.value !== expectedSession) throw new Error('登录会话已变更');
+    if (sessionVersion.value !== expectedSession)
+      throw new Error(t('account.common.signInSessionChanged'));
   }
 
   function updateTokens(
@@ -196,7 +202,7 @@ export const useUserStore = defineStore('user', () => {
       const response = await getUserProfile();
       if (!ownsResult()) return;
       if (response.code !== 200 || !response.data) {
-        throw new Error(response.message || '获取用户信息失败');
+        throw new Error(response.message || t('account.common.unableToRetrieveUserInformation'));
       }
 
       const user = response.data;
@@ -228,7 +234,7 @@ export const useUserStore = defineStore('user', () => {
     const response = await updateUserProfile(payload);
     if (session !== sessionVersion.value) return;
     if (response.code !== 200 || !response.data) {
-      throw new Error(response.message || '保存失败');
+      throw new Error(response.message || t('account.settings.unableToSave'));
     }
 
     if (request >= appliedProfileRequest) {
@@ -242,7 +248,7 @@ export const useUserStore = defineStore('user', () => {
       const current = await getUserProfile();
       if (session !== sessionVersion.value || refresh < appliedProfileRequest) return;
       if (current.code !== 200 || !current.data) {
-        throw new Error(current.message || '资料同步失败');
+        throw new Error(current.message || t('account.common.unableToSyncProfile'));
       }
       updateLocalUserInfo(current.data);
     } catch (error) {

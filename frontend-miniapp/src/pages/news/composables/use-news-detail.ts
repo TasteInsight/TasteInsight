@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, computed, getCurrentScope, onScopeDispose } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getNewsById } from '@/api/modules/news';
@@ -13,6 +14,9 @@ export function useNewsDetail() {
   const loading = ref<boolean>(false);
   const initialized = ref(false);
   const error = ref('');
+  const errorText = computed(() =>
+    error.value.startsWith('social.') ? t(error.value) : error.value
+  );
   const notFound = ref(false);
   let currentId = '';
   let generation = 0;
@@ -113,13 +117,13 @@ export function useNewsDetail() {
         return true;
       } else {
         notFound.value = res.code === 404;
-        error.value = notFound.value ? '新闻不存在或已下架' : '新闻加载失败，请重试';
+        error.value = notFound.value ? 'social.newsNotFound' : 'social.loadNewsRetry';
       }
     } catch (cause) {
       if (!ownsRequest()) return false;
       console.error('获取新闻详情失败:', cause);
       notFound.value = (cause as { statusCode?: number })?.statusCode === 404;
-      error.value = notFound.value ? '新闻不存在或已下架' : '新闻加载失败，请重试';
+      error.value = notFound.value ? 'social.newsNotFound' : 'social.loadNewsRetry';
     } finally {
       if (ownsRequest()) loading.value = false;
     }
@@ -140,7 +144,7 @@ export function useNewsDetail() {
     newsDetail,
     loading,
     initialized,
-    error,
+    error: errorText,
     notFound,
     retry: () => fetchNewsDetail(currentId),
     formattedContent,

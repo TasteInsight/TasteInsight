@@ -1,9 +1,11 @@
 <template>
   <view
-    class="canteen-card"
+    class="canteen-card list-row-action"
+    hover-class="list-row-pressed"
+    :hover-stay-time="80"
     role="button"
     tabindex="0"
-    :aria-label="`查看食堂：${canteen.name || '食堂'}`"
+    :aria-label="t('social.viewCanteen', { p0: canteen.name || t('social.canteen') })"
     @click="goToCanteen"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -16,19 +18,20 @@
       mode="aspectFill"
       @error="failedImage = canteen.image"
     />
-    <view v-else class="canteen-fallback">食堂</view>
+    <view v-else class="canteen-fallback">{{ t('social.canteen') }}</view>
     <view class="canteen-info"
-      ><text class="canteen-name">{{ canteen.name || '食堂' }}</text
+      ><text class="canteen-name">{{ canteen.name || t('social.canteen') }}</text
       ><text class="canteen-meta">{{ displayStatus }}</text
       ><text class="canteen-meta">{{
         canteen.averageRating && canteen.averageRating > 0
-          ? `${canteen.averageRating.toFixed(1)} 分`
-          : '暂无评分'
+          ? t('social.ratingValue', { p0: canteen.averageRating.toFixed(1) })
+          : t('social.noRating')
       }}</text></view
     >
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import type { ComponentCanteenCard } from '@/types/api';
 const props = defineProps<{ canteen: ComponentCanteenCard }>();
@@ -36,7 +39,7 @@ const failedImage = ref('');
 const pressed = ref(false);
 const displayStatus = computed(
   () =>
-    ({ open: '营业中', closed: '已打烊', unknown: '暂无营业信息' })[
+    ({ open: t('social.open'), closed: t('social.closed'), unknown: t('social.hoursUnavailable') })[
       props.canteen.status || 'unknown'
     ] || props.canteen.status
 );
@@ -65,9 +68,8 @@ const handleKeyup = (event: KeyboardEvent) => {
   gap: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 16px 0;
+  padding-block: 16px;
   margin-bottom: 0;
-  border-bottom: 1px solid #e5e7eb;
   background: #fff;
 }
 .canteen-image,
@@ -103,9 +105,5 @@ const handleKeyup = (event: KeyboardEvent) => {
   color: #667085;
   font-size: 13px;
   line-height: 1.5;
-}
-.canteen-card:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: -2px;
 }
 </style>

@@ -1,14 +1,14 @@
 <template>
   <view class="profile-bio-editor">
-    <label for="profile-bio-input" class="profile-bio-label">个人简介</label>
+    <label for="profile-bio-input" class="profile-bio-label">{{ t('account.profile.bio') }}</label>
     <textarea
       id="profile-bio-input"
       v-model="bio"
       class="profile-bio-input"
       :disabled="saving"
       maxlength="160"
-      aria-label="个人简介"
-      placeholder="介绍一下自己"
+      :aria-label="t('account.profile.bio')"
+      :placeholder="t('account.profile.tellUsAboutYourself')"
       placeholder-style="color: #667085"
     />
     <text v-if="error" class="profile-bio-error" role="alert">{{ error }}</text>
@@ -25,7 +25,7 @@
         role="button"
         :tabindex="saving ? -1 : 0"
       >
-        取消
+        {{ t('account.profile.cancel') }}
       </button>
       <button
         class="profile-bio-button profile-bio-save"
@@ -38,12 +38,13 @@
         role="button"
         :tabindex="saving || bio.trim() === originalBio ? -1 : 0"
       >
-        {{ saving ? '保存中…' : '保存' }}
+        {{ saving ? t('account.profile.saving') : t('account.profile.save') }}
       </button>
     </view>
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { onScopeDispose, ref, watch } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
@@ -71,7 +72,12 @@ const saveButton = useButtonActivation(
 );
 async function cancel() {
   if (saving.value) return;
-  if (await confirmDiscardChanges(bio.value.trim() !== originalBio, '简介尚未保存，确定放弃吗？')) {
+  if (
+    await confirmDiscardChanges(
+      bio.value.trim() !== originalBio,
+      t('account.profile.yourBioHasUnsavedChanges')
+    )
+  ) {
     if (current()) emit('close');
   }
 }
@@ -82,11 +88,14 @@ async function save() {
   try {
     await user.updateProfileAction({ bio: bio.value.trim() });
     if (current()) {
-      if (user.userInfo?.publicProfileSubmission) uni.showToast({ title: '简介已提交审核', icon: 'none' });
+      if (user.userInfo?.publicProfileSubmission)
+        uni.showToast({ title: t('account.profile.bioSubmittedForReview'), icon: 'none' });
       emit('close');
     }
   } catch (cause) {
-    if (current()) error.value = cause instanceof Error ? cause.message : '简介保存失败，请重试';
+    if (current())
+      error.value =
+        cause instanceof Error ? cause.message : t('account.profile.unableToSaveBioTry');
   } finally {
     if (current()) saving.value = false;
   }

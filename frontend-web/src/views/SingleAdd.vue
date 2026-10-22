@@ -150,6 +150,14 @@
               ></textarea>
             </div>
 
+            <TranslationFields
+              class="mb-6"
+              v-model:name-en="formData.nameEn"
+              v-model:description-en="formData.descriptionEn"
+              :name="formData.name"
+              :description="formData.description"
+            />
+
             <!-- 菜品图片上传 -->
             <div>
               <label class="block text-gray-700 font-medium mb-2 admin-label"
@@ -586,6 +594,7 @@
 </template>
 
 <script>
+import { parseAllergenList } from '@/utils/allergen-values'
 import { reactive, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
@@ -593,6 +602,7 @@ import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
+import TranslationFields from '@/components/Content/TranslationFields.vue'
 import NutritionFields from '@/components/Dishes/NutritionFields.vue'
 import { nutritionPayload } from '@/utils/nutrition'
 import { showConfirm } from '@/composables/useModal'
@@ -605,6 +615,7 @@ export default {
   components: {
     AdminImage,
     NutritionFields,
+    TranslationFields,
     Header,
   },
   setup() {
@@ -935,12 +946,7 @@ export default {
               .filter((item) => item)
           : []
 
-        const allergens = formData.allergens
-          ? formData.allergens
-              .split(/[，,、]/)
-              .map((item) => item.trim())
-              .filter((item) => item)
-          : []
+        const allergens = parseAllergenList(formData.allergens)
 
         // 处理供应日期段（过滤掉空的日期段）
         const availableDates =
@@ -956,6 +962,8 @@ export default {
         // 构建菜品创建请求
         const dishData = {
           name: formData.name,
+          nameEn: formData.nameEn || null,
+          descriptionEn: formData.descriptionEn || null,
           canteenId: formData.canteenId,
           windowId: formData.windowId,
           canteenName: formData.canteen,

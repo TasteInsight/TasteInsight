@@ -1,5 +1,5 @@
 <template>
-  <view class="dish-skeleton-list" role="status" aria-label="正在加载菜品">
+  <view class="dish-skeleton-list" role="status" :aria-label="t('common.skeleton.dishes')">
     <view v-for="row in rows" :key="row" class="dish-skeleton-row">
       <view class="skeleton-copy">
         <SkeletonBase width="68%" height="18px" />
@@ -17,6 +17,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 withDefaults(defineProps<{ rows?: number }>(), { rows: 3 });
 </script>

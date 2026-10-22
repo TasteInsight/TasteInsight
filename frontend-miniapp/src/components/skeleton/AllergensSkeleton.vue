@@ -2,7 +2,7 @@
   <view
     class="skeleton-form settings-content-skeleton"
     role="status"
-    aria-label="正在加载过敏原设置"
+    :aria-label="t('common.skeleton.allergens')"
   >
     <view class="skeleton-copy allergens-skeleton-note">
       <SkeletonBase height="14px" /><SkeletonBase height="14px" /><SkeletonBase
@@ -33,6 +33,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 </script>
 <style scoped>

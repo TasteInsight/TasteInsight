@@ -8,6 +8,7 @@ import config from '@/config';
 import type { RequestOptions, ApiResponse } from '@/types/api';
 import { createHttpError, toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 import { expireSession, refreshAccessToken } from '@/utils/auth-session';
+import { locale, t } from '@/i18n';
 // 导入 Mock 拦截器
 import { mockInterceptor } from '@/mock/mock-adapter';
 // The build-time mode keeps fixtures out of release bundles and initializes mock routes once.
@@ -38,10 +39,10 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
   // 如果开启了 Mock 且匹配到 Mock 路由，直接返回 Mock 数据
   if (mockRoutesReady) {
     await mockRoutesReady;
-    if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
+    if (userStore.sessionVersion !== sessionVersion) throw new Error(t('common.errors.session'));
   }
   const mockResponse = await mockInterceptor<T>(options);
-  if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
+  if (userStore.sessionVersion !== sessionVersion) throw new Error(t('common.errors.session'));
   if (mockResponse !== null) {
     return mockResponse;
   }
@@ -52,6 +53,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
 
     const header: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept-Language': locale.value,
     };
 
     // 核心：自动为需要授权的接口注入 Token
@@ -82,7 +84,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
       // 2. 成功回调
       success: (res: UniApp.RequestSuccessCallbackResult) => {
         if (userStore.sessionVersion !== sessionVersion) {
-          reject(new Error('登录会话已变更'));
+          reject(new Error(t('common.errors.session')));
           return;
         }
         // --- 阶段三: 响应拦截器 ---
@@ -105,18 +107,23 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           } else {
             // 业务失败 (例如：参数错误、验证码错误等)
             // 业务失败，也 reject Promise，让页面中的 .catch() 能捕获到
-            reject(buildUserFriendlyError(new Error(responseData.message || '操作失败')));
+            reject(
+              buildUserFriendlyError(new Error(responseData.message || t('common.errors.failed')))
+            );
           }
         } else if (statusCode === 401) {
           if (options.auth === 'none') {
             reject(
-              buildUserFriendlyError(new Error(responseData.message || '验证未通过，请重试'), 401)
+              buildUserFriendlyError(
+                new Error(responseData.message || t('common.errors.verification')),
+                401
+              )
             );
             return;
           }
           const unauthorized = () => {
             if (userStore.sessionVersion !== sessionVersion) {
-              reject(new Error('登录会话已变更'));
+              reject(new Error(t('common.errors.session')));
               return;
             }
             if (options.auth === 'optional') {
@@ -147,7 +154,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
 
           const retry = () => {
             if (userStore.sessionVersion !== sessionVersion) {
-              reject(new Error('登录会话已变更'));
+              reject(new Error(t('common.errors.session')));
               return;
             }
             const newOptions = {
@@ -191,7 +198,11 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
         });
         reject(
           buildUserFriendlyError(
-            new Error(err.errMsg.includes('timeout') ? '请求超时，请重试' : '网络连接异常')
+            new Error(
+              err.errMsg.includes('timeout')
+                ? t('common.errors.timeout')
+                : t('common.errors.disconnected')
+            )
           )
         );
       },
@@ -211,20 +222,20 @@ function handleHttpError(statusCode: number, _responseData: any, sessionVersion:
   let message = '';
   switch (statusCode) {
     case 401:
-      message = '登录状态已过期，请重新登录';
+      message = t('common.errors.loginExpired');
       expireSession(sessionVersion);
       break;
     case 403:
-      message = '没有权限执行此操作';
+      message = t('common.errors.forbidden');
       break;
     case 404:
-      message = '请求的资源不存在';
+      message = t('common.errors.missing');
       break;
     case 500:
-      message = '服务器内部错误';
+      message = t('common.errors.server');
       break;
     default:
-      message = `请求错误 - ${statusCode}`;
+      message = t('common.errors.http', { status: statusCode });
   }
 }
 

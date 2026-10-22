@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app';
 import { registerFeedbackDefaults } from '@/utils/feedback';
+import { syncSystemLocale } from '@/i18n';
 
 onLaunch(() => {
   registerFeedbackDefaults();
@@ -8,6 +9,7 @@ onLaunch(() => {
 });
 
 onShow(() => {
+  syncSystemLocale();
   console.log('App Show');
 });
 

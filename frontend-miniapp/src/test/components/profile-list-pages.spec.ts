@@ -2,12 +2,12 @@ import { mount, shallowMount } from '@vue/test-utils';
 import { ref } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
-import ReviewsPage from '@/pages/profile/my-reviews/index.vue';
-import FavoritesPage from '@/pages/profile/my-favorites/index.vue';
-import HistoryPage from '@/pages/profile/history/index.vue';
+import ReviewsPage from '@/pages/profile/records/my-reviews/index.vue';
+import FavoritesPage from '@/pages/profile/records/my-favorites/index.vue';
+import HistoryPage from '@/pages/profile/records/history/index.vue';
 import { useMyReviews } from '@/pages/profile/composables/use-my-reviews';
-import { useFavorites } from '@/pages/profile/my-favorites/composables/use-favorites';
-import { useHistory } from '@/pages/profile/history/composables/use-history';
+import { useFavorites } from '@/pages/profile/records/my-favorites/composables/use-favorites';
+import { useHistory } from '@/pages/profile/records/history/composables/use-history';
 
 jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: jest.fn() }));
 jest.mock('@dcloudio/uni-app', () => ({
@@ -18,10 +18,10 @@ jest.mock('@dcloudio/uni-app', () => ({
 jest.mock('@/pages/profile/composables/use-my-reviews', () => ({
   useMyReviews: jest.fn(),
 }));
-jest.mock('@/pages/profile/my-favorites/composables/use-favorites', () => ({
+jest.mock('@/pages/profile/records/my-favorites/composables/use-favorites', () => ({
   useFavorites: jest.fn(),
 }));
-jest.mock('@/pages/profile/history/composables/use-history', () => ({ useHistory: jest.fn() }));
+jest.mock('@/pages/profile/records/history/composables/use-history', () => ({ useHistory: jest.fn() }));
 
 beforeEach(() => {
   jest.clearAllMocks();

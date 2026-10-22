@@ -1,3 +1,5 @@
+import { useLocalizedMessage } from '@/composables/use-localized-message';
+import { t } from '@/i18n';
 import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import {
   getOwnReviewByDish,
@@ -10,7 +12,7 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import type { Review, ReviewCreateRequest, ReviewListData } from '@/types/api';
 
 const REVIEW_STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24小时过期时间
-const IMAGE_DRAFT_UNAVAILABLE = new Error('当前平台不支持图片草稿，可继续编辑或提交');
+const IMAGE_DRAFT_UNAVAILABLE = new Error('IMAGE_DRAFT_UNAVAILABLE');
 
 type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
 
@@ -65,13 +67,13 @@ export function useReview() {
   const ownReview = ref<Review | null>(null);
   const ownReviewLoading = ref(false);
   const ownReviewLoaded = ref(false);
-  const ownReviewError = ref('');
+  const ownReviewError = useLocalizedMessage();
   const reviews = ref<Review[]>([]);
   const reviewsInitialized = ref(false);
   const ratingSummary = ref<ReviewListData['rating'] | null>(null);
   const reviewsLoading = ref(false);
   const isInitializing = ref(false);
-  const reviewsError = ref('');
+  const reviewsError = useLocalizedMessage();
   const reviewsHasMore = ref(true);
   const reviewsPage = ref(1);
   const reviewsPageSize = 10;
@@ -128,12 +130,13 @@ export function useReview() {
     try {
       const response = await getOwnReviewByDish(dishId);
       if (!isCurrent()) return false;
-      if (response.code !== 200) throw new Error(response.message || '读取我的评价失败');
+      if (response.code !== 200)
+        throw new Error(response.message || t('food.couldNotLoadYourReview'));
       ownReview.value = response.data;
       ownReviewLoaded.value = true;
       return true;
     } catch (error) {
-      if (isCurrent()) ownReviewError.value = '我的评价暂时无法读取，请重试后再编辑';
+      if (isCurrent()) ownReviewError.value = 'food.yourReviewIsUnavailableRetryToEditIt';
       return false;
     } finally {
       if (isCurrent()) ownReviewLoading.value = false;
@@ -190,14 +193,14 @@ export function useReview() {
         reviewsInitialized.value = true;
         return true;
       } else {
-        reviewsError.value = response.message || '获取评价失败';
+        reviewsError.value = response.message || 'food.couldNotLoadReviews';
         failedReviewRefresh = refresh;
         return false;
       }
     } catch (err: any) {
       if (!isCurrent()) return false;
       console.error('获取评价失败:', err);
-      reviewsError.value = '网络错误，请稍后重试';
+      reviewsError.value = 'food.connectionErrorTryAgainLater';
       failedReviewRefresh = refresh;
       return false;
     } finally {
@@ -222,7 +225,7 @@ export function useReview() {
       if (response.code === 200 || response.code === 201) {
         return response.data;
       } else {
-        throw new Error(response.message || '提交失败');
+        throw new Error(response.message || t('food.submissionFailed'));
       }
     } catch (err: any) {
       console.error('提交评价失败:', err);
@@ -244,7 +247,7 @@ export function useReview() {
         if (ownReview.value?.id === reviewId) ownReview.value = null;
         return true;
       } else {
-        throw new Error(res.message || '删除失败');
+        throw new Error(res.message || t('food.couldNotDelete'));
       }
     } catch (err) {
       console.error('删除评价失败', err);
@@ -311,10 +314,42 @@ export function useReviewForm() {
   };
 
   const flavorOptions: Array<{ key: FlavorKey; label: string; hint: string }> = [
-    { key: 'spicyLevel', label: '辣度', hint: '辣味程度' },
-    { key: 'sweetness', label: '甜度', hint: '甜味浓淡' },
-    { key: 'saltiness', label: '咸度', hint: '咸味强度' },
-    { key: 'oiliness', label: '油腻程度', hint: '油脂感' },
+    {
+      key: 'spicyLevel',
+      get label() {
+        return t('food.spiciness');
+      },
+      get hint() {
+        return t('food.howSpicyItTastes');
+      },
+    },
+    {
+      key: 'sweetness',
+      get label() {
+        return t('food.sweetness');
+      },
+      get hint() {
+        return t('food.howSweetItTastes');
+      },
+    },
+    {
+      key: 'saltiness',
+      get label() {
+        return t('food.saltiness');
+      },
+      get hint() {
+        return t('food.howSaltyItTastes');
+      },
+    },
+    {
+      key: 'oiliness',
+      get label() {
+        return t('food.oiliness2');
+      },
+      get hint() {
+        return t('food.howOilyItFeels');
+      },
+    },
   ];
 
   const flavorRatings = ref<Record<FlavorKey, number>>({
@@ -333,7 +368,14 @@ export function useReviewForm() {
   );
 
   const ratingText = computed(() => {
-    const texts = ['请选择评分', '非常差', '差', '一般', '好', '非常好'];
+    const texts = [
+      t('food.chooseARating'),
+      t('food.veryPoor'),
+      t('food.poor'),
+      t('food.average'),
+      t('food.good'),
+      t('food.excellent'),
+    ];
     return texts[rating.value] || texts[0];
   });
 
@@ -417,8 +459,8 @@ export function useReviewForm() {
       uni.showToast({
         title:
           error === IMAGE_DRAFT_UNAVAILABLE
-            ? IMAGE_DRAFT_UNAVAILABLE.message
-            : '草稿保存失败，请重试',
+            ? t('food.photoDraftsAreUnavailableOnThisPlatformYou')
+            : t('food.couldNotSaveDraftTryAgain'),
         icon: 'none',
       });
       return false;
@@ -494,7 +536,7 @@ export function useReviewForm() {
   const addImages = (tempFilePaths: string[]) => {
     if (busy.value || disposed) return;
     if (images.value.length + tempFilePaths.length > 3) {
-      uni.showToast({ title: '最多只能选择3张图片', icon: 'none' });
+      uni.showToast({ title: t('food.selectUpTo3Photos'), icon: 'none' });
       return;
     }
     images.value.push(...tempFilePaths.map(path => ({ source: 'temporary' as const, path })));
@@ -527,7 +569,7 @@ export function useReviewForm() {
     try {
       if (rating.value === 0) {
         uni.showToast({
-          title: '请先选择总体评分',
+          title: t('food.chooseAnOverallRatingFirst'),
           icon: 'none',
         });
         return;
@@ -536,7 +578,7 @@ export function useReviewForm() {
       if (!flavorSelectionComplete.value) {
         showFlavorError.value = true;
         uni.showToast({
-          title: '请选择全部口味评分或全部留空',
+          title: t('food.rateAllTasteDimensionsOrLeaveThemAll'),
           icon: 'none',
         });
         return;
@@ -577,7 +619,7 @@ export function useReviewForm() {
         onSuccess?.(response.data);
       } else {
         uni.showToast({
-          title: response.message || '提交失败',
+          title: response.message || t('food.submissionFailed'),
           icon: 'none',
         });
       }
@@ -585,7 +627,9 @@ export function useReviewForm() {
       if (!isCurrent()) return;
       console.error('提交评价失败:', err);
       uni.showToast({
-        title: isUploading.value ? '图片上传失败，请重试' : '网络错误，请稍后重试',
+        title: isUploading.value
+          ? t('food.couldNotUploadPhotosTryAgain')
+          : t('food.connectionErrorTryAgainLater'),
         icon: 'none',
       });
     } finally {

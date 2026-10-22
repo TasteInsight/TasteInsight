@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 export function toUserFriendlyErrorMessage(err: unknown): string {
   if (err instanceof Error) {
     const message = err.message || '';
@@ -6,27 +7,40 @@ export function toUserFriendlyErrorMessage(err: unknown): string {
     const httpMatch = message.match(/^HTTP\s+(\d{3})$/);
     if (httpMatch) {
       const code = Number(httpMatch[1]);
-      if (code === 401) return '登录已过期，请重新登录';
-      if (code === 403) return '没有权限执行此操作';
-      if (code === 409) return '内容已更新，请刷新后重试';
-      if (code === 410) return '内容已过期，请刷新后重试';
-      if (code === 413) return '上传内容过大，请压缩图片后重试';
-      if (code === 429) return '操作太频繁，请稍后再试';
-      return '网络开小差了，请稍后再试';
+      if (code === 401) return t('common.errors.expired');
+      if (code === 404) return t('common.errors.missing');
+      if (code === 403) return t('common.errors.forbidden');
+      if (code === 409) return t('common.errors.conflict');
+      if (code === 410) return t('common.errors.gone');
+      if (code === 413) return t('common.errors.tooLarge');
+      if (code === 429) return t('common.errors.rateLimit');
+      return t('common.errors.network');
     }
 
-    if (message.includes('网络连接异常')) {
-      return '网络开小差了，请稍后再试';
+    if (message.includes(t('common.errors.disconnected'))) {
+      return t('common.errors.network');
     }
 
     // Preserve business errors / validation messages
     if (message.trim()) return message;
   }
 
-  return '网络开小差了，请稍后再试';
+  return t('common.errors.network');
 }
 
 export type HttpRequestError = Error & { statusCode: number; code?: string };
+
+const businessErrorKeys: Record<string, string> = {
+  INVALID_VERIFICATION_CODE: 'invalidCode',
+  VERIFICATION_RATE_LIMITED: 'verificationRateLimit',
+  VERIFICATION_METHOD_DISABLED: 'verificationDisabled',
+  LOGIN_METHOD_DISABLED: 'loginDisabled',
+  IDENTITY_ALREADY_BOUND: 'identityBound',
+  STUDENT_VERIFICATION_REQUIRED: 'studentRequired',
+  DIETARY_CONFLICT: 'dietaryConflict',
+  ACTIVE_DINING_INVITATION: 'activeInvitation',
+  INVALID_CAMPUS_CONFIRMATION: 'invalidCampusConfirmation',
+};
 
 export function createHttpError(statusCode: number, body?: unknown): HttpRequestError {
   const payload =
@@ -38,11 +52,15 @@ export function createHttpError(statusCode: number, body?: unknown): HttpRequest
     .filter(item => typeof item === 'string')
     .join('；')
     .trim();
-  const isBusinessError = [400, 403, 404, 409, 410, 413, 422, 429].includes(statusCode);
+  const isBusinessError = [400, 403, 409, 410, 413, 422, 429].includes(statusCode);
+  const translationKey =
+    typeof payload.code === 'string' ? businessErrorKeys[payload.code] : undefined;
   const error = new Error(
-    isBusinessError && detail
-      ? detail.slice(0, 300)
-      : toUserFriendlyErrorMessage(new Error(`HTTP ${statusCode}`))
+    translationKey
+      ? t(`common.errors.${translationKey}`)
+      : isBusinessError && detail
+        ? detail.slice(0, 300)
+        : toUserFriendlyErrorMessage(new Error(`HTTP ${statusCode}`))
   ) as HttpRequestError;
   error.statusCode = statusCode;
   if (typeof payload.code === 'string') error.code = payload.code;

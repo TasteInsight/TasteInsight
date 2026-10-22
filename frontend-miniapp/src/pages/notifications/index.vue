@@ -4,14 +4,14 @@
     :class="{ 'notifications-page--state': !user.isLoggedIn || !unread }"
     :aria-busy="loading"
   >
-    <LoginGate title="登录后查看消息" icon="bell">
+    <LoginGate :title="t('social.notificationsLogin')" icon="bell">
       <AsyncState
         :loading="loading"
         :initialized="initialized"
         :has-content="!!items.length"
-        :error="error"
-        loading-title="正在加载消息…"
-        empty-title="暂无新消息"
+        :error="errorText"
+        :loading-title="t('social.loadingNotifications')"
+        :empty-title="t('social.noNotifications')"
         empty-icon="bell"
         @retry="load(failedAppend)"
       />
@@ -24,7 +24,11 @@
           :class="{ 'notification-unread': !item.readAt }"
           :disabled="!!opening[item.id]"
           :aria-label="
-            [notificationText(item), item.subject, !item.readAt ? '未读' : '']
+            [
+              notificationText(item),
+              localizedDishName({ name: item.subject, nameEn: item.subjectEn }),
+              !item.readAt ? t('social.unread') : '',
+            ]
               .filter(Boolean)
               .join('，')
           "
@@ -46,29 +50,33 @@
                 <view v-if="!item.readAt" class="notification-dot" aria-hidden="true" />
               </view>
             </view>
-            <text v-if="item.subject" class="notification-subject">{{ item.subject }}</text>
+            <text v-if="item.subject" class="notification-subject">{{
+              localizedDishName({ name: item.subject, nameEn: item.subjectEn })
+            }}</text>
           </view>
         </button>
       </view>
       <button
-        v-if="hasMore && items.length && !error"
+        v-if="hasMore && items.length && !errorText"
         class="notification-button notification-more"
         :disabled="loading"
         @click="load(true)"
       >
-        加载更多
+        {{ t('social.loadMore') }}
       </button>
     </LoginGate>
     <FloatingActionButton
       v-if="user.isLoggedIn && (unread > 0 || markingAll)"
       icon="eye"
-      :label="markingAll ? '标记中…' : '全部已读'"
+      :label="markingAll ? t('social.markingRead') : t('social.allRead')"
       :disabled="markingAll"
       @click="markAll"
     />
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+import { localizedDishName } from '@/utils/dish-localization';
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import UserAvatar from '@/components/UserAvatar.vue';
@@ -97,6 +105,9 @@ const items = ref<InboxNotification[]>([]);
 const loading = ref(false);
 const initialized = ref(false);
 const error = ref('');
+const errorText = computed(() =>
+  error.value.startsWith('social.') ? t(error.value) : error.value
+);
 const unread = ref(0);
 const page = ref(0);
 const totalPages = ref(1);
@@ -146,7 +157,7 @@ async function load(append = false) {
   } catch (cause) {
     if (current() && request === version) {
       failedAppend = append;
-      error.value = cause instanceof Error ? cause.message : '消息加载失败，请重试';
+      error.value = cause instanceof Error ? cause.message : 'social.loadNotificationsFailed';
     }
   } finally {
     if (current() && request === version) loading.value = false;
@@ -160,7 +171,8 @@ async function open(item: InboxNotification) {
     if (!item.readAt) {
       const response = await readNotification(item.id);
       if (!current()) return;
-      if (response.code !== 200) throw new Error(response.message || '消息读取失败');
+      if (response.code !== 200)
+        throw new Error(response.message || t('social.readNotificationFailed'));
       readRevision++;
       item.readAt = new Date().toISOString();
       unread.value = Math.max(0, unread.value - 1);
@@ -168,19 +180,19 @@ async function open(item: InboxNotification) {
     if (!current()) return;
     const destination = notificationDestination(item);
     if (!destination) {
-      uni.showToast({ title: '内容暂不可查看', icon: 'none' });
+      uni.showToast({ title: t('social.contentUnavailable'), icon: 'none' });
       return;
     }
     const options = {
       url: destination.url,
-      fail: () => uni.showToast({ title: '页面打开失败，请重试', icon: 'none' as const }),
+      fail: () => uni.showToast({ title: t('social.openPageFailed'), icon: 'none' as const }),
     };
     if (destination.tab) uni.switchTab(options);
     else uni.navigateTo(options);
   } catch (cause) {
     if (current())
       uni.showToast({
-        title: cause instanceof Error ? cause.message : '消息读取失败，请重试',
+        title: cause instanceof Error ? cause.message : t('social.readNotificationRetry'),
         icon: 'none',
       });
   } finally {
@@ -198,7 +210,7 @@ async function markAll() {
   try {
     const response = await readAllNotifications();
     if (!current()) return;
-    if (response.code !== 200) throw new Error(response.message || '标记失败');
+    if (response.code !== 200) throw new Error(response.message || t('social.markFailed'));
     readRevision++;
     const now = new Date().toISOString();
     items.value = items.value.map(item => ({ ...item, readAt: item.readAt || now }));
@@ -206,7 +218,7 @@ async function markAll() {
   } catch (cause) {
     if (current())
       uni.showToast({
-        title: cause instanceof Error ? cause.message : '标记失败，请重试',
+        title: cause instanceof Error ? cause.message : t('social.markReadFailed'),
         icon: 'none',
       });
   } finally {
@@ -317,7 +329,7 @@ onReachBottom(() => {
   gap: 12px;
   width: 100%;
   margin: 0;
-  padding: 16px 0;
+  padding-block: 16px;
   border: 0;
   border-bottom: 1px solid #eef0f3;
   border-radius: 0;

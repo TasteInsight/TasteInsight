@@ -146,6 +146,14 @@
               ></textarea>
             </div>
 
+            <TranslationFields
+              class="mb-6"
+              v-model:name-en="formData.nameEn"
+              v-model:description-en="formData.descriptionEn"
+              :name="formData.name"
+              :description="formData.description"
+            />
+
             <!-- 菜品图片上传 -->
             <div>
               <label class="block text-gray-700 font-medium mb-2 admin-label"
@@ -623,6 +631,7 @@
 </template>
 
 <script>
+import { parseAllergenList } from '@/utils/allergen-values'
 import { reactive, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
@@ -631,6 +640,7 @@ import { useDishStore } from '@/store/modules/use-dish-store'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
+import TranslationFields from '@/components/Content/TranslationFields.vue'
 import NutritionFields from '@/components/Dishes/NutritionFields.vue'
 import { nutritionPayload } from '@/utils/nutrition'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
@@ -643,6 +653,7 @@ export default {
   components: {
     AdminImage,
     NutritionFields,
+    TranslationFields,
     Header,
     AdminDialog,
   },
@@ -691,6 +702,8 @@ export default {
       fat: null,
 
       description: '',
+      nameEn: '',
+      descriptionEn: '',
       allergens: '',
       ingredients: '',
       imageFiles: [], // { id: string, url: string, file?: File, isNew: boolean }
@@ -826,6 +839,9 @@ export default {
       formData.windowId = dish.windowId || ''
       formData.windowName = dish.windowName || dish.window || ''
       formData.windowNumber = dish.windowNumber || ''
+
+      formData.nameEn = dish.nameEn || ''
+      formData.descriptionEn = dish.descriptionEn || ''
 
       formData.name = dish.name || ''
       formData.calories = dish.calories ?? null
@@ -1202,12 +1218,7 @@ export default {
               .filter((item) => item)
           : []
 
-        const allergens = draft.allergens
-          ? draft.allergens
-              .split(/[，,、]/)
-              .map((item) => item.trim())
-              .filter((item) => item)
-          : []
+        const allergens = parseAllergenList(draft.allergens)
 
         // 处理供应日期段（过滤掉空的日期段）
         const availableDates =
@@ -1223,6 +1234,8 @@ export default {
         // 构建菜品更新请求
         const updateData = {
           name: draft.name,
+          nameEn: draft.nameEn || null,
+          descriptionEn: draft.descriptionEn || null,
           canteenId: draft.canteenId,
           windowId: draft.windowId,
           canteenName: draft.canteen,

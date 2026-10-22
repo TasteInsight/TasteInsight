@@ -31,6 +31,7 @@ export interface InboxNotification {
     | 'report';
   targetId: string;
   subject?: string | null;
+  subjectEn?: string | null;
   rootId: string | null;
   dishId?: string | null;
   readAt: string | null;

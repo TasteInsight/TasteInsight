@@ -584,7 +584,7 @@
 .admin-feedback-info { color: #374151; background: #f3f4f6; }
 .admin-feedback > svg { flex: 0 0 18px; width: 18px; height: 18px; margin-top: 2px; }
 .admin-feedback > span { flex: 1; min-width: 0; }
-.admin-feedback button { min-height: 36px; text-decoration: underline; text-underline-offset: 3px; }
+.admin-feedback button:not(.admin-button, .admin-icon-button) { min-height: 36px; text-decoration: underline; text-underline-offset: 3px; }
 .admin-field-error { color: #991b1b; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 [data-sonner-toaster] { --width: 380px; font-family: inherit; }
 [data-sonner-toast][data-styled='true'] { border-radius: 10px; padding: 16px; gap: 10px; line-height: 1.6; box-shadow: 0 8px 24px rgb(17 24 39 / 12%); }

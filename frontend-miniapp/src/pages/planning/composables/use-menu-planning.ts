@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 // @/composables/use-menu-planning.ts
 import { ref, computed, onMounted, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -120,11 +121,11 @@ export function useMenuPlanning() {
     try {
       const confirmed = await new Promise<boolean>(resolve => {
         uni.showModal({
-          title: '删除确认',
-          content: '确定要删除这个饮食规划吗？',
+          title: t('social.deleteConfirmation'),
+          content: t('social.deletePlanConfirmation'),
           showCancel: true,
-          cancelText: '取消',
-          confirmText: '确定',
+          cancelText: t('common.modal.cancel'),
+          confirmText: t('common.modal.ok'),
           success: (res: any) => {
             resolve(!!res.confirm);
           },
@@ -138,7 +139,10 @@ export function useMenuPlanning() {
     } catch (err) {
       if (!isCurrent()) return;
       console.error('删除失败:', err);
-      uni.showToast({ title: err instanceof Error ? err.message : '删除规划失败', icon: 'none' });
+      uni.showToast({
+        title: err instanceof Error ? err.message : t('social.deletePlanFailed'),
+        icon: 'none',
+      });
     }
   };
 
@@ -170,7 +174,10 @@ export function useMenuPlanning() {
     } catch (err) {
       if (!canShowFeedback()) return;
       console.error('保存规划失败:', err);
-      uni.showToast({ title: err instanceof Error ? err.message : '保存规划失败', icon: 'none' });
+      uni.showToast({
+        title: err instanceof Error ? err.message : t('social.savePlanFailed'),
+        icon: 'none',
+      });
       throw err;
     } finally {
       if (isCurrent()) submitting.value = false;
@@ -218,14 +225,14 @@ export function useMenuPlanning() {
       // 执行成功后关闭详情弹窗
       showDetailDialog.value = false;
       uni.showToast({
-        title: completed ? '已标记吃过' : '已撤销标记',
+        title: completed ? t('social.markedEaten') : t('social.eatenMarkRemoved'),
         icon: 'success',
       });
     } catch (err) {
       if (!isCurrent()) return;
       console.error('执行规划失败:', err);
       uni.showToast({
-        title: '标记失败',
+        title: t('social.markFailed'),
         icon: 'none',
       });
     }

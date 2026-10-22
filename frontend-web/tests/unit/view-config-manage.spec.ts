@@ -1,4 +1,11 @@
-vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock }), notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock } }))
+vi.mock('@/composables/useNotification', () => ({
+  useNotification: () => ({
+    success: mocks.showAlertMock,
+    error: mocks.showAlertMock,
+    info: mocks.showAlertMock,
+  }),
+  notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock },
+}))
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
@@ -59,6 +66,7 @@ vi.mock('@/composables/useModal', () => ({
 }))
 
 import ConfigManage from '../../src/views/ConfigManage.vue'
+import TranslationSettings from '../../src/components/Content/TranslationSettings.vue'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -126,6 +134,47 @@ describe('views/ConfigManage', () => {
       data: { items: [], meta: { page: 1, pageSize: 100, total: 0, totalPages: 0 } },
     })
   })
+
+  it('opens the translation tab from its configuration link for global config viewers', async () => {
+    mocks.configApiMock.getGlobalConfig.mockResolvedValue(effectiveConfig('true'))
+    mocks.authStoreMock.hasPermission.mockImplementation(
+      (permission: string) => permission === 'config:view',
+    )
+    const wrapper = mount(ConfigManage, {
+      global: {
+        stubs: { Header: true, TranslationSettings: true },
+        mocks: { $route: { query: { section: 'translation' } } },
+      },
+    })
+    await flushPromises()
+    expect(
+      wrapper
+        .findAll('.admin-tab')
+        .find((tab) => tab.text() === '翻译服务')!
+        .attributes('aria-pressed'),
+    ).toBe('true')
+    expect(wrapper.getComponent(TranslationSettings).props('canEdit')).toBe(false)
+    wrapper.unmount()
+  })
+  it.each(['CANTEENS', 'GLOBAL'])(
+    'keeps service configuration outside dish-only permission in %s scope',
+    async (scope) => {
+      mocks.authStoreMock.user = { scope, canteenIds: [], canteens: [] }
+      mocks.authStoreMock.hasPermission.mockImplementation(
+        (permission: string) => permission === 'dish:edit',
+      )
+      const wrapper = mount(ConfigManage, {
+        global: {
+          stubs: { Header: true, TranslationSettings: true },
+          mocks: { $route: { query: { section: 'translation' } } },
+        },
+      })
+      await flushPromises()
+      expect(wrapper.findAll('.admin-tab').map((tab) => tab.text())).not.toContain('翻译服务')
+      expect(wrapper.find('translation-settings-stub').exists()).toBe(false)
+      wrapper.unmount()
+    },
+  )
 
   it('keeps global settings mounted across scope selection and disables fallback toggles when enabled', async () => {
     mocks.configApiMock.getGlobalConfig.mockResolvedValue(effectiveConfig('true'))
@@ -595,7 +644,9 @@ describe('views/ConfigManage', () => {
     expect(wrapper.find('input[aria-label="社区帖子人工审核"]').exists()).toBe(false)
     wrapper.unmount()
     mocks.authStoreMock.user = { scope: 'GLOBAL', canteenIds: [], canteens: [] }
-    mocks.authStoreMock.hasPermission.mockImplementation((permission: string) => permission === 'config:view')
+    mocks.authStoreMock.hasPermission.mockImplementation(
+      (permission: string) => permission === 'config:view',
+    )
     mocks.configApiMock.getGlobalConfig.mockResolvedValue({
       code: 200,
       data: { config: null, templates: [] },

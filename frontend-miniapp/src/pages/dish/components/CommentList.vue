@@ -16,22 +16,24 @@
         <text class="discussion-author">{{ comment.userNickname }}</text>
         <!-- #endif -->
         <template v-if="comment.parentComment && !comment.parentComment.deleted">
-          <text class="discussion-meta"> 回复 </text>
+          <text class="discussion-meta"> {{ t('food.reply') }} </text>
           <text class="discussion-author">@{{ comment.parentComment.userNickname }}</text>
         </template>
         <text v-else-if="comment.parentComment?.deleted" class="discussion-meta">
-          回复的评论已删除</text
+          {{ t('food.originalCommentDeleted') }}</text
         >
-        <text>：</text><text>{{ comment.content }}</text>
+        <text>{{ t('food.discussionSeparator') }}</text
+        ><text>{{ comment.content }}</text>
       </view>
     </view>
     <button class="discussion-action view-all-replies-btn" @tap.stop="emit('viewAllComments')">
-      查看全部 {{ totalComments }} 条回复
+      {{ t('food.viewAllReplies', { count: totalComments }) }}
     </button>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, onMounted, watch } from 'vue';
 import type { Comment } from '@/types/api';
 

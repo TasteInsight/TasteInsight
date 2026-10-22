@@ -36,7 +36,7 @@ export function fetchTextStream(options: TextStreamOptions): TextStreamTask {
   const resetIdleTimer = () => {
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
-      const error = new Error('网络连接超时，请重试');
+      const error = new Error('Stream connection timed out');
       error.name = 'TimeoutError';
       fail(error);
     }, 60_000);
@@ -72,7 +72,7 @@ export function fetchTextStream(options: TextStreamOptions): TextStreamTask {
       resetIdleTimer();
       options.onStatus(response.status);
       if (ended) return;
-      if (!body) throw new Error('响应数据流不可用，请重试');
+      if (!body) throw new Error('Response stream is unavailable');
       const current = body.getReader();
       reader = current;
       const decoder = new TextDecoder('utf-8');

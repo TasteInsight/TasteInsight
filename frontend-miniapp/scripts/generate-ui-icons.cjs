@@ -7,6 +7,8 @@ const icons = {
   bell: '<path d="M6 10a6 6 0 0 1 12 0v4l2 3H4l2-3v-4Z"/><path d="M10 20h4M12 2v2"/>',
   settings:
     '<path d="m9.5 3-.6 2.2-1.8 1-2.2-.6-2.5 4.3L4 11.5v2l-1.6 1.6 2.5 4.3 2.2-.6 1.8 1 .6 2.2h5l.6-2.2 1.8-1 2.2.6 2.5-4.3-1.6-1.6v-2l1.6-1.6-2.5-4.3-2.2.6-1.8-1-.6-2.2h-5Z"/><circle cx="12" cy="12.5" r="3"/>',
+  language:
+    '<path d="M3 5h11M8 2v3M5 8c1.5 3 4 5.5 7 7M12 5c-1.2 5-4.3 8.6-9 11M13 21l4.5-10 4.5 10M15 17h5"/>',
   edit: '<path d="m14.5 5.5 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z"/>',
   bookmark: '<path d="M6 4h12v17l-6-4-6 4V4Z"/>',
   history: '<path d="M4 8a8 8 0 1 1-1 7M3 4v5h5M12 7v5l3 2"/>',
@@ -19,6 +21,7 @@ const icons = {
   'chevron-right': '<path d="m9 5 7 7-7 7"/>',
   'chevron-down': '<path d="m5 9 7 7 7-7"/>',
   plus: '<path d="M12 4v16M4 12h16"/>',
+  check: '<path d="m5 12 4 4L19 6"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
   calendar:

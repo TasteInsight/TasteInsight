@@ -1,3 +1,9 @@
+import {
+  parseAllergenList,
+  allergenValue,
+  normalizeAllergenValues,
+} from '@/utils/allergen-catalog';
+import { t } from '@/i18n';
 import { openLogin } from '@/utils/login-navigation';
 import { reactive, ref, computed, watch } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
@@ -185,12 +191,12 @@ export function useSettings() {
 
   async function handleSave() {
     if (!isLoggedIn.value) {
-      uni.showToast({ title: '请先登录', icon: 'none' });
+      uni.showToast({ title: t('account.settings.signInFirst'), icon: 'none' });
       return;
     }
 
     if (!canSubmit.value) {
-      uni.showToast({ title: '没有修改内容', icon: 'none' });
+      uni.showToast({ title: t('account.settings.noChangesToSave'), icon: 'none' });
       return;
     }
 
@@ -199,7 +205,9 @@ export function useSettings() {
       const payload: UserProfileUpdateRequest = {
         nickname: form.nickname.trim() || undefined,
         avatar: form.avatar.trim() || undefined,
-        allergens: parseList(form.allergensText),
+        allergens: normalizeAllergenValues(
+          parseAllergenList(form.allergensText).map(allergenValue)
+        ),
       };
 
       const preferences: Partial<UserPreference> = {};
@@ -285,15 +293,15 @@ export function useSettings() {
 
       const response = await updateUserProfile(payload);
       if (response.code !== 200 || !response.data) {
-        throw new Error(response.message || '保存失败');
+        throw new Error(response.message || t('account.settings.unableToSave'));
       }
 
       userStore.updateLocalUserInfo(response.data);
       syncForm(response.data);
-      uni.showToast({ title: '保存成功', icon: 'success' });
+      uni.showToast({ title: t('account.settings.saved2'), icon: 'success' });
     } catch (error) {
       console.error('更新个人信息失败:', error);
-      const message = error instanceof Error ? error.message : '保存失败';
+      const message = error instanceof Error ? error.message : t('account.settings.unableToSave');
       uni.showToast({ title: message, icon: 'none' });
     } finally {
       saving.value = false;
@@ -302,13 +310,13 @@ export function useSettings() {
 
   function handleLogout() {
     uni.showModal({
-      title: '退出登录',
-      content: '确定要退出登录吗？',
+      title: t('account.profile.signOut'),
+      content: t('account.profile.signOutOfYourAccount'),
       success: res => {
         if (res.confirm) {
           userStore.logoutAction();
           syncForm(null);
-          uni.showToast({ title: '已退出', icon: 'none' });
+          uni.showToast({ title: t('account.settings.signedOut'), icon: 'none' });
           setTimeout(() => {
             uni.reLaunch({ url: '/pages/index/index' });
           }, 400);

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     push: vi.fn(),
   },
   authStoreMock: {
+    user: { scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS' },
     hasPermission: vi.fn(() => true),
   },
   dishApiMock: {
@@ -57,6 +58,8 @@ function flushPromises() {
 describe('views/ModifyDish', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.authStoreMock.user.scope = 'GLOBAL'
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
     mocks.dishApiMock.getDishes.mockResolvedValue({
       code: 200,
       data: {
@@ -80,6 +83,22 @@ describe('views/ModifyDish', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it.each([
+    ['GLOBAL', true, true],
+    ['GLOBAL', false, false],
+    ['CANTEENS', true, false],
+  ] as const)('exposes the allergen child page for %s with config permission %s', async (scope, permitted, visible) => {
+    mocks.authStoreMock.user.scope = scope
+    mocks.authStoreMock.hasPermission.mockImplementation(() => permitted)
+    const wrapper = shallowMount(ModifyDish, { global: { stubs: {
+      Header: true, SearchBar: true, Pagination: true,
+      RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
+    } } })
+    await nextTick()
+    expect(wrapper.find('a[href="/modify-dish/allergens"]').exists()).toBe(visible)
+    wrapper.unmount()
   })
 
   it('loads canteens and dishes on mount and maps API items', async () => {

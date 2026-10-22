@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getCanteenDetail, getWindowList } from '@/api/modules/canteen';
@@ -65,11 +66,36 @@ export function useCanteenData() {
     });
 
   const filters = [
-    { key: 'taste', label: '口味' },
-    { key: 'price', label: '价格' },
-    { key: 'rating', label: '评分' },
-    { key: 'type', label: '荤素' },
-    { key: 'allergen', label: '过敏原' },
+    {
+      key: 'taste',
+      get label() {
+        return t('food.taste');
+      },
+    },
+    {
+      key: 'price',
+      get label() {
+        return t('food.price');
+      },
+    },
+    {
+      key: 'rating',
+      get label() {
+        return t('food.rating');
+      },
+    },
+    {
+      key: 'type',
+      get label() {
+        return t('food.meat');
+      },
+    },
+    {
+      key: 'allergen',
+      get label() {
+        return t('food.allergens');
+      },
+    },
   ];
   const activeFilter = ref<string>('');
 
@@ -79,11 +105,12 @@ export function useCanteenData() {
       const response = await getCanteenDetail(canteenId);
       if (!isCurrent()) return false;
       if (response.code !== 200 || !response.data)
-        throw new Error(response.message || '获取食堂详情失败');
+        throw new Error(response.message || t('food.couldNotLoadCanteenDetails'));
       canteenInfo.value = response.data;
       return true;
     } catch (err) {
-      if (isCurrent()) error.value = err instanceof Error ? err.message : '获取食堂详情失败';
+      if (isCurrent())
+        error.value = err instanceof Error ? err.message : t('food.couldNotLoadCanteenDetails');
       return false;
     }
   };
@@ -94,18 +121,20 @@ export function useCanteenData() {
       const response = await getWindowList(canteenId, { page: 1, pageSize: 50 });
       if (!isCurrent()) return false;
       if (response.code !== 200 || !response.data)
-        throw new Error(response.message || '获取窗口列表失败');
+        throw new Error(response.message || t('food.couldNotLoadCounters'));
       const items = [...response.data.items];
       for (let page = 2; page <= response.data.meta.totalPages; page += 1) {
         const next = await getWindowList(canteenId, { page, pageSize: 50 });
         if (!isCurrent()) return false;
-        if (next.code !== 200 || !next.data) throw new Error(next.message || '获取窗口列表失败');
+        if (next.code !== 200 || !next.data)
+          throw new Error(next.message || t('food.couldNotLoadCounters'));
         items.push(...next.data.items);
       }
       windows.value = items;
       return true;
     } catch (err) {
-      if (isCurrent()) error.value = err instanceof Error ? err.message : '获取窗口列表失败';
+      if (isCurrent())
+        error.value = err instanceof Error ? err.message : t('food.couldNotLoadCounters');
       return false;
     }
   };
@@ -149,11 +178,11 @@ export function useCanteenData() {
         hasMore.value = currentPage.value < res.data.meta.totalPages;
         return true;
       }
-      throw new Error(res.message || '获取菜品列表失败');
+      throw new Error(res.message || t('food.couldNotLoadDishes2'));
     } catch (err) {
       if (!ownsQuery()) return false;
       console.error('fetchDishes error', err);
-      dishesError.value = err instanceof Error ? err.message : '获取菜品列表失败';
+      dishesError.value = err instanceof Error ? err.message : t('food.couldNotLoadDishes2');
       return false;
     } finally {
       if (ownsQuery()) {

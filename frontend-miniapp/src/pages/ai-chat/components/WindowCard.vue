@@ -1,9 +1,11 @@
 <template>
   <view
-    class="window-card"
+    class="window-card list-row-action"
+    hover-class="list-row-pressed"
+    :hover-stay-time="80"
     role="button"
     tabindex="0"
-    :aria-label="`查看窗口：${window.name}`"
+    :aria-label="t('social.viewWindow', { p0: window.name })"
     @click="goToWindow"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -16,20 +18,23 @@
       mode="aspectFill"
       @error="failedImage = window.image"
     />
-    <view v-else class="window-fallback">窗口</view>
+    <view v-else class="window-fallback">{{ t('social.window') }}</view>
     <view class="window-info"
       ><text class="window-name">{{ window.name }}</text
       ><text v-if="window.canteenName" class="window-meta">{{ window.canteenName }}</text
       ><text class="window-meta"
         >{{ displayStatus }} ·
         {{
-          window.rating && window.rating > 0 ? `${window.rating.toFixed(1)} 分` : '暂无评分'
+          window.rating && window.rating > 0
+            ? t('social.windowRatingValue', { p0: window.rating.toFixed(1) })
+            : t('social.noRating')
         }}</text
       ></view
     >
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import type { ComponentWindowCard } from '@/types/api';
 const props = defineProps<{ window: ComponentWindowCard }>();
@@ -37,7 +42,7 @@ const failedImage = ref('');
 const pressed = ref(false);
 const displayStatus = computed(
   () =>
-    ({ open: '营业中', closed: '已打烊', unknown: '暂无营业信息' })[
+    ({ open: t('social.open'), closed: t('social.closed'), unknown: t('social.hoursUnavailable') })[
       props.window.status || 'unknown'
     ] || props.window.status
 );
@@ -66,9 +71,8 @@ const handleKeyup = (event: KeyboardEvent) => {
   gap: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 16px 0;
+  padding-block: 16px;
   margin-bottom: 0;
-  border-bottom: 1px solid #e5e7eb;
   background: #fff;
 }
 .window-image,
@@ -104,9 +108,5 @@ const handleKeyup = (event: KeyboardEvent) => {
   color: #667085;
   font-size: 13px;
   line-height: 1.5;
-}
-.window-card:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: -2px;
 }
 </style>
