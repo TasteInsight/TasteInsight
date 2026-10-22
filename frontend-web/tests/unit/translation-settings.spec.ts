@@ -38,7 +38,6 @@ describe('translation service settings', () => {
   it('saves independent credentials and clears the password field after success', async () => {
     const wrapper = mountSettings()
     await flushPromises()
-    expect(wrapper.text()).toContain('手工填写英文始终可用')
     await wrapper.get('input[type="checkbox"]').setValue(true)
     await wrapper.get('input[maxlength="200"]').setValue('catalogue-model')
     await wrapper.get('input[type="url"]').setValue('https://translations.example/v1')
@@ -67,7 +66,7 @@ describe('translation service settings', () => {
     )
     expect((wrapper.get('input[type="password"]').element as HTMLInputElement).value).toBe('')
     expect(wrapper.html()).not.toContain('test-only-translation-key')
-    expect(wrapper.text()).toContain('翻译设置已保存')
+    expect(wrapper.text()).toContain('已保存')
     wrapper.unmount()
   })
   it('preserves a stored key when blank and supports explicitly clearing it while disabled', async () => {

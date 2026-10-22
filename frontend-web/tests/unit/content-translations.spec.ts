@@ -73,8 +73,7 @@ describe('translation suggestions', () => {
     const wrapper = mount(TranslationFields, { props: { name: '菜品', nameEn: 'Manual' } })
     await flushPromises()
     expect(wrapper.get('button').attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('可手工填写英文')
-    expect(wrapper.text()).toContain('请联系配置管理员')
+    expect(wrapper.text()).toContain('联系配置管理员')
     expect(wrapper.find('router-link').exists()).toBe(false)
     await wrapper.get('input').setValue('Hand edited')
     expect(wrapper.emitted('update:nameEn')).toEqual([['Hand edited']])
@@ -89,7 +88,7 @@ describe('translation suggestions', () => {
     expect(wrapper.get('input').attributes('disabled')).toBeUndefined()
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === '重新读取状态')!
+      .find((button) => button.text() === '重试')!
       .trigger('click')
     await flushPromises()
     expect(wrapper.get('button').attributes('disabled')).toBeUndefined()

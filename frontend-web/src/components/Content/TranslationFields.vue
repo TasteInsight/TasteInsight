@@ -33,34 +33,25 @@
     </label>
     <div
       v-if="statusError || (status && !status.available)"
-      class="text-sm leading-6 text-gray-600"
+      class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-6 text-gray-600"
     >
-      <p>
-        {{
-          statusError ||
-          (status?.enabled
-            ? '辅助翻译暂不可用，可手工填写英文。'
-            : '辅助翻译尚未启用，可手工填写英文。')
-        }}
-      </p>
-      <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <button
-          v-if="statusError"
-          type="button"
-          class="admin-text-link"
-          :disabled="statusLoading"
-          @click="loadStatus"
-        >
-          重新读取状态
-        </button>
-        <router-link
-          v-if="canConfigure"
-          class="admin-text-link"
-          to="/config-manage?section=translation"
-          >翻译服务配置</router-link
-        >
-        <span v-else-if="!statusError">需要辅助翻译时，请联系配置管理员。</span>
-      </div>
+      <span>{{ statusError || (status?.enabled ? '辅助翻译暂不可用' : '辅助翻译未启用') }}</span>
+      <button
+        v-if="statusError"
+        type="button"
+        class="admin-text-link"
+        :disabled="statusLoading"
+        @click="loadStatus"
+      >
+        重试
+      </button>
+      <router-link
+        v-if="canConfigure"
+        class="admin-text-link"
+        to="/config-manage?section=translation"
+        >翻译服务配置</router-link
+      >
+      <span v-else-if="!statusError">联系配置管理员</span>
     </div>
     <p v-if="error" class="admin-field-error" role="alert">{{ error }}</p>
     <section v-if="proposal" class="admin-feedback admin-feedback-info" aria-label="英文建议">
@@ -134,7 +125,7 @@ async function loadStatus() {
     const response = await contentLocalizationApi.translationStatus(controller.signal)
     if (statusRequest === controller) status.value = response.data
   } catch {
-    if (statusRequest === controller) statusError.value = '辅助翻译状态读取失败，可手工填写英文。'
+    if (statusRequest === controller) statusError.value = '辅助翻译状态读取失败'
   } finally {
     if (statusRequest === controller) {
       statusRequest = null
@@ -198,7 +189,7 @@ async function suggest() {
     )
     if (active === controller) proposal.value = response.data
   } catch {
-    if (active === controller) error.value = '英文建议生成失败，可重试或手工填写。'
+    if (active === controller) error.value = '英文建议生成失败，请重试。'
   } finally {
     if (active === controller) {
       active = null

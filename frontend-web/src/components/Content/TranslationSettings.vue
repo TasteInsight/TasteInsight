@@ -10,15 +10,11 @@
       </h3>
       <span class="text-sm text-tsinghua-purple">所有食堂</span>
     </div>
-    <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-      为菜品和过敏原生成英文建议，采用后进入原有保存流程。手工填写英文始终可用。
-    </p>
-    <p class="mt-1 text-sm leading-6 text-gray-600">翻译服务与用户端 AI 对话分别配置。</p>
-    <p v-if="loading" class="mt-5 text-sm text-gray-600" role="status">正在读取翻译设置…</p>
+    <p v-if="loading" class="mt-5 text-sm text-gray-600" role="status">加载中…</p>
     <div v-else-if="loadError" class="mt-5" role="alert">
       <p class="admin-field-error">{{ loadError }}</p>
       <button type="button" class="mt-3 admin-button admin-button-secondary" @click="loadSettings">
-        重新加载
+        重试
       </button>
     </div>
     <form
@@ -45,7 +41,7 @@
             v-model="draft.model"
             class="mt-1.5 w-full admin-input"
             maxlength="200"
-            placeholder="填写服务商提供的模型标识"
+            placeholder="服务商的模型 ID"
             :disabled="settings.managedByEnv.model"
           />
           <span
@@ -65,9 +61,7 @@
             :disabled="settings.managedByEnv.baseUrl"
           />
           <span class="mt-1 block text-xs font-normal leading-5 text-gray-500">{{
-            settings.managedByEnv.baseUrl
-              ? '由部署环境管理'
-              : '兼容 OpenAI 的接口地址，留空使用默认地址。'
+            settings.managedByEnv.baseUrl ? '由部署环境管理' : 'OpenAI 兼容接口，留空使用默认地址。'
           }}</span>
         </label>
         <div class="space-y-2">
@@ -79,20 +73,12 @@
               autocomplete="new-password"
               class="mt-1.5 w-full admin-input"
               maxlength="4000"
-              :placeholder="
-                settings.apiKeyConfigured ? '已配置，留空保留现有密钥' : '填写翻译服务密钥'
-              "
+              :placeholder="settings.apiKeyConfigured ? '留空保留现有密钥' : ''"
               :disabled="settings.managedByEnv.apiKey || clearApiKey"
             />
           </label>
-          <p class="text-xs leading-5 text-gray-500">
-            {{
-              settings.managedByEnv.apiKey
-                ? '密钥由部署环境管理。'
-                : settings.apiKeyConfigured
-                  ? '现有密钥已保存，可填写新密钥替换。'
-                  : '由全局配置管理员维护，菜品管理员直接使用已启用的服务。'
-            }}
+          <p v-if="settings.managedByEnv.apiKey" class="text-xs leading-5 text-gray-500">
+            由部署环境管理
           </p>
           <label
             v-if="settings.apiKeyConfigured && !settings.managedByEnv.apiKey"
@@ -120,16 +106,7 @@
       <p v-if="draft.enabled && missingCredentials" class="text-sm text-amber-800" role="status">
         启用前请填写模型名称和 API Key。
       </p>
-      <p v-else-if="!dirty" class="text-sm text-gray-600" role="status">
-        {{
-          settings.available
-            ? '辅助翻译已启用，菜品管理员可直接使用。'
-            : settings.enabled
-              ? '翻译配置待完成，当前可手工填写英文。'
-              : '辅助翻译已关闭，当前可手工填写英文。'
-        }}
-      </p>
-      <p v-if="!canEdit" class="text-sm text-gray-600">当前权限可查看翻译配置。</p>
+      <p v-if="!canEdit" class="text-sm text-gray-600">仅可查看</p>
       <p v-if="saveError" role="alert" class="admin-field-error">{{ saveError }}</p>
       <div v-if="canEdit" class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
         <button
@@ -137,7 +114,7 @@
           class="admin-button admin-button-primary"
           :disabled="saving || !dirty || (draft.enabled && missingCredentials)"
         >
-          {{ saving ? '保存中…' : '保存翻译设置' }}
+          {{ saving ? '保存中…' : '保存' }}
         </button>
         <button
           type="button"
@@ -147,8 +124,8 @@
         >
           撤销修改
         </button>
-        <span v-if="saved" role="status" class="text-sm text-green-700">翻译设置已保存</span>
-        <span v-else-if="dirty" class="text-sm text-gray-600">有未保存的修改</span>
+        <span v-if="saved" role="status" class="text-sm text-green-700">已保存</span>
+        <span v-else-if="dirty" class="text-sm text-gray-600">未保存</span>
       </div>
     </form>
   </section>
@@ -224,7 +201,7 @@ async function loadSettings() {
     settings.value = response.data
     resetDraft()
   } catch {
-    if (active === controller) loadError.value = '翻译设置读取失败，请重新加载。'
+    if (active === controller) loadError.value = '读取失败，请重试。'
   } finally {
     if (active === controller) {
       active = null
@@ -266,7 +243,7 @@ async function saveSettings() {
     resetDraft()
     saved.value = true
   } catch {
-    if (active === controller) saveError.value = '翻译设置保存失败，修改已保留，请重试。'
+    if (active === controller) saveError.value = '保存失败，修改已保留，请重试。'
   } finally {
     if (active === controller) {
       active = null
