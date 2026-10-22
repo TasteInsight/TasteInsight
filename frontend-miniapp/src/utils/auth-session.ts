@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import config from '@/config';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { createHttpError } from './user-friendly-error';
@@ -10,7 +11,8 @@ export function refreshAccessToken(
   failedAccessToken: string | null
 ): Promise<void> {
   const user = useUserStore();
-  if (user.sessionVersion !== sessionVersion) return Promise.reject(new Error('登录会话已变更'));
+  if (user.sessionVersion !== sessionVersion)
+    return Promise.reject(new Error(t('common.errors.session')));
   if (failedAccessToken !== user.token) return Promise.resolve();
   if (!user.refreshToken) return Promise.reject(createHttpError(401));
   if (pendingRefresh?.sessionVersion === sessionVersion) return pendingRefresh.promise;
@@ -27,7 +29,7 @@ export function refreshAccessToken(
         timeout: 15000,
         success: response => {
           if (user.sessionVersion !== sessionVersion) {
-            reject(new Error('登录会话已变更'));
+            reject(new Error(t('common.errors.session')));
             return;
           }
           const data = response.data as any;
@@ -47,7 +49,9 @@ export function refreshAccessToken(
         fail: () =>
           reject(
             new Error(
-              user.sessionVersion === sessionVersion ? '网络开小差了，请稍后再试' : '登录会话已变更'
+              user.sessionVersion === sessionVersion
+                ? t('common.errors.network')
+                : t('common.errors.session')
             )
           ),
       });

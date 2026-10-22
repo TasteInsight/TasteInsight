@@ -38,11 +38,13 @@ test('price decreases including zero remain explicit and current total may excee
 });
 test('supply updates and restoration produce informational notices', () => {
   expect(mealPlanChanges([{ ...dish, status: 'offline' }], [dish], schedule)).toEqual([
-    { kind: 'status', dishId: 'd', message: '已恢复供应' },
+    { kind: 'status', dishId: 'd', message: '已恢复供应', messageKey: 'social.supplyRestored' },
   ]);
   expect(
     mealPlanChanges([dish], [{ ...dish, availableMealTime: ['lunch', 'dinner'] }], schedule)
-  ).toEqual([{ kind: 'supply', dishId: 'd', message: '供应安排已更新' }]);
+  ).toEqual([
+    { kind: 'supply', dishId: 'd', message: '供应安排已更新', messageKey: 'social.supplyUpdated' },
+  ]);
 });
 
 test('reordering the same supply ranges produces no change warning', () => {
@@ -76,6 +78,13 @@ test.each([
         dishId: 'd',
         previousPriceLabel: `¥${before.toFixed(2)}/斤`,
         unitChanged: true,
+        messageKey: 'social.pricingUnitChanged',
+        priceChange: {
+          previousPrice: before,
+          currentPrice: after,
+          previousUnit: '斤',
+          currentUnit: '100g',
+        },
         message: `计价方式由 ¥${before.toFixed(2)}/斤 调整为 ¥${after.toFixed(2)}/100g`,
       },
     ]);

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -56,7 +57,8 @@ export function useSettingsProfile(
     try {
       await userStore.fetchProfileAction(isCurrent);
       if (!isCurrent()) return false;
-      if (!userStore.isLoggedIn || !userStore.userInfo) throw new Error('请登录后重新加载');
+      if (!userStore.isLoggedIn || !userStore.userInfo)
+        throw new Error(t('account.settings.signInAndReload'));
       applyProfile(userStore.userInfo);
       baseline.value = serializeForm(form);
       draftKey = userStore.userInfo.id ? `settings-draft:${userStore.userInfo.id}:${section}` : '';
@@ -95,7 +97,8 @@ export function useSettingsProfile(
       return true;
     } catch (error) {
       if (!isCurrent()) return false;
-      loadError.value = error instanceof Error ? error.message : '资料加载失败，请重试';
+      loadError.value =
+        error instanceof Error ? error.message : t('account.settings.unableToLoadProfileTry');
       return false;
     } finally {
       if (isCurrent()) loading.value = false;
@@ -119,7 +122,9 @@ export function useSettingsProfile(
         userStore.userInfo?.publicProfileSubmission &&
         ['nickname', 'avatar', 'bio'].some(key => key in payload);
       uni.showToast({
-        title: pending ? '资料已提交审核' : '保存成功',
+        title: pending
+          ? t('account.profile.profileSubmittedForReview')
+          : t('account.settings.saved2'),
         icon: pending ? 'none' : 'success',
       });
       navigationTimer = setTimeout(() => {
@@ -129,7 +134,10 @@ export function useSettingsProfile(
       return true;
     } catch (error) {
       if (!isCurrent()) return false;
-      uni.showToast({ title: error instanceof Error ? error.message : '保存失败', icon: 'none' });
+      uni.showToast({
+        title: error instanceof Error ? error.message : t('account.settings.unableToSave'),
+        icon: 'none',
+      });
       return false;
     } finally {
       if (isCurrent()) saving.value = false;
@@ -141,7 +149,10 @@ export function useSettingsProfile(
     const isCurrent = captureOperation();
     confirming = true;
     try {
-      const confirmed = await confirmDiscardChanges(dirty.value, '放弃未保存的修改？');
+      const confirmed = await confirmDiscardChanges(
+        dirty.value,
+        t('account.settings.discardUnsavedChanges')
+      );
       if (!confirmed || !isCurrent()) return false;
       baseline.value = serializeForm(form);
       removeDraft();
@@ -175,7 +186,7 @@ export function useSettingsProfile(
       saving.value = false;
       saved.value = false;
       restoredDraft.value = false;
-      loadError.value = '登录状态已变更，请重新加载';
+      loadError.value = t('account.settings.yourSignInSessionChanged');
     },
     { flush: 'sync' }
   );

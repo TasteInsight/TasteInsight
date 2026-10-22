@@ -4,8 +4,8 @@
       :loading="loading"
       :has-content="!!dish"
       :error="error"
-      loading-title="正在加载菜品…"
-      retry-text="重试"
+      :loading-title="t('food.loadingDishes')"
+      :retry-text="t('food.retry2')"
       @retry="refresh"
     />
     <!-- 菜品详情内容 -->
@@ -47,7 +47,7 @@
             data-testid="dish-window"
             @click="goToWindow"
           >
-            查看窗口
+            {{ t('food.viewCounter') }}
           </button>
         </view>
         <view v-if="dish.tags?.length" class="dish-tags">
@@ -59,9 +59,13 @@
         <view class="rating-overview" :class="{ 'rating-overview-empty': !displayReviewCount }">
           <view class="rating-total"
             ><text class="rating-average">{{
-              displayAverageRating === 0 ? '暂无评分' : displayAverageRating.toFixed(1) + '分'
+              displayAverageRating === 0
+                ? t('food.noRatingsYet')
+                : t('food.ratingValue', { rating: displayAverageRating.toFixed(1) })
             }}</text
-            ><text class="rating-count">{{ displayReviewCount }} 条评价</text></view
+            ><text class="rating-count">{{
+              t('food.reviewCount', { count: displayReviewCount })
+            }}</text></view
           >
           <RatingBars v-if="displayReviewCount > 0" ref="ratingBarsRef" :dish-id="dish.id" />
         </view>
@@ -73,33 +77,41 @@
           :aria-expanded="isDetailExpanded"
           @click="toggleDetailExpansion"
         >
-          <text>菜品信息</text><text>{{ isDetailExpanded ? '收起' : '展开' }}</text>
+          <text>{{ t('food.dishInformation') }}</text
+          ><text>{{ isDetailExpanded ? t('food.collapse') : t('food.expand') }}</text>
         </button>
         <view v-if="isDetailExpanded" class="dish-more-content">
           <view class="decision-facts">
             <view class="decision-row"
-              ><text class="decision-label">供应餐时</text
+              ><text class="decision-label">{{ t('food.availableAt') }}</text
               ><text class="decision-value">{{
-                formatMealTime(dish.availableMealTime) || '暂未提供'
+                formatMealTime(dish.availableMealTime) || t('food.notProvidedYet')
               }}</text></view
             >
             <view class="decision-taste"><TasteProfile :taste="dish" /></view>
             <view class="decision-row"
-              ><text class="decision-label">已知过敏原</text
+              ><text class="decision-label">{{ t('food.knownAllergens') }}</text
               ><text class="decision-value">{{
-                dish.allergens?.length ? dish.allergens.join('、') : '暂未提供'
+                dish.allergens?.length
+                  ? dish.allergens.join(t('food.listSeparator'))
+                  : t('food.notProvidedYet')
               }}</text></view
             >
           </view>
-          <text class="dish-description">{{ dish.description || '菜品介绍暂未提供' }}</text>
-          <text v-if="dish.ingredients?.length" class="dish-description"
-            >主要食材：{{ dish.ingredients.join('、') }}</text
-          >
+          <text class="dish-description">{{
+            dish.description || t('food.noDishDescriptionYet')
+          }}</text>
+          <text v-if="dish.ingredients?.length" class="dish-description">{{
+            t('food.ingredientsList', {
+              ingredients: dish.ingredients.join(t('food.listSeparator')),
+            })
+          }}</text>
           <button v-if="parentDish" class="dish-related" @click="goToParentDish">
-            <text>所属菜品</text><text>{{ parentDish.name }}</text>
+            <text>{{ t('food.parentDish') }}</text
+            ><text>{{ parentDish.name }}</text>
           </button>
           <view v-if="subDishes.length" class="dish-related-list">
-            <text class="dish-related-heading">其他规格</text>
+            <text class="dish-related-heading">{{ t('food.otherOptions') }}</text>
             <button
               v-for="sub in displayedSubDishes"
               :key="sub.id"
@@ -114,29 +126,33 @@
               class="dish-more-toggle"
               @click="isSubDishesExpanded = !isSubDishesExpanded"
             >
-              {{ isSubDishesExpanded ? '收起' : '展开全部规格（' + subDishes.length + '）' }}
+              {{
+                isSubDishesExpanded
+                  ? t('food.collapse')
+                  : t('food.showAllOptionCount', { count: subDishes.length })
+              }}
             </button>
           </view>
         </view>
       </view>
 
       <button class="dish-window-link dish-contribution-link" @click="contributeDish">
-        申请补充资料
+        {{ t('food.suggestAnUpdate') }}
       </button>
 
       <view v-if="ownReviewLoading || ownReviewError || myReview" class="review-section">
         <view class="review-section-header">
-          <text class="review-section-title">我的评价</text>
+          <text class="review-section-title">{{ t('food.myReview') }}</text>
           <view v-if="myReview && ownReviewLoaded" class="review-own-actions">
             <button
               class="review-text-action"
               :disabled="deletingReview"
               @tap="handleDeleteMyReview"
             >
-              {{ deletingReview ? '删除中…' : '删除' }}
+              {{ deletingReview ? t('food.deleting') : t('food.delete') }}
             </button>
             <button class="review-text-action" :disabled="deletingReview" @tap="showReviewForm">
-              修改
+              {{ t('food.edit') }}
             </button>
           </view>
         </view>
@@ -147,7 +163,7 @@
             hover-class="error-feedback__action--pressed"
             @tap="fetchOwnReview(dishId)"
           >
-            重试
+            {{ t('food.retry2') }}
           </button>
         </view>
         <view v-if="myReview" class="own-review">
@@ -157,7 +173,10 @@
           </view>
           <TasteProfile :taste="myReview.ratingDetails" collapsible class="review-rating">
             <template #summary>
-              <view class="review-stars" :aria-label="'总体评分 ' + myReview.rating + ' 星'">
+              <view
+                class="review-stars"
+                :aria-label="t('food.overallStars', { rating: myReview.rating })"
+              >
                 <text
                   v-for="star in 5"
                   :key="star"
@@ -187,12 +206,12 @@
               class="review-text-action"
               @tap="showAllCommentsPanel(myReview.id)"
             >
-              查看回复
+              {{ t('food.viewReplies') }}
             </button>
           </view>
-          <text v-if="myReview.status === 'rejected'" class="review-status-hint"
-            >这条评价未能发布，可以修改后重新提交。</text
-          >
+          <text v-if="myReview.status === 'rejected'" class="review-status-hint">{{
+            t('food.thisReviewCouldNotBePublishedEditIt')
+          }}</text>
           <CommentList
             :review-id="myReview.id"
             :comments-data="reviewComments[myReview.id]"
@@ -205,7 +224,7 @@
 
       <view class="review-section">
         <view class="review-section-header"
-          ><text class="review-section-title">用户评价</text></view
+          ><text class="review-section-title">{{ t('food.reviews2') }}</text></view
         >
 
         <ReviewList
@@ -309,6 +328,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import AsyncState from '@/components/AsyncState.vue';
 import { requireStudent } from '@/utils/student-access';
 import DishNutrition from '@/components/DishNutrition.vue';
@@ -407,11 +427,12 @@ const dishLocation = computed(() => {
   return (
     [
       item?.canteenName,
-      item?.floorName || (item?.floorLevel ? item.floorLevel + '楼' : ''),
+      item?.floorName ||
+        (item?.floorLevel ? t('food.floorNumber', { floor: item.floorLevel }) : ''),
       item?.windowName || item?.windowNumber,
     ]
       .filter(Boolean)
-      .join(' / ') || '位置信息暂未提供'
+      .join(' / ') || t('food.locationUnavailable')
   );
 });
 const goToWindow = () => {
@@ -488,12 +509,12 @@ const saveQuickPlan = async (payload: MealPlanRequest): Promise<boolean> => {
     await planStore.createPlan(payload);
     if (!isCurrent()) return false;
     closeQuickPlan();
-    uni.showToast({ title: '已加入规划', icon: 'success' });
+    uni.showToast({ title: t('food.addedToPlan'), icon: 'success' });
     return true;
   } catch (error) {
     if (!isCurrent()) return false;
     uni.showToast({
-      title: error instanceof Error ? error.message : '保存失败，请重试',
+      title: error instanceof Error ? error.message : t('food.couldNotSaveTryAgain'),
       icon: 'none',
     });
     return false;
@@ -670,12 +691,12 @@ const refresh = () => {
 const formatMealTime = (mealTimes: string[] | undefined) => {
   if (!mealTimes) return '';
   const timeMap: Record<string, string> = {
-    breakfast: '早餐',
-    lunch: '午餐',
-    dinner: '晚餐',
-    nightsnack: '夜宵',
+    breakfast: t('food.breakfast'),
+    lunch: t('food.lunch'),
+    dinner: t('food.dinner'),
+    nightsnack: t('food.lateNight'),
   };
-  return mealTimes.map(time => timeMap[time] || time).join('、');
+  return mealTimes.map(time => timeMap[time] || time).join(t('food.listSeparator'));
 };
 
 const showReviewForm = () => {
@@ -750,8 +771,8 @@ const handleDeleteMyReview = () => {
   const reviewId = myReview.value.id;
   const session = userStore.sessionVersion;
   uni.showModal({
-    title: '提示',
-    content: '确定要删除你的这条评价吗？',
+    title: t('food.confirm'),
+    content: t('food.deleteYourReview'),
     success: async res => {
       if (
         !res.confirm ||
@@ -767,7 +788,7 @@ const handleDeleteMyReview = () => {
         });
         // removeReview 已经处理了刷新逻辑，这里不需要重复
       } catch (e) {
-        uni.showToast({ title: '删除失败', icon: 'none' });
+        uni.showToast({ title: t('food.couldNotDelete'), icon: 'none' });
       }
     },
   });

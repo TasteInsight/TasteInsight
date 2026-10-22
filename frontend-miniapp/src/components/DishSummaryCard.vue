@@ -4,7 +4,11 @@
     hover-class="list-row-pressed"
     role="button"
     tabindex="0"
-    :aria-label="`查看${dish.name}${dish.status === 'offline' ? '，已下架' : ''}`"
+    :aria-label="
+      t(dish.status === 'offline' ? 'common.dish.offlineView' : 'common.dish.view', {
+        name: dish.name,
+      })
+    "
     @click="selectDish"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -13,7 +17,11 @@
     <view class="dish-card__body">
       <view class="dish-card__heading">
         <text class="dish-card__name">{{ dish.name }}</text>
-        <TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" />
+        <TagBadge
+          v-if="dish.status === 'offline'"
+          :label="t('common.dish.offline')"
+          tone="neutral"
+        />
       </view>
       <text class="dish-card__location">{{ location }}</text>
       <view v-if="dish.tags?.length" class="dish-card__tags">
@@ -32,12 +40,16 @@
           <text
             class="dish-card__rating"
             :class="{ 'dish-card__rating--unrated': dish.averageRating <= 0 }"
-            >{{ dish.averageRating > 0 ? `${dish.averageRating.toFixed(1)} 分` : '暂无评分' }}</text
+            >{{
+              dish.averageRating > 0
+                ? t('common.dish.rating', { score: dish.averageRating.toFixed(1) })
+                : t('common.dish.noRating')
+            }}</text
           >
           <text
             v-if="dish.reviewCount !== undefined && dish.reviewCount !== null"
             class="dish-card__reviews"
-            >{{ dish.reviewCount }} 条评价</text
+            >{{ t('common.dish.reviews', { count: dish.reviewCount }) }}</text
           >
         </view>
       </view>
@@ -56,6 +68,8 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import { computed, ref, watch } from 'vue';
 import type { Dish } from '@/types/api';
 import { useButtonActivation } from '@/composables/use-button-activation';
@@ -68,7 +82,9 @@ const emit = defineEmits<{ (event: 'select', id: string): void }>();
 const imageFailed = ref(false);
 const imageSource = computed(() => props.dish.images?.[0] || '');
 const location = computed(
-  () => [props.dish.canteenName, props.dish.windowName].filter(Boolean).join(' · ') || '位置待补充'
+  () =>
+    [props.dish.canteenName, props.dish.windowName].filter(Boolean).join(' · ') ||
+    t('common.dish.noLocation')
 );
 
 watch(
@@ -92,7 +108,7 @@ const {
   align-items: flex-start;
   width: 100%;
   margin: 0;
-  padding: 18px 0;
+  padding-block: 18px;
   border: 0;
   border-bottom: 1px solid #eaecf0;
   border-radius: 0;

@@ -1,16 +1,16 @@
 <template>
   <view class="weekly-page page-state-layout page-content" :aria-busy="loading">
-    <LoginGate title="登录后查看本周推荐" icon="star">
+    <LoginGate :title="t('social.weeklyLogin')" icon="star">
       <view v-if="week" class="weekly-heading"
-        ><text class="weekly-hint">{{ week }} 起</text></view
+        ><text class="weekly-hint">{{ week }} {{ t('social.startingFrom') }}</text></view
       >
       <AsyncState
         :loading="loading"
         :initialized="initialized"
         :has-content="!!items.length"
-        :error="error"
-        loading-title="正在加载推荐…"
-        empty-title="本期暂无可查看的菜品"
+        :error="errorText"
+        :loading-title="t('social.loadingRecommendations')"
+        :empty-title="t('social.noWeeklyDishes')"
         empty-icon="star"
         @retry="load"
       />
@@ -25,6 +25,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+import { computed } from 'vue';
 import { nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import type { Dish } from '@/types/api';
@@ -39,16 +41,19 @@ const items = ref<Dish[]>([]);
 const loading = ref(false);
 const initialized = ref(false);
 const error = ref('');
+const errorText = computed(() =>
+  error.value.startsWith('social.') ? t(error.value) : error.value
+);
 let active = true;
 let visible = true;
 let version = 0;
 async function load() {
   if (!week.value) {
-    error.value = '推荐期次不存在';
+    error.value = 'social.recommendationNotFound';
     return;
   }
   if (!user.isLoggedIn) {
-    error.value = '请登录后查看本周推荐';
+    error.value = 'social.recommendationSignIn';
     return;
   }
   const request = ++version;
@@ -59,11 +64,13 @@ async function load() {
   try {
     const response = await getWeeklyNotificationCollection(week.value);
     if (!current()) return;
-    if (response.code !== 200) throw new Error(response.message || '推荐加载失败');
+    if (response.code !== 200)
+      throw new Error(response.message || 'social.loadRecommendationsFailed');
     items.value = response.data.items;
     initialized.value = true;
   } catch (cause) {
-    if (current()) error.value = cause instanceof Error ? cause.message : '推荐加载失败，请重试';
+    if (current())
+      error.value = cause instanceof Error ? cause.message : 'social.loadRecommendationsRetry';
   } finally {
     if (current()) loading.value = false;
   }

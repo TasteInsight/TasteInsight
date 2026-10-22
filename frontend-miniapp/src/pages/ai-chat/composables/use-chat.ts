@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, onMounted, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useChatStore, type PreferenceDraftCard } from '@/store/modules/use-chat-store';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -20,6 +21,9 @@ export function useChat(transport?: TextStreamTransport) {
   // 首次加载状态
   const isInitializing = ref(false);
   const initialError = ref('');
+  const initialErrorText = computed(() =>
+    initialError.value.startsWith('social.') ? t(initialError.value) : initialError.value
+  );
   const isSending = ref(false);
   const isInitialLoading = computed(
     () => !chatStore.sessionId && !initialError.value && chatStore.messages.length === 0
@@ -125,7 +129,7 @@ export function useChat(transport?: TextStreamTransport) {
     try {
       if (chatStore.messages.length === 0) {
         if (!(await chatStore.initSession(scene.value))) {
-          if (isCurrent()) initialError.value = '暂时无法连接 AI 助手，请重试。';
+          if (isCurrent()) initialError.value = 'social.aiConnectionFailed';
           return;
         }
       }
@@ -149,7 +153,7 @@ export function useChat(transport?: TextStreamTransport) {
       await chatStore.startNewSession(s || scene.value);
       if (!isCurrent()) return;
       if (!chatStore.sessionId) {
-        initialError.value = '暂时无法连接 AI 助手，请重试。';
+        initialError.value = 'social.aiConnectionFailed';
         return;
       }
 
@@ -224,7 +228,7 @@ export function useChat(transport?: TextStreamTransport) {
         if (chatStore.sessionId) {
           void fetchSuggestions(isCurrent);
         } else {
-          initialError.value = '暂时无法连接 AI 助手，请重试。';
+          initialError.value = 'social.aiConnectionFailed';
         }
       }
       if (!isCurrent()) return;
@@ -276,7 +280,7 @@ export function useChat(transport?: TextStreamTransport) {
     suggestions,
     isInitializing,
     isInitialLoading,
-    initialError,
+    initialError: initialErrorText,
     isSending,
     init,
     sendMessage,

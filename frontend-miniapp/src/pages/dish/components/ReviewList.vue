@@ -7,7 +7,7 @@
         hover-class="error-feedback__action--pressed"
         @tap="emit('retry')"
       >
-        重试
+        {{ t('food.retry2') }}
       </button>
     </view>
 
@@ -24,7 +24,7 @@
           <!-- #ifndef MP-WEIXIN -->
           <button
             class="review-author"
-            :aria-label="'查看 ' + review.userNickname + ' 的主页'"
+            :aria-label="t('food.viewProfile', { name: review.userNickname })"
             @tap.stop="openAuthor(review.userId)"
           >
             <UserAvatar :src="review.userAvatar" :label="review.userNickname" />
@@ -37,7 +37,7 @@
           <!-- #endif -->
           <button
             class="discussion-action review-action"
-            :aria-label="'管理 ' + review.userNickname + ' 的评价'"
+            :aria-label="t('food.manageReview', { name: review.userNickname })"
             aria-haspopup="dialog"
             role="button"
             tabindex="0"
@@ -56,7 +56,10 @@
 
         <TasteProfile :taste="review.ratingDetails" collapsible class="review-rating">
           <template #summary>
-            <view class="review-stars" :aria-label="'总体评分 ' + review.rating + ' 星'">
+            <view
+              class="review-stars"
+              :aria-label="t('food.overallStars', { rating: review.rating })"
+            >
               <text
                 v-for="star in 5"
                 :key="star"
@@ -93,20 +96,20 @@
                 { 'review-liked': isLiked(review) },
                 { 'is-disabled': !!pending[review.id] },
               ]"
-              :aria-label="isLiked(review) ? '取消点赞' : '点赞评价'"
+              :aria-label="isLiked(review) ? t('food.unlike') : t('food.likeReview')"
               :aria-pressed="isLiked(review)"
               :disabled="!!pending[review.id]"
               @tap.stop="toggleLike(review)"
             >
               <text class="iconfont icon-heart-outline" aria-hidden="true" /><text>{{
-                likeCount(review) || '赞'
+                likeCount(review) || t('food.like')
               }}</text>
             </button>
             <button
               class="discussion-action review-action"
               @tap.stop="handleViewAllComments(review.id)"
             >
-              回复
+              {{ t('food.reply') }}
             </button>
           </view>
         </view>
@@ -129,7 +132,7 @@
             hover-class="error-feedback__action--pressed"
             @tap="emit('retry')"
           >
-            重试
+            {{ t('food.retry2') }}
           </button></view
         >
         <button
@@ -137,17 +140,17 @@
           class="discussion-action review-action review-load-more"
           @tap.stop="loadMore"
         >
-          加载更多 ↓
+          {{ t('food.loadMore2') }}
         </button>
-        <view v-else-if="loading" class="text-gray-400 text-sm"> 加载中... </view>
-        <view v-else class="text-gray-400 text-sm"> 没有更多评价了 </view>
+        <view v-else-if="loading" class="text-gray-400 text-sm"> {{ t('food.loading2') }} </view>
+        <view v-else class="text-gray-400 text-sm"> {{ t('food.noMoreReviews') }} </view>
       </view>
     </view>
 
     <!-- 空状态 -->
     <view v-else-if="initialized && !loading" class="text-center py-8 text-gray-400">
       <text class="iconfont icon-comment-outline text-4xl mb-2"></text>
-      <view class="text-sm">还没有评价</view>
+      <view class="text-sm">{{ t('food.noReviewsYet') }}</view>
     </view>
 
     <!-- 长按菜单 -->
@@ -162,6 +165,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, onUnmounted } from 'vue';
 import type { Review, Comment } from '@/types/api';
 import dayjs from 'dayjs';
@@ -268,8 +272,8 @@ const confirmDelete = () => {
   closeMenu();
 
   uni.showModal({
-    title: '提示',
-    content: '确定要删除这条评价吗？',
+    title: t('food.confirm'),
+    content: t('food.deleteThisReview'),
     success: res => {
       if (
         res.confirm &&

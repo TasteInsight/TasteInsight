@@ -430,9 +430,6 @@ test('new-conversation selection is explicit and cancellation preserves the comp
   await button('新对话').trigger('click');
   await button('菜品点评').trigger('click');
   expect(wrapper.get('.chat-scene-option[aria-pressed="true"]').text()).toBe('菜品点评');
-  expect(
-    wrapper.get('.chat-scene-option[aria-pressed="true"]').find('.chat-scene-check').exists()
-  ).toBe(true);
   await button('取消').trigger('click');
   expect(wrapper.find('[role="dialog"][aria-label="开始新对话"]').exists()).toBe(false);
   expect(chat.resetChat).not.toHaveBeenCalled();

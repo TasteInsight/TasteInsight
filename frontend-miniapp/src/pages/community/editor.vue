@@ -2,33 +2,35 @@
   <view class="campus-page page-content page-state-layout" :aria-busy="loading || submitting">
     <view class="campus-heading"
       ><button class="campus-button" :disabled="submitting || loading || closing" @click="leave">
-        取消</button
-      ><text class="editor-title">{{ postId ? '编辑动态' : '发布动态' }}</text
+        {{ t('social.cancel') }}</button
+      ><text class="editor-title">{{
+        postId ? t('social.editPost') : t('social.publishPost')
+      }}</text
       ><button class="campus-button campus-primary" :disabled="!canSubmit" @click="submit">
-        {{ submitting ? '发布中…' : postId ? '保存' : '发布' }}
+        {{ submitting ? t('social.publishing') : postId ? t('social.save') : t('social.publish') }}
       </button></view
     >
     <view v-if="conflict" class="editor-conflict" aria-live="polite">
-      <text class="editor-conflict-title">动态已更新</text>
-      <text class="campus-hint">当前文字和照片已保留。核对最新内容后，再选择如何继续编辑。</text>
+      <text class="editor-conflict-title">{{ t('social.postUpdated') }}</text>
+      <text class="campus-hint">{{ t('social.draftKeptDescription') }}</text>
       <button
         v-if="!conflict.latest"
         class="campus-button"
-        aria-label="读取动态最新版本"
+        :aria-label="t('social.loadLatestPost')"
         :disabled="loading"
         @click="readLatestVersion"
       >
-        {{ loading ? '读取中…' : '查看最新版本' }}
+        {{ loading ? t('social.reading') : t('social.viewLatestVersion') }}
       </button>
       <template v-else>
-        <text class="editor-conflict-label">最新内容</text>
+        <text class="editor-conflict-label">{{ t('social.latestContent') }}</text>
         <text class="editor-latest-content" selectable>{{ conflict.latest.content }}</text>
         <view v-if="conflict.latest.images.length" class="editor-latest-images">
           <button
             v-for="(url, index) in conflict.latest.images"
             :key="url"
             class="editor-preview"
-            :aria-label="'查看最新内容的第 ' + (index + 1) + ' 张图片'"
+            :aria-label="t('social.previewLatestPhoto', { number: index + 1 })"
             @click="previewLatest(index)"
           >
             <image :src="url" mode="aspectFill" />
@@ -37,19 +39,19 @@
         <view class="editor-conflict-actions">
           <button
             class="campus-button"
-            aria-label="保留我的修改继续编辑"
+            :aria-label="t('social.continueWithChanges')"
             :disabled="closing"
             @click="resolveConflict(false)"
           >
-            保留我的修改
+            {{ t('social.keepMyChanges') }}
           </button>
           <button
             class="campus-button"
-            aria-label="采用动态最新内容"
+            :aria-label="t('social.useLatestPost')"
             :disabled="closing"
             @click="resolveConflict(true)"
           >
-            采用最新内容
+            {{ t('social.useLatestContent') }}
           </button>
         </view>
       </template>
@@ -57,12 +59,12 @@
     <AsyncState
       v-if="!ready"
       :loading="loading"
-      :error="error"
-      loading-title="正在加载动态…"
+      :error="errorText"
+      :loading-title="t('social.loadingPosts')"
       @retry="initialize"
     />
-    <view v-else-if="error" class="campus-error error-feedback" role="alert"
-      ><text class="error-feedback__message">{{ error }}</text></view
+    <view v-else-if="errorText" class="campus-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ errorText }}</text></view
     >
     <template v-if="ready">
       <textarea
@@ -70,8 +72,8 @@
         class="editor-content"
         :disabled="submitting || loading || closing"
         maxlength="2000"
-        aria-label="动态正文"
-        placeholder="今天吃到了什么？分享你的校园日常。"
+        :aria-label="t('social.postBody')"
+        :placeholder="t('social.postPlaceholder')"
         placeholder-style="color: #667085"
       />
       <view class="editor-count campus-hint">{{ content.length }} / 2000</view>
@@ -79,17 +81,17 @@
         <view v-for="(image, index) in images" :key="image.path" class="editor-image-cell"
           ><button
             class="editor-preview"
-            :aria-label="'预览第 ' + (index + 1) + ' 张图片'"
+            :aria-label="t('social.previewPhoto', { number: index + 1 })"
             @click="preview(index)"
           >
             <image :src="image.path" mode="aspectFill" /></button
           ><button
             class="campus-button editor-remove"
             :disabled="submitting || loading || closing"
-            :aria-label="'移除第 ' + (index + 1) + ' 张图片'"
+            :aria-label="t('social.removePhoto', { number: index + 1 })"
             @click="images.splice(index, 1)"
           >
-            移除
+            {{ t('social.remove') }}
           </button></view
         >
         <button
@@ -98,7 +100,9 @@
           :disabled="submitting || loading || closing"
           @click="chooseImages"
         >
-          <text class="iconfont icon-camera" aria-hidden="true" /><text>添加照片</text
+          <text class="iconfont icon-camera" aria-hidden="true" /><text>{{
+            t('social.addPhotos')
+          }}</text
           ><text class="campus-hint">{{ images.length }} / 9</text>
         </button>
       </view>
@@ -106,6 +110,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { onLoad, onBackPress } from '@dcloudio/uni-app';
 import { getPost, createPost, updatePost, type Post } from '@/api/modules/social';
@@ -129,6 +134,9 @@ const submitting = ref(false);
 const closing = ref(false);
 const ready = ref(false);
 const error = ref('');
+const errorText = computed(() =>
+  error.value.startsWith('social.') ? t(error.value) : error.value
+);
 const conflict = ref<{ latest?: Post } | null>(null);
 const expectedUpdatedAt = ref('');
 let owner = '';
@@ -170,7 +178,7 @@ function saveTextDraft() {
 }
 async function initialize() {
   if (!owner || !current(version)) {
-    error.value = '请重新登录后发布';
+    error.value = 'social.signInToPublish';
     return;
   }
   const request = ++version;
@@ -186,8 +194,8 @@ async function initialize() {
       if (response.code !== 200 || response.data.userId !== owner)
         throw new Error(
           response.data?.userId !== owner
-            ? '只能编辑自己的动态'
-            : response.message || '动态加载失败'
+            ? 'social.editOwnPostsOnly'
+            : response.message || 'social.loadPostFailed'
         );
       content.value = response.data.content;
       expectedUpdatedAt.value = response.data.updatedAt;
@@ -216,7 +224,7 @@ async function initialize() {
     ready.value = true;
   } catch (cause) {
     if (current(request))
-      error.value = cause instanceof Error ? cause.message : '动态加载失败，请重试';
+      error.value = cause instanceof Error ? cause.message : 'social.loadPostsRetry';
   } finally {
     if (current(request)) loading.value = false;
   }
@@ -253,11 +261,11 @@ async function readLatestVersion() {
     const response = await getPost(postId.value);
     if (!current(request)) return;
     if (response.code !== 200 || response.data.userId !== owner)
-      throw new Error('无法读取这条动态，请返回后重试');
+      throw new Error('social.postReadFailed');
     conflict.value = { latest: response.data };
   } catch (cause) {
     if (current(request))
-      error.value = cause instanceof Error ? cause.message : '最新内容读取失败，请重试';
+      error.value = cause instanceof Error ? cause.message : 'social.latestContentFailed';
   } finally {
     if (current(request)) loading.value = false;
   }
@@ -270,12 +278,10 @@ async function resolveConflict(useLatest: boolean) {
   try {
     const confirmed = await new Promise<boolean>(resolve => {
       uni.showModal({
-        title: useLatest ? '采用最新内容？' : '保留我的修改？',
-        content: useLatest
-          ? '当前未保存的文字和照片将被最新内容替换。'
-          : '保留当前文字和照片继续编辑。再次保存将替换刚查看的最新内容。',
-        confirmText: useLatest ? '采用最新' : '保留并编辑',
-        cancelText: '再看看',
+        title: useLatest ? t('social.useLatestQuestion') : t('social.keepChangesQuestion'),
+        content: useLatest ? t('social.replaceDraftDescription') : t('social.keepDraftDescription'),
+        confirmText: useLatest ? t('social.useLatest') : t('social.keepAndEdit'),
+        cancelText: t('social.reviewAgain'),
         success: result => resolve(result.confirm),
         fail: () => resolve(false),
       });
@@ -317,7 +323,7 @@ async function submit() {
       : await createPost(payload);
     if (!current(request)) return;
     if (![200, 201].includes(response.code))
-      throw new Error(response.message || '发布失败，请重试');
+      throw new Error(response.message || 'social.publishFailed');
     uni.removeStorageSync(draftKey());
     leaving = true;
     ready.value = false;
@@ -327,7 +333,7 @@ async function submit() {
       if (postId.value && (cause as { statusCode?: number } | null)?.statusCode === 409) {
         conflict.value = {};
         error.value = '';
-      } else error.value = cause instanceof Error ? cause.message : '发布失败，请重试';
+      } else error.value = cause instanceof Error ? cause.message : 'social.publishFailed';
     }
   } finally {
     if (current(request)) submitting.value = false;
@@ -342,8 +348,8 @@ async function leave() {
       !(await confirmDiscardChanges(
         dirty.value,
         images.value.some(image => !image.uploaded)
-          ? '文字草稿会保留，离开后需重新选择照片。'
-          : '文字草稿会保留，确定离开编辑吗？'
+          ? t('social.photosReselectDescription')
+          : t('social.leaveEditorQuestion')
       )) ||
       !current(request)
     )
@@ -367,7 +373,7 @@ watch(
     loading.value = false;
     submitting.value = false;
     closing.value = false;
-    error.value = '登录账号已变更，请重新打开编辑页';
+    error.value = 'social.accountChangedEditor';
   },
   { flush: 'sync' }
 );

@@ -1,14 +1,23 @@
 <template>
   <view v-if="visible" class="action-menu-overlay" @tap.stop="handleClose">
-    <view class="action-menu" role="dialog" aria-modal="true" aria-label="内容操作" @tap.stop>
-      <button class="menu-action" @tap="handleReport">举报内容</button>
-      <button v-if="canDelete" class="menu-action menu-delete" @tap="handleDelete">删除内容</button>
-      <button class="menu-action menu-cancel" @tap="handleClose">取消</button>
+    <view
+      class="action-menu"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('food.contentActions')"
+      @tap.stop
+    >
+      <button class="menu-action" @tap="handleReport">{{ t('food.reportContent') }}</button>
+      <button v-if="canDelete" class="menu-action menu-delete" @tap="handleDelete">
+        {{ t('food.deleteContent') }}
+      </button>
+      <button class="menu-action menu-cancel" @tap="handleClose">{{ t('food.cancel') }}</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 defineProps<{ visible: boolean; canDelete: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void; (e: 'delete'): void; (e: 'report'): void }>();
 const handleClose = () => emit('close');

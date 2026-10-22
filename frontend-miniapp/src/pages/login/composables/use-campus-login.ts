@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, onMounted, onScopeDispose, watch, type Ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { startCampusLogin } from '@/api/modules/auth';
@@ -109,7 +110,8 @@ export function useCampusLogin(enabled: Ref<boolean>) {
       openedPopup?.close();
       // #endif
       if (!disposed && attempt === generation && session === user.sessionVersion)
-        error.value = cause instanceof Error ? cause.message : '登录页面暂时无法打开，请重试';
+        error.value =
+          cause instanceof Error ? cause.message : t('account.login.unableToOpenSignIn2');
     } finally {
       if (!disposed && attempt === generation) starting.value = false;
     }

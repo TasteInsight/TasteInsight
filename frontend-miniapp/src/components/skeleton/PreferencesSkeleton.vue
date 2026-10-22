@@ -1,5 +1,9 @@
 <template>
-  <view class="skeleton-form settings-content-skeleton" role="status" aria-label="正在加载饮食偏好">
+  <view
+    class="skeleton-form settings-content-skeleton"
+    role="status"
+    :aria-label="t('common.skeleton.preferences')"
+  >
     <view class="preferences-skeleton-section">
       <SkeletonBase class="preferences-skeleton-heading" width="84px" height="24px" />
       <SkeletonBase width="80%" height="14px" />
@@ -50,6 +54,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 </script>
 <style scoped>

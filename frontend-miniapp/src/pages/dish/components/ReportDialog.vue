@@ -15,25 +15,25 @@
       class="review-sheet report-sheet"
       role="dialog"
       aria-modal="true"
-      aria-label="举报内容"
+      :aria-label="t('food.reportContent')"
       @tap.stop
     >
       <view class="sheet-header">
-        <text class="sheet-title">举报内容</text>
+        <text class="sheet-title">{{ t('food.reportContent') }}</text>
         <button
           class="sheet-button sheet-close"
           :class="{ 'is-disabled': submitting || closing }"
           :disabled="submitting || closing"
-          aria-label="关闭举报"
+          :aria-label="t('food.closeReport')"
           @tap="close"
         >
-          关闭
+          {{ t('food.close') }}
         </button>
       </view>
       <scroll-view class="sheet-body" scroll-y :scroll-into-view="scrollIntoView">
         <view class="sheet-content">
           <view class="sheet-field">
-            <text class="sheet-label">举报类型</text>
+            <text class="sheet-label">{{ t('food.reportType') }}</text>
             <UiPicker
               :range="reportTypes"
               :value="Math.max(0, selectedTypeIndex)"
@@ -42,18 +42,18 @@
               @change="handleTypeChange"
             >
               <view class="sheet-input report-picker">{{
-                selectedTypeLabel || '请选择举报类型'
+                selectedTypeLabel || t('food.selectAReportType')
               }}</view>
             </UiPicker>
           </view>
           <view id="report-reason-field" class="sheet-field">
-            <label for="report-reason" class="sheet-label">详细理由</label>
+            <label for="report-reason" class="sheet-label">{{ t('food.details') }}</label>
             <textarea
               id="report-reason"
               v-model="reason"
               class="sheet-input report-reason"
-              aria-label="举报详细理由"
-              placeholder="请说明内容存在的问题"
+              :aria-label="t('food.reportDetails')"
+              :placeholder="t('food.describeTheIssueWithThisContent')"
               maxlength="500"
               :disabled="submitting"
               :adjust-position="false"
@@ -70,7 +70,7 @@
           :disabled="submitting || closing"
           @tap="close"
         >
-          取消
+          {{ t('food.cancel') }}
         </button>
         <button
           class="sheet-button sheet-primary"
@@ -78,7 +78,7 @@
           :disabled="submitting || closing"
           @tap="submit"
         >
-          {{ submitting ? '提交中…' : '提交举报' }}
+          {{ submitting ? t('food.submitting') : t('food.submitReport') }}
         </button>
       </view>
     </view>
@@ -86,6 +86,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, computed, onUnmounted } from 'vue';
 import UiPicker from '@/components/UiPicker.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -97,12 +98,32 @@ const emit = defineEmits(['close', 'submit']);
 const userStore = useUserStore();
 const { scrollIntoView, focusField, blurField, revealFocusedField } = useSheetInputScroll();
 const keyboardStyle = useSheetKeyboard(revealFocusedField);
-const reportTypes = [
-  { value: 'inappropriate', label: '内容不当' },
-  { value: 'spam', label: '垃圾广告' },
-  { value: 'false_info', label: '虚假信息' },
-  { value: 'other', label: '其他' },
-];
+const reportTypes = computed(() => [
+  {
+    value: 'inappropriate',
+    get label() {
+      return t('food.inappropriateContent');
+    },
+  },
+  {
+    value: 'spam',
+    get label() {
+      return t('food.spam');
+    },
+  },
+  {
+    value: 'false_info',
+    get label() {
+      return t('food.falseInformation');
+    },
+  },
+  {
+    value: 'other',
+    get label() {
+      return t('food.other');
+    },
+  },
+]);
 const selectedTypeIndex = ref(-1);
 const reason = ref('');
 const closing = ref(false);
@@ -114,7 +135,7 @@ onUnmounted(() => {
 const restoreHelper = () => {
   if (active) helperKey.value++;
 };
-const selectedTypeLabel = computed(() => reportTypes[selectedTypeIndex.value]?.label || '');
+const selectedTypeLabel = computed(() => reportTypes.value[selectedTypeIndex.value]?.label || '');
 const handleTypeChange = (event: any) => {
   if (!props.submitting) selectedTypeIndex.value = Number(event.detail.value);
 };
@@ -125,7 +146,7 @@ const close = async () => {
   try {
     const discard = await confirmDiscardChanges(
       selectedTypeIndex.value !== -1 || !!reason.value.trim(),
-      '举报内容尚未提交，确定放弃吗？'
+      t('food.discardThisReport')
     );
     if (!discard || !active || session !== userStore.sessionVersion) return false;
     emit('close');
@@ -137,14 +158,17 @@ const close = async () => {
 const submit = () => {
   if (props.submitting || closing.value) return;
   if (selectedTypeIndex.value === -1) {
-    uni.showToast({ title: '请选择举报类型', icon: 'none' });
+    uni.showToast({ title: t('food.selectAReportType'), icon: 'none' });
     return;
   }
   if (!reason.value.trim()) {
-    uni.showToast({ title: '请填写详细理由', icon: 'none' });
+    uni.showToast({ title: t('food.enterADetailedReason'), icon: 'none' });
     return;
   }
-  emit('submit', { type: reportTypes[selectedTypeIndex.value].value, reason: reason.value.trim() });
+  emit('submit', {
+    type: reportTypes.value[selectedTypeIndex.value].value,
+    reason: reason.value.trim(),
+  });
 };
 defineExpose({ requestClose: close });
 </script>

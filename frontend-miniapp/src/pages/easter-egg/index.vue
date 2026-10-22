@@ -18,33 +18,33 @@
 
     <view class="egg-content">
       <view class="egg-header">
-        <text class="egg-title">食鉴 · 隐藏实验室</text>
-        <text class="egg-muted">你发现了一个不太正经的味觉分支。</text>
+        <text class="egg-title">{{ t('account.egg.tasteinsightHiddenLab') }}</text>
+        <text class="egg-muted">{{ t('account.egg.youFoundThePlayfulSide') }}</text>
         <button
           class="egg-button egg-text-button"
           :aria-expanded="showSecretHint"
           @tap="toggleSecretHint"
         >
-          玩法提示
+          {{ t('account.egg.howToPlay') }}
         </button>
-        <text v-if="showSecretHint" class="egg-note"
-          >每生成 3 道菜会触发一次变异，快速连点还能获得连击奖励。</text
-        >
+        <text v-if="showSecretHint" class="egg-note">{{
+          t('account.egg.every3DishesTriggerA')
+        }}</text>
         <view class="egg-appearance">
           <view class="egg-toggle"
-            ><text>夜间模式</text
+            ><text>{{ t('account.egg.nightMode') }}</text
             ><switch
               :checked="isDarkMode"
               color="#660874"
-              aria-label="夜间模式"
+              :aria-label="t('account.egg.nightMode')"
               @change="toggleDarkMode"
           /></view>
           <view class="egg-toggle"
-            ><text>降雪效果</text
+            ><text>{{ t('account.egg.snowEffect') }}</text
             ><switch
               :checked="isSnowing"
               color="#660874"
-              aria-label="降雪效果"
+              :aria-label="t('account.egg.snowEffect')"
               @change="toggleSnow"
           /></view>
         </view>
@@ -52,43 +52,57 @@
 
       <view class="egg-section egg-level">
         <view class="egg-row"
-          ><text class="egg-heading">实验员 Lv. {{ level }}</text
-          ><text class="egg-muted">{{ stats.coins }} 金币</text></view
+          ><text class="egg-heading">{{ t('account.egg.researcherLv', { level: level }) }}</text
+          ><text class="egg-muted">{{ t('account.egg.coins', { count: stats.coins }) }}</text></view
         >
         <view
           class="egg-progress"
           role="progressbar"
           :aria-valuenow="xpInLevel"
           :aria-valuemax="xpToNext"
-          aria-label="实验员经验"
+          :aria-label="t('account.egg.researcherExperience')"
           ><view :style="{ width: (xpInLevel / xpToNext) * 100 + '%' }"
         /></view>
-        <text class="egg-muted">经验 {{ xpInLevel }} / {{ xpToNext }}</text>
+        <text class="egg-muted">{{
+          t('account.egg.xp', { current: xpInLevel, total: xpToNext })
+        }}</text>
       </view>
 
       <view class="egg-section egg-generator">
-        <text class="egg-heading">离谱菜名生成器</text>
+        <text class="egg-heading">{{ t('account.egg.absurdDishGenerator') }}</text>
         <text class="egg-dish-name" aria-live="polite">{{ dishName }}</text>
         <view class="egg-row egg-wrap"
-          ><text class="egg-muted"
-            >连击 {{ comboCount }}{{ comboCount >= 2 ? ' · 奖励加成' : '' }}</text
-          ><text class="egg-muted">灵感 {{ inspiration }} / 10</text></view
+          ><text class="egg-muted">{{
+            t('account.egg.combo', {
+              count: comboCount,
+              bonus: comboCount >= 2 ? t('account.egg.comboBonus') : '',
+            })
+          }}</text
+          ><text class="egg-muted">{{
+            t('account.egg.inspiration10', { count: inspiration })
+          }}</text></view
         >
-        <text class="egg-muted egg-combo-hint">{{ comboHint }}，每 3 次生成触发变异。</text>
+        <text class="egg-muted egg-combo-hint">{{
+          t('account.egg.every3DishesTriggerA2', { hint: comboHint })
+        }}</text>
 
         <view class="egg-challenge">
           <view class="egg-row egg-wrap"
-            ><text class="egg-subheading">10 秒连抽挑战</text
-            ><text class="egg-muted">{{ challenge.count }} / {{ challenge.target }} 道</text></view
+            ><text class="egg-subheading">{{ t('account.egg.section10SecondDishChallenge') }}</text
+            ><text class="egg-muted">{{
+              t('account.egg.dishes', { count: challenge.count, target: challenge.target })
+            }}</text></view
           >
-          <text class="egg-muted"
-            >10 秒内生成 {{ challenge.target }} 道菜，成功奖励
-            {{ CHALLENGE_REWARD_COINS }} 金币。</text
-          >
+          <text class="egg-muted">{{
+            t('account.egg.generateDishesIn10Seconds', {
+              target: challenge.target,
+              reward: CHALLENGE_REWARD_COINS,
+            })
+          }}</text>
           <view
             class="egg-progress egg-challenge-progress"
             role="progressbar"
-            aria-label="挑战进度"
+            :aria-label="t('account.egg.challengeProgress')"
             :aria-valuenow="challenge.count"
             :aria-valuemax="challenge.target"
             ><view
@@ -103,7 +117,7 @@
         </view>
         <view class="egg-play-actions">
           <button class="egg-button egg-primary" data-action="generate" @tap="nextDish">
-            生成一道菜
+            {{ t('account.egg.generateADish') }}
           </button>
           <button
             class="egg-button egg-outline"
@@ -111,33 +125,42 @@
             :disabled="challenge.active"
             @tap="startChallenge"
           >
-            {{ challenge.active ? '剩余 ' + challenge.remaining + ' 秒' : '开始挑战' }}
+            {{
+              challenge.active
+                ? t('account.egg.remainingSeconds', { seconds: challenge.remaining })
+                : t('account.egg.startChallenge')
+            }}
           </button>
         </view>
         <view class="egg-actions egg-copy-actions"
-          ><button class="egg-button" @tap="copyDish">复制菜名</button
-          ><button class="egg-button" @tap="shareText">复制今日组合</button></view
+          ><button class="egg-button" @tap="copyDish">{{ t('account.egg.copyDishName') }}</button
+          ><button class="egg-button" @tap="shareText">
+            {{ t('account.egg.copyTodaySCombo') }}
+          </button></view
         >
       </view>
 
       <view class="egg-section">
         <view class="egg-row egg-wrap"
-          ><text class="egg-heading">今日味觉签</text
+          ><text class="egg-heading">{{ t('account.egg.todaySFlavorFortune') }}</text
           ><text class="egg-muted">{{ todayKey }}</text></view
         >
         <text class="egg-prose egg-fortune" aria-live="polite">{{ fortune }}</text>
         <view class="egg-actions"
-          ><button class="egg-button egg-outline" @tap="regenerate">再来一签</button
-          ><button class="egg-button" @tap="copyFortune">复制</button></view
+          ><button class="egg-button egg-outline" @tap="regenerate">
+            {{ t('account.egg.drawAgain') }}</button
+          ><button class="egg-button" @tap="copyFortune">{{ t('account.egg.copy') }}</button></view
         >
       </view>
 
       <view class="egg-section">
         <view class="egg-row egg-wrap"
-          ><text class="egg-heading">今日任务</text
-          ><text class="egg-muted">{{ doneMissionsCount }} / {{ missions.length }} 完成</text></view
+          ><text class="egg-heading">{{ t('account.egg.todaySMissions') }}</text
+          ><text class="egg-muted">{{
+            t('account.egg.complete', { count: doneMissionsCount, total: missions.length })
+          }}</text></view
         >
-        <text class="egg-muted">点亮就算完成，全部完成可解锁一条成就签。</text>
+        <text class="egg-muted">{{ t('account.egg.tapAMissionToComplete') }}</text>
         <view class="egg-missions">
           <button
             v-for="mission in missions"
@@ -150,7 +173,7 @@
           >
             <text class="egg-mission-label">{{ mission.text }}</text
             ><text class="egg-mission-status">{{
-              isMissionDone(mission.id) ? '已完成' : '未完成'
+              isMissionDone(mission.id) ? t('account.egg.complete2') : t('account.egg.incomplete')
             }}</text>
           </button>
         </view>
@@ -158,31 +181,40 @@
 
       <view class="egg-section">
         <view class="egg-row egg-wrap"
-          ><text class="egg-heading">称号抽卡</text
-          ><text class="egg-muted">已收藏 {{ stats.titles.length }}</text></view
+          ><text class="egg-heading">{{ t('account.egg.titleDraw') }}</text
+          ><text class="egg-muted">{{
+            t('account.egg.collected', { count: stats.titles.length })
+          }}</text></view
         >
-        <text class="egg-muted">纯属娱乐 · 当前称号</text>
+        <text class="egg-muted">{{ t('account.egg.justForFunCurrentTitle') }}</text>
         <text class="egg-current-title">{{ currentTitle }}</text>
         <view class="egg-actions"
           ><button class="egg-button egg-outline" @tap="drawTitle">
-            抽一张 · {{ TITLE_COST }} 金币</button
-          ><button class="egg-button" @tap="equipRandomTitle">随机换称号</button></view
+            {{ t('account.egg.drawOneCoins', { cost: TITLE_COST }) }}</button
+          ><button class="egg-button" @tap="equipRandomTitle">
+            {{ t('account.egg.equipARandomTitle') }}
+          </button></view
         >
         <view v-if="previewTitles.length" class="egg-badges"
           ><text v-for="item in previewTitles" :key="item" class="egg-badge">{{ item }}</text></view
         >
-        <text v-else class="egg-muted egg-empty">先抽一张试试</text>
+        <text v-else class="egg-muted egg-empty">{{
+          t('account.egg.tryDrawingYourFirstTitle')
+        }}</text>
       </view>
 
       <view class="egg-section">
         <view class="egg-row egg-wrap"
-          ><text class="egg-heading">味觉参数</text
-          ><button class="egg-button egg-text-button" @tap="randomizeFlavor">随机一下</button></view
+          ><text class="egg-heading">{{ t('account.egg.flavorControls') }}</text
+          ><button class="egg-button egg-text-button" @tap="randomizeFlavor">
+            {{ t('account.egg.randomize') }}
+          </button></view
         >
-        <text class="egg-muted">纯属娱乐，不会修改你的饮食偏好。</text>
+        <text class="egg-muted">{{ t('account.egg.theseControlsAreJustFor') }}</text>
         <view class="egg-slider"
           ><view class="egg-row"
-            ><text>辣度</text><text class="egg-muted">{{ heat }} / 10</text></view
+            ><text>{{ t('account.settings.spiciness') }}</text
+            ><text class="egg-muted">{{ heat }} / 10</text></view
           ><slider
             :value="heat"
             :min="0"
@@ -191,12 +223,13 @@
             :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
             background-color="#d0d5dd"
             :block-size="24"
-            aria-label="辣度"
+            :aria-label="t('account.settings.spiciness')"
             @change="onHeatChange"
         /></view>
         <view class="egg-slider"
           ><view class="egg-row"
-            ><text>甜度</text><text class="egg-muted">{{ sweet }} / 10</text></view
+            ><text>{{ t('account.settings.sweetness') }}</text
+            ><text class="egg-muted">{{ sweet }} / 10</text></view
           ><slider
             :value="sweet"
             :min="0"
@@ -205,12 +238,13 @@
             :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
             background-color="#d0d5dd"
             :block-size="24"
-            aria-label="甜度"
+            :aria-label="t('account.settings.sweetness')"
             @change="onSweetChange"
         /></view>
         <view class="egg-slider"
           ><view class="egg-row"
-            ><text>咸度</text><text class="egg-muted">{{ salty }} / 10</text></view
+            ><text>{{ t('account.settings.saltiness') }}</text
+            ><text class="egg-muted">{{ salty }} / 10</text></view
           ><slider
             :value="salty"
             :min="0"
@@ -219,12 +253,13 @@
             :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
             background-color="#d0d5dd"
             :block-size="24"
-            aria-label="咸度"
+            :aria-label="t('account.settings.saltiness')"
             @change="onSaltyChange"
         /></view>
         <view class="egg-slider"
           ><view class="egg-row"
-            ><text>油腻度</text><text class="egg-muted">{{ oily }} / 10</text></view
+            ><text>{{ t('account.settings.oiliness') }}</text
+            ><text class="egg-muted">{{ oily }} / 10</text></view
           ><slider
             :value="oily"
             :min="0"
@@ -233,58 +268,70 @@
             :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
             background-color="#d0d5dd"
             :block-size="24"
-            aria-label="油腻度"
+            :aria-label="t('account.settings.oiliness')"
             @change="onOilyChange"
         /></view>
         <view class="egg-conclusion"
           ><text class="egg-prose">{{ conclusion }}</text
           ><view class="egg-row egg-wrap"
-            ><text class="egg-muted">称号：{{ title }}</text
-            ><text class="egg-muted">建议：{{ suggestion }}</text></view
+            ><text class="egg-muted">{{ t('account.egg.title', { title: title }) }}</text
+            ><text class="egg-muted">{{
+              t('account.egg.suggestion', { suggestion: suggestion })
+            }}</text></view
           ></view
         >
       </view>
 
       <view class="egg-section">
-        <text class="egg-heading">实验记录与本机榜单</text>
-        <text class="egg-muted">仅根据本机的彩蛋页记录统计。</text>
+        <text class="egg-heading">{{ t('account.egg.labRecordsAndDeviceRankings') }}</text>
+        <text class="egg-muted">{{ t('account.egg.basedOnHiddenLabActivity') }}</text>
         <view class="egg-records">
           <view class="egg-record"
-            ><text>等级榜</text><text>Lv. {{ level }}</text></view
+            ><text>{{ t('account.egg.level') }}</text
+            ><text>Lv. {{ level }}</text></view
           >
           <view class="egg-record"
-            ><text>生成榜</text><text>{{ stats.dishesGenerated }} 道</text></view
+            ><text>{{ t('account.egg.dishesGenerated') }}</text
+            ><text>{{ t('account.egg.dishes2', { count: stats.dishesGenerated }) }}</text></view
           >
           <view class="egg-record"
-            ><text>变异榜</text><text>{{ stats.mutations }} 次</text></view
+            ><text>{{ t('account.egg.mutations') }}</text
+            ><text>{{ t('account.egg.times', { count: stats.mutations }) }}</text></view
           >
           <view class="egg-record"
-            ><text>连击最高</text><text>{{ stats.bestCombo }}</text></view
+            ><text>{{ t('account.egg.bestCombo') }}</text
+            ><text>{{ stats.bestCombo }}</text></view
           >
           <view class="egg-record"
-            ><text>挑战最佳 · 10 秒</text><text>{{ stats.bestChallengeCount }} 道</text></view
+            ><text>{{ t('account.egg.bestChallenge10Seconds') }}</text
+            ><text>{{ t('account.egg.dishes2', { count: stats.bestChallengeCount }) }}</text></view
           >
           <view class="egg-record"
-            ><text>总点击</text><text>{{ stats.plays }}</text></view
+            ><text>{{ t('account.egg.totalTaps') }}</text
+            ><text>{{ stats.plays }}</text></view
           >
           <view class="egg-record"
-            ><text>连续打卡</text><text>{{ stats.streak }} 天</text></view
+            ><text>{{ t('account.egg.checkInStreak') }}</text
+            ><text>{{ t('account.egg.days', { count: stats.streak }) }}</text></view
           >
           <view class="egg-record"
-            ><text>连续打卡最高</text><text>{{ stats.bestStreak }} 天</text></view
+            ><text>{{ t('account.egg.bestCheckInStreak') }}</text
+            ><text>{{ t('account.egg.days', { count: stats.bestStreak }) }}</text></view
           >
         </view>
         <view class="egg-actions"
-          ><button class="egg-button egg-reset" @tap="resetAll">清空本页记录</button
-          ><text class="egg-muted">仅影响彩蛋页</text></view
+          ><button class="egg-button egg-reset" @tap="resetAll">
+            {{ t('account.egg.clearThisPageSRecords') }}</button
+          ><text class="egg-muted">{{ t('account.egg.affectsHiddenLabOnly') }}</text></view
         >
       </view>
-      <text class="egg-muted egg-footer">这个页面不会出现在任何菜单里。</text>
+      <text class="egg-muted egg-footer">{{ t('account.egg.thisPageIsHiddenFrom') }}</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import { onHide, onUnload } from '@dcloudio/uni-app';
 
@@ -371,8 +418,10 @@ function saveStats(next: EggStats) {
   uni.setStorageSync(STORAGE_KEY, next);
 }
 
-const fortune = ref('');
-const dishName = ref('');
+const fortuneParts = ref<string[]>([]);
+const fortune = computed(() => fortuneParts.value.map(key => t(key)).join(''));
+const dishParts = ref<string[]>([]);
+const dishName = computed(() => dishParts.value.map(key => t(key)).join(''));
 const dishTapCount = ref(0);
 
 const showSecretHint = ref(false);
@@ -385,15 +434,15 @@ const todayKey = computed(() => {
   return `${yyyy}-${mm}-${dd}`;
 });
 
-const missions = ref([
-  { id: 'm1', text: '尝试一个你没去过的窗口' },
-  { id: 'm2', text: '写一条“优点+建议”的认真评价' },
-  { id: 'm3', text: '收藏一道你想二刷的菜' },
-  { id: 'm4', text: '给一道菜拍张好看的照片并收藏' },
-  { id: 'm5', text: '点一次你通常不会点的配菜' },
-  { id: 'm6', text: '尝试一个口味更重的辣度' },
-  { id: 'm7', text: '把你喜欢的菜分享给一个朋友' },
-  { id: 'm8', text: '写一条鼓励店员的小评论' },
+const missions = computed(() => [
+  { id: 'm1', text: t('account.egg.tryAStallYouHave') },
+  { id: 'm2', text: t('account.egg.writeAThoughtfulReviewWith') },
+  { id: 'm3', text: t('account.egg.saveADishYouWould') },
+  { id: 'm4', text: t('account.egg.takeAGreatPhotoOf') },
+  { id: 'm5', text: t('account.egg.orderASideDishYou') },
+  { id: 'm6', text: t('account.egg.tryAHigherSpiceLevel') },
+  { id: 'm7', text: t('account.egg.shareAFavoriteDishWith') },
+  { id: 'm8', text: t('account.egg.leaveAKindCommentFor') },
 ]);
 
 const stats = ref<EggStats>(loadStats());
@@ -449,47 +498,48 @@ const CHALLENGE_SECONDS = 10;
 const CHALLENGE_TARGET = 3;
 const CHALLENGE_REWARD_COINS = 5;
 
-const titlePool = [
-  '食堂侦探',
-  '窗口观察员',
-  '重口狂热者',
-  '清淡守望者',
-  '甜辣双修',
-  '快乐主义者',
-  '均衡探索者',
-  '早八幸存者',
-  '夜宵研究员',
-  '三秒决策王',
-  '小份策略家',
-  '咀嚼哲学家',
-  '拍照先行者',
-  '香气追踪者',
-  '油光鉴定师',
-  '辣度测绘员',
-  '甜度守护者',
-  '咸度管理员',
-  '勇敢尝新者',
-  '评价写作家',
-  '收藏强迫症',
-  '双拼信徒',
-  '排队艺术家',
-  '饭点时间学家',
-  '冰饮搭配师',
-  // new additions
-  '微辣勇者',
-  '咸香鉴赏家',
-  '汤头测试员',
-  '咖喱守望者',
-  '甜品鉴定师',
-  '素食实践家',
-  '夜宵行者',
-  '早八侦查员',
-  '口味调研员',
-  '分量计算师',
-  '排队策略家',
-  '回锅菜艺术家',
-  '咀嚼节奏师',
-];
+const titleKeys: Record<string, string> = {
+  食堂侦探: 'account.egg.canteenDetective',
+  窗口观察员: 'account.egg.stallObserver',
+  重口狂热者: 'account.egg.boldFlavorFan',
+  清淡守望者: 'account.egg.lightFlavorGuardian',
+  甜辣双修: 'account.egg.sweetAndSpicyMaster',
+  快乐主义者: 'account.egg.joySeeker',
+  均衡探索者: 'account.egg.balancedExplorer',
+  早八幸存者: 'account.egg.section8AMSurvivor',
+  夜宵研究员: 'account.egg.lateNightSnackResearcher',
+  三秒决策王: 'account.egg.threeSecondDecisionChampion',
+  小份策略家: 'account.egg.smallPortionStrategist',
+  咀嚼哲学家: 'account.egg.chewingPhilosopher',
+  拍照先行者: 'account.egg.photoFirstPioneer',
+  香气追踪者: 'account.egg.aromaTracker',
+  油光鉴定师: 'account.egg.oilInspector',
+  辣度测绘员: 'account.egg.spiceMapper',
+  甜度守护者: 'account.egg.sweetnessGuardian',
+  咸度管理员: 'account.egg.saltSupervisor',
+  勇敢尝新者: 'account.egg.braveTaster',
+  评价写作家: 'account.egg.reviewWriter',
+  收藏强迫症: 'account.egg.serialCollector',
+  双拼信徒: 'account.egg.comboBeliever',
+  排队艺术家: 'account.egg.queueArtist',
+  饭点时间学家: 'account.egg.mealtimeScholar',
+  冰饮搭配师: 'account.egg.coldDrinkStylist',
+  微辣勇者: 'account.egg.mildSpiceHero',
+  咸香鉴赏家: 'account.egg.savoryConnoisseur',
+  汤头测试员: 'account.egg.brothTester',
+  咖喱守望者: 'account.egg.curryGuardian',
+  甜品鉴定师: 'account.egg.dessertExpert',
+  素食实践家: 'account.egg.vegetarianExplorer',
+  夜宵行者: 'account.egg.midnightDiner',
+  早八侦查员: 'account.egg.morningScout',
+  口味调研员: 'account.egg.flavorResearcher',
+  分量计算师: 'account.egg.portionCalculator',
+  排队策略家: 'account.egg.queueStrategist',
+  回锅菜艺术家: 'account.egg.wokArtist',
+  咀嚼节奏师: 'account.egg.chewingRhythmMaster',
+};
+const titlePool = Object.keys(titleKeys);
+const displayTitle = (value: string) => (titleKeys[value] ? t(titleKeys[value]) : value);
 
 function getLevelInfo(totalXp: number) {
   let level = 1;
@@ -524,7 +574,7 @@ function grant(rewardXp: number, rewardCoins: number, toast?: string) {
   const afterLevel = getLevelInfo(stats.value.xp).level;
   if (afterLevel > beforeLevel) {
     if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
-    uni.showToast({ title: `升级到 Lv.${afterLevel}`, icon: 'none' });
+    uni.showToast({ title: t('account.egg.levelUpToLv', { level: afterLevel }), icon: 'none' });
     return;
   }
 
@@ -561,13 +611,16 @@ function bumpStreakIfNeeded() {
     stats.value.bestStreak = Math.max(stats.value.bestStreak, stats.value.streak);
     stats.value.lastDayKey = today;
     grant(10 + Math.min(stats.value.streak, 7) * 2, 2);
-    uni.showToast({ title: `连续打卡 ${stats.value.streak} 天`, icon: 'none' });
+    uni.showToast({
+      title: t('account.egg.dayCheckInStreak', { days: stats.value.streak }),
+      icon: 'none',
+    });
   } else {
     stats.value.streak = 1;
     stats.value.bestStreak = Math.max(stats.value.bestStreak, stats.value.streak);
     stats.value.lastDayKey = today;
     grant(10, 2);
-    uni.showToast({ title: '重新打卡：连胜重置', icon: 'none' });
+    uni.showToast({ title: t('account.egg.checkedInAgainStreakRestarted'), icon: 'none' });
   }
   saveStats(stats.value);
 }
@@ -580,18 +633,23 @@ const doneMissionsCount = computed(
   () => missions.value.filter(m => !!stats.value.missions[m.id]).length
 );
 
-const currentTitle = computed(() => stats.value.equippedTitle || '（无）');
-const previewTitles = computed(() => stats.value.titles.slice(0, 6));
+const currentTitle = computed(() =>
+  stats.value.equippedTitle ? displayTitle(stats.value.equippedTitle) : t('account.egg.none')
+);
+const previewTitles = computed(() => stats.value.titles.slice(0, 6).map(displayTitle));
 
 const comboCount = ref(0);
 const lastDishAt = ref(0);
 const COMBO_GAP_MS = 4000;
 const comboHint = computed(() => {
-  if (comboCount.value >= 2) return '继续连点提升奖励';
-  return '快速连点可触发连击';
+  if (comboCount.value >= 2) return t('account.egg.keepTappingToIncreaseYour');
+  return t('account.egg.tapQuicklyToStartA');
 });
 
-const challengeFeedback = ref('');
+const challengeFeedbackKey = ref('');
+const challengeFeedback = computed(() =>
+  challengeFeedbackKey.value ? t(challengeFeedbackKey.value, { count: CHALLENGE_REWARD_COINS }) : ''
+);
 const challenge = ref({
   active: false,
   remaining: CHALLENGE_SECONDS,
@@ -616,7 +674,7 @@ function cancelChallenge() {
   challenge.value.active = false;
   challenge.value.remaining = CHALLENGE_SECONDS;
   challenge.value.count = 0;
-  challengeFeedback.value = '本轮挑战已取消，可以重新开始。';
+  challengeFeedbackKey.value = 'account.egg.challengeCanceledYouCanStart';
 }
 
 function isMissionDone(id: string) {
@@ -633,8 +691,8 @@ function toggleMission(id: string) {
 
   if (doneMissionsCount.value === missions.value.length) {
     if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
-    uni.showToast({ title: '成就已解锁', icon: 'none' });
-    fortune.value = `成就签：你已完成今日任务，今天的快乐值+1！（顺手再夸一句自己很棒。）`;
+    uni.showToast({ title: t('account.egg.achievementUnlocked'), icon: 'none' });
+    fortuneParts.value = ['account.egg.achievementFortuneTodaySMissions'];
     grant(15, 3);
   }
 }
@@ -645,12 +703,12 @@ const conclusion = computed(() => {
   const saltyHigh = salty.value >= 7;
   const oilyHigh = oily.value >= 7;
 
-  if (spicy && sugary) return '你是“甜辣双修”型：甜辣都能打，建议配一杯冰饮做缓冲。';
-  if (spicy && saltyHigh) return '你是“重口爆发”型：今天适合挑战爆辣+重口，但记得多喝水。';
-  if (sugary && oilyHigh) return '你是“快乐加倍”型：甜与油让人上头，建议小份多样不伤身。';
+  if (spicy && sugary) return t('account.egg.youAreASweetAnd');
+  if (spicy && saltyHigh) return t('account.egg.youLoveBoldFlavorsA');
+  if (sugary && oilyHigh) return t('account.egg.youAreAJoySeeker');
   if (heat.value <= 2 && sweet.value <= 2 && salty.value <= 2 && oily.value <= 2)
-    return '你是“清淡派”型：原味、少油、少盐就是你的正义。';
-  return '你是“均衡探索者”型：什么都能尝两口，但依旧保持理性。';
+    return t('account.egg.youPreferLightFlavorsNatural');
+  return t('account.egg.youAreABalancedExplorer');
 });
 
 const title = computed(() => {
@@ -658,55 +716,55 @@ const title = computed(() => {
   const sugary = sweet.value >= 7;
   const saltyHigh = salty.value >= 7;
   const oilyHigh = oily.value >= 7;
-  if (spicy && sugary) return '甜辣双修';
-  if (spicy && saltyHigh) return '重口大师';
-  if (sugary && oilyHigh) return '快乐主义者';
+  if (spicy && sugary) return t('account.egg.sweetAndSpicyMaster');
+  if (spicy && saltyHigh) return t('account.egg.boldFlavorMaster');
+  if (sugary && oilyHigh) return t('account.egg.joySeeker');
   if (heat.value <= 2 && sweet.value <= 2 && salty.value <= 2 && oily.value <= 2)
-    return '清淡守望者';
-  return '均衡探索者';
+    return t('account.egg.lightFlavorGuardian');
+  return t('account.egg.balancedExplorer');
 });
 
 const suggestion = computed(() => {
-  if (heat.value >= 7) return '冰饮/酸奶';
-  if (oily.value >= 7) return '清爽蔬菜';
-  if (salty.value >= 7) return '清汤/水果';
-  if (sweet.value >= 7) return '无糖茶';
-  return '随便配点';
+  if (heat.value >= 7) return t('account.egg.coldDrinkOrYogurt');
+  if (oily.value >= 7) return t('account.egg.freshVegetables');
+  if (salty.value >= 7) return t('account.egg.clearSoupOrFruit');
+  if (sweet.value >= 7) return t('account.egg.unsweetenedTea');
+  return t('account.egg.anythingYouFancy');
 });
 
 function regenerate() {
   ensureDailyCheckin();
   stats.value.plays += 1;
   const opener = pickOne([
-    '今日宜：',
-    '食鉴提示：',
-    '味觉密语：',
-    '隐藏建议：',
-    '本日尝鲜：',
-    '偷偷推荐：',
-    '今日小贴士：',
+    'account.egg.todaySIdea',
+    'account.egg.tasteinsightTip',
+    'account.egg.flavorWhisper',
+    'account.egg.secretSuggestion',
+    'account.egg.todaySDiscovery',
+    'account.egg.aQuietRecommendation',
+    'account.egg.tipOfTheDay',
   ]);
   const action = pickOne([
-    '去一个你没去过的窗口点招牌菜。',
-    '把“想吃”交给直觉，不看评价先尝一口。',
-    '给一条认真评价：一句优点 + 一句建议。',
-    '尝试把主食换成另一种选择，看看饱腹感差异。',
-    '和朋友交换一口菜：共享信息密度最高。',
-    '点一道素菜，审视配菜的层次。',
-    '把辣度加一档，试试你的极限。',
-    '去试试店里的季节限定/新品。',
-    '尝试店家的隐秘推荐（菜单外的小菜）。',
-    '把配料换成另一种吃法，体验新口感。',
+    'account.egg.visitANewStallAnd',
+    'account.egg.followYourAppetiteAndTaste',
+    'account.egg.writeAThoughtfulReviewOne',
+    'account.egg.switchYourStapleFoodAnd',
+    'account.egg.swapABiteWithA',
+    'account.egg.orderAVegetableDishAnd',
+    'account.egg.goOneSpiceLevelHigher',
+    'account.egg.tryASeasonalSpecialOr',
+    'account.egg.askForTheStallS',
+    'account.egg.tryAnIngredientInA',
   ]);
   const twist = pickOne([
-    '（若遇到难吃：请把它写进食鉴，拯救后人。）',
-    '（若遇到惊喜：收藏它，别让它消失。）',
-    '（若纠结：点小份，降低决策成本。）',
-    '（若犹豫：先拍照，证据最重要。）',
-    '（试试蘸点醋/辣油，或许别有洞天。）',
-    '（给店家一个五星并写下你最喜欢的一点。）',
+    'account.egg.ifItDisappointsReviewIt',
+    'account.egg.ifItSurprisesYouSave',
+    'account.egg.ifYouCannotDecideChoose',
+    'account.egg.ifYouHesitateTakeA',
+    'account.egg.aLittleVinegarOrChili',
+    'account.egg.giveTheStallFiveStars',
   ]);
-  fortune.value = `${opener}${action}${twist}`;
+  fortuneParts.value = [opener, action, twist];
   grant(3, 0);
   saveStats(stats.value);
 }
@@ -728,84 +786,84 @@ function nextDish() {
   if (comboCount.value > stats.value.bestCombo) stats.value.bestCombo = comboCount.value;
 
   const style = pickOne([
-    '反复横跳',
-    '究极',
-    '隐藏',
-    '限时',
-    '毕业',
-    '熬夜',
-    '早八',
-    '社恐',
-    '社牛',
-    '秘密配方',
-    '豪华版',
-    '极简派',
-    '怀旧风',
+    'account.egg.flipFlop',
+    'account.egg.ultimate',
+    'account.egg.hidden',
+    'account.egg.limitedEdition',
+    'account.egg.graduation',
+    'account.egg.allNighter',
+    'account.egg.section8AM',
+    'account.egg.introvert',
+    'account.egg.socialButterfly',
+    'account.egg.secretRecipe',
+    'account.egg.deluxe',
+    'account.egg.minimalist',
+    'account.egg.retro',
   ]);
   const base = pickOne([
-    '鸡腿',
-    '牛肉',
-    '豆腐',
-    '茄子',
-    '土豆',
-    '虾仁',
-    '西兰花',
-    '蘑菇',
-    '番茄',
-    '培根',
-    '牛排',
-    '猪肉',
-    '鸡胸',
-    '玉米',
-    '豆皮',
+    'account.egg.chickenLeg',
+    'account.egg.beef',
+    'account.egg.tofu',
+    'account.egg.eggplant',
+    'account.egg.potato',
+    'account.egg.shrimp',
+    'account.egg.broccoli',
+    'account.egg.mushroom',
+    'account.egg.tomato',
+    'account.egg.bacon',
+    'account.egg.steak',
+    'account.egg.pork',
+    'account.egg.chickenBreast',
+    'account.egg.corn',
+    'account.egg.tofuSkin',
   ]);
   const sauce = pickOne([
-    '麻辣',
-    '黑椒',
-    '咖喱',
-    '蒜香',
-    '糖醋',
-    '照烧',
-    '椒盐',
-    '酸汤',
-    '番茄',
-    '孜然',
-    '芝士',
-    '奶油',
-    '孜然辣酱',
+    'account.egg.spicySichuan',
+    'account.egg.blackPepper',
+    'account.egg.curry',
+    'account.egg.garlic',
+    'account.egg.sweetAndSour',
+    'account.egg.teriyaki',
+    'account.egg.saltAndPepper',
+    'account.egg.sourSoup',
+    'account.egg.tomato',
+    'account.egg.cumin',
+    'account.egg.cheese',
+    'account.egg.cream',
+    'account.egg.cuminChili',
   ]);
   const finish = pickOne([
-    '盖饭',
-    '拌面',
-    '焗烤',
-    '小火锅',
-    '沙拉',
-    '卷饼',
-    '手抓',
-    '双拼',
-    '捞面',
-    '煲仔',
-    '盖浇饭',
+    'account.egg.riceBowl',
+    'account.egg.mixedNoodles',
+    'account.egg.bake',
+    'account.egg.miniHotpot',
+    'account.egg.salad',
+    'account.egg.wrap',
+    'account.egg.handheldFeast',
+    'account.egg.duo',
+    'account.egg.noodleBowl',
+    'account.egg.clayPot',
+    'account.egg.sauceRiceBowl',
   ]);
 
   let extra = '';
   if (dishTapCount.value % 3 === 0) {
     extra = pickOne([
-      ' + 脆脆',
-      ' + 爆浆',
-      ' + 双倍芝士',
-      ' + 冰火同锅',
-      ' + 神秘配菜',
-      ' + 芝士脆片',
-      ' + 焦糖',
-      ' + 泡菜',
+      'account.egg.crunch',
+      'account.egg.meltingCenter',
+      'account.egg.doubleCheese',
+      'account.egg.fireAndIce',
+      'account.egg.mysterySide',
+      'account.egg.cheeseCrisps',
+      'account.egg.caramel',
+      'account.egg.kimchi',
     ]);
     stats.value.mutations += 1;
     if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
     grant(6, 1);
   }
 
-  dishName.value = `${style}${sauce}${base}${finish}${extra}`;
+  dishParts.value = [style, sauce, base, finish, extra].filter(Boolean);
 
   // 连击奖励：最多叠到 +5xp
   const comboBonus = Math.min(Math.max(comboCount.value - 1, 0), 5);
@@ -826,7 +884,7 @@ function drawTitle() {
   ensureDailyCheckin();
   stats.value.plays += 1;
   if (stats.value.coins < TITLE_COST) {
-    uni.showToast({ title: '金币不够，先去生成几道菜', icon: 'none' });
+    uni.showToast({ title: t('account.egg.needMoreCoinsGenerateA'), icon: 'none' });
     return;
   }
   stats.value.coins -= TITLE_COST;
@@ -839,33 +897,33 @@ function drawTitle() {
     stats.value.equippedTitle = drawn;
     saveStats(stats.value);
     if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
-    grant(10, 0, `获得称号：${drawn}`);
+    grant(10, 0, t('account.egg.titleEarned', { title: displayTitle(drawn) }));
     return;
   }
 
   // 重复卡：返还小额金币并给经验
   saveStats(stats.value);
-  grant(6, 1, `重复称号：${drawn}（返还+1金币）`);
+  grant(6, 1, t('account.egg.duplicateTitle1CoinRefunded', { title: displayTitle(drawn) }));
 }
 
 function equipRandomTitle() {
   ensureDailyCheckin();
   stats.value.plays += 1;
   if (stats.value.titles.length === 0) {
-    uni.showToast({ title: '你还没有称号', icon: 'none' });
+    uni.showToast({ title: t('account.egg.youHaveNoTitlesYet'), icon: 'none' });
     return;
   }
-  const t = pickOne(stats.value.titles);
-  stats.value.equippedTitle = t;
+  const selectedTitle = pickOne(stats.value.titles);
+  stats.value.equippedTitle = selectedTitle;
   saveStats(stats.value);
-  grant(1, 0, '称号已更换');
+  grant(1, 0, t('account.egg.titleChanged'));
 }
 
 function startChallenge() {
   if (challenge.value.active) return;
   ensureDailyCheckin();
   stats.value.plays += 1;
-  challengeFeedback.value = '';
+  challengeFeedbackKey.value = '';
 
   challenge.value.active = true;
   challenge.value.remaining = CHALLENGE_SECONDS;
@@ -883,42 +941,50 @@ function startChallenge() {
       challenge.value.active = false;
 
       if (challenge.value.count >= challenge.value.target) {
-        challengeFeedback.value = `挑战成功，获得 ${CHALLENGE_REWARD_COINS} 金币。`;
-        grant(20, CHALLENGE_REWARD_COINS, '挑战成功 +金币');
+        challengeFeedbackKey.value = 'account.egg.challengeCompleteYouEarnedCoins';
+        grant(20, CHALLENGE_REWARD_COINS, t('account.egg.challengeCompleteCoinsEarned'));
         if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
       } else {
-        challengeFeedback.value = '本轮未达到目标，再试一次。';
-        grant(3, 0, '挑战失败，再来一次');
+        challengeFeedbackKey.value = 'account.egg.targetMissedThisRoundTry';
+        grant(3, 0, t('account.egg.challengeMissedTryAgain'));
       }
       saveStats(stats.value);
     }
   }, 1000);
 
-  uni.showToast({ title: '挑战开始！快点生成！', icon: 'none' });
+  uni.showToast({ title: t('account.egg.challengeStartedGenerateDishes'), icon: 'none' });
   saveStats(stats.value);
 }
 
 function copyDish() {
-  const data = dishName.value || '（空）';
+  const data = dishName.value || t('account.egg.empty');
   uni.setClipboardData({
     data,
-    success: () => uni.showToast({ title: '已复制', icon: 'none' }),
+    success: () => uni.showToast({ title: t('account.egg.copied'), icon: 'none' }),
   });
 }
 
 function shareText() {
-  const data = `【食鉴隐藏实验室】\n味觉签：${fortune.value || '（空）'}\n离谱菜名：${dishName.value || '（空）'}\n称号：${title.value}（辣${heat.value}/甜${sweet.value}/咸${salty.value}/油${oily.value}）`;
+  const data = t('account.egg.tasteinsightHiddenLabFortuneAbsurd', {
+    fortune: fortune.value || t('account.egg.empty'),
+    dish: dishName.value || t('account.egg.empty'),
+    title: title.value,
+    spicy: heat.value,
+    sweet: sweet.value,
+    salty: salty.value,
+    oily: oily.value,
+  });
   uni.setClipboardData({
     data,
-    success: () => uni.showToast({ title: '已复制', icon: 'none' }),
+    success: () => uni.showToast({ title: t('account.egg.copied'), icon: 'none' }),
   });
 }
 
 function copyFortune() {
-  const data = fortune.value || '（空）';
+  const data = fortune.value || t('account.egg.empty');
   uni.setClipboardData({
     data,
-    success: () => uni.showToast({ title: '已复制', icon: 'none' }),
+    success: () => uni.showToast({ title: t('account.egg.copied'), icon: 'none' }),
   });
 }
 
@@ -966,13 +1032,13 @@ function randomizeFlavor() {
   stats.value.salty = salty.value;
   stats.value.oily = oily.value;
   saveStats(stats.value);
-  grant(5, 0, '参数已随机');
+  grant(5, 0, t('account.egg.flavorSettingsRandomized'));
 }
 
 function resetAll() {
   uni.showModal({
-    title: '清空记录',
-    content: '将清空彩蛋页统计与任务状态，是否继续？',
+    title: t('account.egg.clearRecords'),
+    content: t('account.egg.clearThisPageSStatistics'),
     success: res => {
       if (!res.confirm) return;
       stats.value = {
@@ -1000,7 +1066,7 @@ function resetAll() {
       isDarkMode.value = false;
       isSnowing.value = false;
       dishTapCount.value = 0;
-      challengeFeedback.value = '';
+      challengeFeedbackKey.value = '';
       clearFlakes();
       heat.value = 3;
       sweet.value = 2;
@@ -1015,7 +1081,7 @@ function resetAll() {
       challenge.value.target = CHALLENGE_TARGET;
       saveStats(stats.value);
       initPreview();
-      uni.showToast({ title: '已清空', icon: 'none' });
+      uni.showToast({ title: t('account.egg.cleared'), icon: 'none' });
     },
   });
 }
@@ -1035,99 +1101,99 @@ onUnload(cancelChallenge);
 
 function generateFortunePreview() {
   const opener = pickOne([
-    '今日宜：',
-    '食鉴提示：',
-    '味觉密语：',
-    '隐藏建议：',
-    '本日尝鲜：',
-    '偷偷推荐：',
-    '今日小贴士：',
+    'account.egg.todaySIdea',
+    'account.egg.tasteinsightTip',
+    'account.egg.flavorWhisper',
+    'account.egg.secretSuggestion',
+    'account.egg.todaySDiscovery',
+    'account.egg.aQuietRecommendation',
+    'account.egg.tipOfTheDay',
   ]);
   const action = pickOne([
-    '去一个你没去过的窗口点招牌菜。',
-    '把“想吃”交给直觉，不看评价先尝一口。',
-    '给一条认真评价：一句优点 + 一句建议。',
-    '尝试把主食换成另一种选择，看看饱腹感差异。',
-    '和朋友交换一口菜：共享信息密度最高。',
-    '点一道素菜，审视配菜的层次。',
-    '把辣度加一档，试试你的极限。',
-    '去试试店里的季节限定/新品。',
-    '尝试店家的隐秘推荐（菜单外的小菜）。',
-    '把配料换成另一种吃法，体验新口感。',
+    'account.egg.visitANewStallAnd',
+    'account.egg.followYourAppetiteAndTaste',
+    'account.egg.writeAThoughtfulReviewOne',
+    'account.egg.switchYourStapleFoodAnd',
+    'account.egg.swapABiteWithA',
+    'account.egg.orderAVegetableDishAnd',
+    'account.egg.goOneSpiceLevelHigher',
+    'account.egg.tryASeasonalSpecialOr',
+    'account.egg.askForTheStallS',
+    'account.egg.tryAnIngredientInA',
   ]);
   const twist = pickOne([
-    '（若遇到难吃：请把它写进食鉴，拯救后人。）',
-    '（若遇到惊喜：收藏它，别让它消失。）',
-    '（若纠结：点小份，降低决策成本。）',
-    '（若犹豫：先拍照，证据最重要。）',
-    '（试试蘸点醋/辣油，或许别有洞天。）',
-    '（给店家一个五星并写下你最喜欢的一点。）',
+    'account.egg.ifItDisappointsReviewIt',
+    'account.egg.ifItSurprisesYouSave',
+    'account.egg.ifYouCannotDecideChoose',
+    'account.egg.ifYouHesitateTakeA',
+    'account.egg.aLittleVinegarOrChili',
+    'account.egg.giveTheStallFiveStars',
   ]);
-  fortune.value = `${opener}${action}${twist}`;
+  fortuneParts.value = [opener, action, twist];
 }
 
 function generateDishPreview() {
   const style = pickOne([
-    '反复横跳',
-    '究极',
-    '隐藏',
-    '限时',
-    '毕业',
-    '熬夜',
-    '早八',
-    '社恐',
-    '社牛',
-    '秘密配方',
-    '豪华版',
-    '极简派',
-    '怀旧风',
+    'account.egg.flipFlop',
+    'account.egg.ultimate',
+    'account.egg.hidden',
+    'account.egg.limitedEdition',
+    'account.egg.graduation',
+    'account.egg.allNighter',
+    'account.egg.section8AM',
+    'account.egg.introvert',
+    'account.egg.socialButterfly',
+    'account.egg.secretRecipe',
+    'account.egg.deluxe',
+    'account.egg.minimalist',
+    'account.egg.retro',
   ]);
   const base = pickOne([
-    '鸡腿',
-    '牛肉',
-    '豆腐',
-    '茄子',
-    '土豆',
-    '虾仁',
-    '西兰花',
-    '蘑菇',
-    '番茄',
-    '培根',
-    '牛排',
-    '猪肉',
-    '鸡胸',
-    '玉米',
-    '豆皮',
+    'account.egg.chickenLeg',
+    'account.egg.beef',
+    'account.egg.tofu',
+    'account.egg.eggplant',
+    'account.egg.potato',
+    'account.egg.shrimp',
+    'account.egg.broccoli',
+    'account.egg.mushroom',
+    'account.egg.tomato',
+    'account.egg.bacon',
+    'account.egg.steak',
+    'account.egg.pork',
+    'account.egg.chickenBreast',
+    'account.egg.corn',
+    'account.egg.tofuSkin',
   ]);
   const sauce = pickOne([
-    '麻辣',
-    '黑椒',
-    '咖喱',
-    '蒜香',
-    '糖醋',
-    '照烧',
-    '椒盐',
-    '酸汤',
-    '番茄',
-    '孜然',
-    '芝士',
-    '奶油',
-    '孜然辣酱',
+    'account.egg.spicySichuan',
+    'account.egg.blackPepper',
+    'account.egg.curry',
+    'account.egg.garlic',
+    'account.egg.sweetAndSour',
+    'account.egg.teriyaki',
+    'account.egg.saltAndPepper',
+    'account.egg.sourSoup',
+    'account.egg.tomato',
+    'account.egg.cumin',
+    'account.egg.cheese',
+    'account.egg.cream',
+    'account.egg.cuminChili',
   ]);
   const finish = pickOne([
-    '盖饭',
-    '拌面',
-    '焗烤',
-    '小火锅',
-    '沙拉',
-    '卷饼',
-    '手抓',
-    '双拼',
-    '捞面',
-    '煲仔',
-    '盖浇饭',
+    'account.egg.riceBowl',
+    'account.egg.mixedNoodles',
+    'account.egg.bake',
+    'account.egg.miniHotpot',
+    'account.egg.salad',
+    'account.egg.wrap',
+    'account.egg.handheldFeast',
+    'account.egg.duo',
+    'account.egg.noodleBowl',
+    'account.egg.clayPot',
+    'account.egg.sauceRiceBowl',
   ]);
-  dishName.value = `${style}${sauce}${base}${finish}`;
+  dishParts.value = [style, sauce, base, finish];
 }
 
 function initPreview() {

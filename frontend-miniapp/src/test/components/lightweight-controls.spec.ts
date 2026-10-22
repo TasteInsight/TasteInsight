@@ -58,8 +58,7 @@ test('navigation buttons suppress the native outline while preserving keyboard f
     declarations('pages/canteen/components/CanteenWindowList.vue', '.canteen-window::after').border
   ).toBe('0');
   expect(
-    declarations('pages/canteen/components/CanteenWindowList.vue', '.canteen-window:focus-visible')
-      .outline
+    declarations('styles/list-interaction.css', '.list-row-action:focus-visible::before').outline
   ).toBe('2px solid #660874');
   for (const [file, selector] of [
     ['pages/index/index.vue', '.home-text-button'],

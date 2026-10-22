@@ -67,7 +67,11 @@ export interface User {
   avatar: string;
   bio?: string;
   capabilities?: { canContribute: boolean };
-  publicProfileSubmission?: { status: string; fields: Record<string, string | null>; reason: string | null } | null;
+  publicProfileSubmission?: {
+    status: string;
+    fields: Record<string, string | null>;
+    reason: string | null;
+  } | null;
   preferences?: UserPreference;
   settings?: UserSettings;
   allergens?: string[];
@@ -913,10 +917,28 @@ export interface DishUploadData {
 }
 
 export type DishContributionStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
-export type DishContributionField = 'name' | 'tags' | 'price' | 'priceUnit' | 'description' | 'images'
-  | 'ingredients' | 'allergens' | 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness'
-  | 'calories' | 'protein' | 'carbohydrate' | 'fat'
-  | 'windowId' | 'windowName' | 'windowNumber' | 'availableMealTime' | 'availableDates';
+export type DishContributionField =
+  | 'name'
+  | 'tags'
+  | 'price'
+  | 'priceUnit'
+  | 'description'
+  | 'images'
+  | 'ingredients'
+  | 'allergens'
+  | 'spicyLevel'
+  | 'sweetness'
+  | 'saltiness'
+  | 'oiliness'
+  | 'calories'
+  | 'protein'
+  | 'carbohydrate'
+  | 'fat'
+  | 'windowId'
+  | 'windowName'
+  | 'windowNumber'
+  | 'availableMealTime'
+  | 'availableDates';
 
 /**
  * 评价列表扩展数据
@@ -1229,16 +1251,26 @@ export interface ComponentMealPlanDraftPreviewData {
   dishes: Dish[];
 }
 
-export type MealPlanChangeNotice =
+export type MealPlanChangeNotice = (
   | {
       kind: 'price';
       dishId: string;
       message: string;
       previousPriceLabel: string;
       unitChanged: boolean;
+      priceChange?: {
+        previousPrice: number;
+        currentPrice: number;
+        previousUnit: string;
+        currentUnit: string;
+      };
     }
   | { kind: 'status' | 'supply'; dishId: string; message: string }
-  | { kind: 'budget' | 'metadata'; message: string; dishId?: undefined };
+  | { kind: 'budget' | 'metadata'; message: string; dishId?: undefined }
+) & {
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
+};
 
 export interface ComponentMealPlanDraft {
   changeNotices?: MealPlanChangeNotice[];

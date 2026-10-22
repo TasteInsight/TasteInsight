@@ -27,12 +27,14 @@
           :class="{ 'dish-list-search--before-state': headerError && !dishesInitialized }"
           class="dish-list-search"
         >
-          <SearchBar placeholder="搜索这个窗口的菜品" :search-url="searchUrl" />
+          <SearchBar :placeholder="t('food.searchDishesAtThisCounter')" :search-url="searchUrl" />
         </view>
 
         <template v-if="!headerError || dishesInitialized">
           <!-- 菜品列表 -->
-          <view class="dish-list-heading"><text class="dish-list-title">窗口菜品</text></view>
+          <view class="dish-list-heading"
+            ><text class="dish-list-title">{{ t('food.counterDishes') }}</text></view
+          >
           <view class="dish-list-content page-state-content" :aria-busy="loading || loadingMore">
             <AsyncState
               v-if="windowInfo && !headerError"
@@ -40,8 +42,8 @@
               :initialized="dishesInitialized"
               :has-content="!!dishes.length"
               :error="errorIsAppend ? '' : error"
-              loading-title="正在加载菜品…"
-              empty-title="暂无菜品信息"
+              :loading-title="t('food.loadingDishes')"
+              :empty-title="t('food.noDishInformationYet')"
               empty-icon="search"
               @retry="retryDishes"
             />
@@ -57,7 +59,7 @@
                 :loading="loadingMore"
                 has-content
                 :error="errorIsAppend ? error : ''"
-                refreshing-title="正在加载更多…"
+                :refreshing-title="t('food.loadingMore')"
                 @retry="retryDishes"
               />
             </view>
@@ -67,10 +69,12 @@
               class="dish-list-footer"
             >
               <template v-if="hasMore">
-                <button class="dish-list-action" @click="onLoadMore">加载更多</button>
+                <button class="dish-list-action" @click="onLoadMore">
+                  {{ t('food.loadMore') }}
+                </button>
               </template>
               <template v-else>
-                <text>没有更多了</text>
+                <text>{{ t('food.youVeReachedTheEnd') }}</text>
               </template>
             </view>
           </view>
@@ -81,6 +85,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { useSessionRefresh } from '@/composables/use-session-refresh';
 import { computed, ref } from 'vue';
 import { onLoad, onShow } from '@dcloudio/uni-app';
@@ -113,7 +118,7 @@ const {
 const currentWindowId = ref('');
 const searchUrl = computed(
   () =>
-    `/pages/search/index?windowId=${encodeURIComponent(currentWindowId.value)}&scopeName=${encodeURIComponent(windowInfo.value?.name || '当前窗口')}`
+    `/pages/search/index?windowId=${encodeURIComponent(currentWindowId.value)}&scopeName=${encodeURIComponent(windowInfo.value?.name || t('food.thisCounter'))}`
 );
 const refresherTriggered = ref(false);
 

@@ -6,18 +6,18 @@
     <EmptyState
       v-if="!userStore.isLoggedIn"
       class="page-state-region"
-      title="登录后申请新增菜品"
+      :title="t('food.signInToSuggestADish')"
       icon="edit"
-      action-text="登录"
+      :action-text="t('food.signIn')"
       @action="openLogin"
     />
     <EmptyState
       v-else-if="!userStore.userInfo?.capabilities?.canContribute"
       class="page-state-region"
-      title="认证后可提交菜品申请"
-      description="完成校园身份认证后，即可申请新增或补充菜品资料。"
+      :title="t('food.verifyYourIdentityToSuggestDishes')"
+      :description="t('food.verifyYourCampusIdentityToSuggestANew')"
       icon="shield"
-      action-text="去认证"
+      :action-text="t('food.verifyIdentity')"
       @action="openIdentity"
     />
     <view v-else-if="initializationError" class="error-feedback page-state-region" role="alert">
@@ -27,24 +27,36 @@
         hover-class="error-feedback__action--pressed"
         @tap="initialize()"
       >
-        重新加载
+        {{ t('food.reload') }}
       </button>
     </view>
-    <AsyncState v-else-if="initializing" loading loading-title="正在加载菜品资料…" />
+    <AsyncState
+      v-else-if="initializing"
+      loading
+      :loading-title="t('food.loadingDishInformation')"
+    />
     <template v-else>
       <view v-if="submitted" class="submission-success" role="status">
-        <text class="success-title">{{ targetDishId ? '建议已提交' : '申请已提交' }}</text>
-        <text>{{ targetDishId ? '补充建议' : '新增菜品申请' }}已送交审核，即将前往我的上传。</text>
+        <text class="success-title">{{
+          targetDishId ? t('food.updateSubmitted') : t('food.submissionSent')
+        }}</text>
+        <text>{{
+          targetDishId ? t('food.updateReviewRedirect') : t('food.newDishReviewRedirect')
+        }}</text>
       </view>
-      <text v-if="rejectionReason" class="field-error">未通过原因：{{ rejectionReason }}</text>
-      <text v-if="readOnly" class="field-error">当前记录不可编辑，请到我的上传查看状态。</text>
+      <text v-if="rejectionReason" class="field-error">{{
+        t('food.rejectionReasonText', { reason: rejectionReason })
+      }}</text>
+      <text v-if="readOnly" class="field-error">{{
+        t('food.thisRecordIsReadOnlyCheckItsStatus')
+      }}</text>
       <view v-if="conflict" id="contribution-conflict" role="alert" class="conflict-state">
         <text class="field-error">{{
           conflict === 'target'
-            ? '菜品资料已更新。草稿仍保留，可放弃本次修改并加载最新资料。'
+            ? t('food.theDishHasChangedYourDraftIsSaved')
             : conflict === 'upload'
-              ? '上传记录或目标菜品资料已更新。可放弃本机修改，重新加载资料。'
-              : '上传记录已存在，请先查看我的上传。'
+              ? t('food.theUploadOrDishHasChangedDiscardLocal')
+              : t('food.anUploadAlreadyExistsCheckMyUploadsFirst')
         }}</text>
         <button
           v-if="canDiscardDraft"
@@ -52,7 +64,7 @@
           :disabled="leaving"
           @tap="discardDraft"
         >
-          放弃草稿并加载最新资料
+          {{ t('food.discardDraftAndReloadLatestDetails') }}
         </button>
       </view>
       <button
@@ -60,30 +72,31 @@
         class="text-action"
         @tap="openMyUploads"
       >
-        查看我的上传
+        {{ t('food.viewMyUploads') }}
       </button>
-      <text v-if="awaitingConfirmation" class="field-hint" role="status"
-        >提交结果待确认。重试不会重复创建记录。</text
-      >
+      <text v-if="awaitingConfirmation" class="field-hint" role="status">{{
+        t('food.submissionStatusIsPendingRetrySafelyToConfirm')
+      }}</text>
       <view class="form-section">
         <view id="field-name" class="form-field">
           <label for="dish-name" class="field-label"
-            >菜品名称<text class="required-marker" aria-hidden="true">*</text></label
+            >{{ t('food.dishName')
+            }}<text class="required-marker" aria-hidden="true">*</text></label
           >
           <input
             id="dish-name"
             v-model="formData.name"
             class="form-input"
-            aria-label="菜品名称"
+            :aria-label="t('food.dishName')"
             aria-required="true"
-            placeholder="例如：番茄炒蛋"
+            :placeholder="t('food.forExampleTomatoAndScrambledEggs')"
             :disabled="formLocked"
           />
           <text v-if="fieldErrors.name" class="field-error">{{ fieldErrors.name }}</text>
         </view>
         <view id="field-price" class="form-field">
           <label for="dish-price" class="field-label"
-            >价格<text class="required-marker" aria-hidden="true">*</text></label
+            >{{ t('food.price') }}<text class="required-marker" aria-hidden="true">*</text></label
           >
           <view class="price-fields">
             <view class="price-value"
@@ -93,7 +106,7 @@
                 v-model.number="formData.price"
                 class="form-input"
                 type="digit"
-                aria-label="菜品价格"
+                :aria-label="t('food.dishPrice')"
                 aria-required="true"
                 placeholder="0.00"
                 :disabled="formLocked"
@@ -102,8 +115,8 @@
             ><input
               v-model="formData.priceUnit"
               class="form-input price-unit"
-              aria-label="价格单位"
-              placeholder="份"
+              :aria-label="t('food.priceUnit')"
+              :placeholder="t('food.serving')"
               :disabled="formLocked"
             />
           </view>
@@ -112,15 +125,15 @@
       </view>
 
       <view class="form-section">
-        <text class="section-title">位置与供应</text>
+        <text class="section-title">{{ t('food.locationAndAvailability') }}</text>
         <view id="field-canteen" class="form-field">
-          <text class="field-label" aria-label="所在食堂，必填"
-            >所在食堂<text class="required-marker" aria-hidden="true">*</text></text
+          <text class="field-label" :aria-label="t('food.canteenRequired')"
+            >{{ t('food.canteen') }}<text class="required-marker" aria-hidden="true">*</text></text
           >
-          <text v-if="targetDishId" class="field-hint"
-            >{{ formData.canteenName }}（补充资料时不可更换食堂）</text
-          >
-          <text v-else-if="loading" class="field-hint">正在加载食堂…</text>
+          <text v-if="targetDishId" class="field-hint">{{
+            t('food.fixedCanteen', { canteen: formData.canteenName })
+          }}</text>
+          <text v-else-if="loading" class="field-hint">{{ t('food.loadingCanteen') }}</text>
           <view v-else-if="canteenError" class="error-feedback" role="alert">
             <text class="error-feedback__message">{{ canteenError }}</text
             ><button
@@ -128,12 +141,14 @@
               hover-class="error-feedback__action--pressed"
               @tap="loadCanteenList"
             >
-              重新加载
+              {{ t('food.reload') }}
             </button>
           </view>
           <view v-else-if="!canteenList.length" class="location-state">
-            <text class="field-hint">暂时没有可选食堂。</text
-            ><button class="text-action" @tap="loadCanteenList">刷新食堂</button>
+            <text class="field-hint">{{ t('food.noCanteensAvailableYet') }}</text
+            ><button class="text-action" @tap="loadCanteenList">
+              {{ t('food.refreshCanteens') }}
+            </button>
           </view>
           <view v-else class="location-grid">
             <button
@@ -151,7 +166,7 @@
           <text v-if="fieldErrors.canteen" class="field-error">{{ fieldErrors.canteen }}</text>
         </view>
         <view v-if="selectedCanteen" class="form-field">
-          <text class="field-label">所在窗口（选填）</text>
+          <text class="field-label">{{ t('food.counterOptional') }}</text>
           <view v-if="windowList.length" class="location-grid">
             <button
               class="choice location-choice"
@@ -160,7 +175,7 @@
               :disabled="formLocked"
               @tap="clearWindow"
             >
-              暂不选择
+              {{ t('food.skipForNow') }}
             </button>
             <button
               v-for="window in windowList"
@@ -173,15 +188,18 @@
             >
               <text>{{ window.name }}</text
               ><text v-if="window.floor" class="window-floor">{{
-                window.floor.name || window.floor.level + '楼'
+                window.floor.name || t('food.floorNumber', { floor: window.floor.level })
               }}</text>
             </button>
           </view>
-          <text v-else class="field-hint">该食堂暂无窗口信息，可按食堂提交申请。</text>
+          <text v-else class="field-hint">{{
+            t('food.noCounterInformationIsAvailableYouCanSubmit')
+          }}</text>
         </view>
         <view id="field-availableMealTime" class="form-field">
-          <text class="field-label" aria-label="供应时段，必填"
-            >供应时段<text class="required-marker" aria-hidden="true">*</text></text
+          <text class="field-label" :aria-label="t('food.mealTimesRequired')"
+            >{{ t('food.mealTimes2')
+            }}<text class="required-marker" aria-hidden="true">*</text></text
           >
           <view class="choice-list">
             <button
@@ -204,7 +222,9 @@
 
       <view class="form-section">
         <view class="section-heading"
-          ><text class="section-title">{{ targetDishId ? '补充照片' : '菜品照片' }}</text
+          ><text class="section-title">{{
+            targetDishId ? t('food.addPhotos2') : t('food.dishPhotos')
+          }}</text
           ><text class="image-count">{{ formData.images?.length || 0 }}/9</text></view
         >
         <view class="image-list">
@@ -213,13 +233,15 @@
             <button
               v-if="!isExistingImage(image)"
               class="text-action image-remove"
-              :aria-label="'移除第 ' + (index + 1) + ' 张图片'"
+              :aria-label="t('food.removePhotoNumber', { number: index + 1 })"
               :disabled="formLocked"
               @tap="removeImage(index)"
             >
-              移除
+              {{ t('food.remove') }}
             </button>
-            <text v-else class="field-hint existing-image-label">已有图片</text>
+            <text v-else class="field-hint existing-image-label">{{
+              t('food.existingPhoto')
+            }}</text>
           </view>
           <button
             v-if="!formData.images || formData.images.length < 9"
@@ -227,7 +249,7 @@
             :disabled="formLocked"
             @tap="chooseImages"
           >
-            添加图片
+            {{ t('food.addPhotos') }}
           </button>
         </view>
       </view>
@@ -237,7 +259,7 @@
         :aria-expanded="optionalExpanded"
         @tap="optionalExpanded = !optionalExpanded"
       >
-        <text>补充信息（选填）</text
+        <text>{{ t('food.additionalDetailsOptional') }}</text
         ><UiIcon
           name="chevron-down"
           :class="{ 'optional-expanded': optionalExpanded }"
@@ -246,45 +268,60 @@
       </button>
       <template v-if="optionalExpanded">
         <view class="form-section">
-          <text class="section-title">每份营养信息（选填）</text>
-          <view v-for="field in nutritionFields" :id="`field-${field.key}`" :key="field.key" class="form-field">
+          <text class="section-title">{{ t('food.nutritionPerServingOptional') }}</text>
+          <view
+            v-for="field in nutritionFields"
+            :id="`field-${field.key}`"
+            :key="field.key"
+            class="form-field"
+          >
             <label :for="`dish-${field.key}`" class="field-label">{{ field.label }}</label>
-            <input :id="`dish-${field.key}`" v-model="formData[field.key]" type="digit" class="form-input" :aria-label="field.label" placeholder="未提供" :disabled="formLocked" />
-            <text v-if="fieldErrors[field.key]" class="field-error">{{ fieldErrors[field.key] }}</text>
+            <input
+              :id="`dish-${field.key}`"
+              v-model="formData[field.key]"
+              type="digit"
+              class="form-input"
+              :aria-label="field.label"
+              :placeholder="t('food.notProvided')"
+              :disabled="formLocked"
+            />
+            <text v-if="fieldErrors[field.key]" class="field-error">{{
+              fieldErrors[field.key]
+            }}</text>
           </view>
         </view>
         <view class="form-section">
-          <label for="dish-description" class="field-label">菜品介绍</label>
+          <label for="dish-description" class="field-label">{{ t('food.dishDescription') }}</label>
           <textarea
             id="dish-description"
             v-model="formData.description"
             class="form-input description-input"
-            aria-label="菜品介绍"
-            placeholder="口味、分量或主要食材"
+            :aria-label="t('food.dishDescription')"
+            :placeholder="t('food.tastePortionSizeOrMainIngredients')"
             :disabled="formLocked"
           />
         </view>
         <view class="form-section">
-          <text class="section-title">菜品标签</text>
+          <text class="section-title">{{ t('food.dishTags') }}</text>
           <view class="choice-list badge-list">
             <button
               v-for="tag in commonTags"
-              :key="tag"
+              :key="tag.value"
               class="choice badge-choice"
-              :class="{ 'is-selected': formData.tags?.includes(tag) }"
-              :aria-pressed="formData.tags?.includes(tag)"
+              :class="{ 'is-selected': formData.tags?.includes(tag.value) }"
+              :aria-pressed="formData.tags?.includes(tag.value)"
               :disabled="formLocked"
-              @tap="toggleTag(tag)"
+              @tap="toggleTag(tag.value)"
             >
-              <text class="badge-label">{{ tag }}</text>
+              <text class="badge-label">{{ tag.label }}</text>
             </button>
           </view>
           <view class="custom-input">
             <input
               v-model="customTagInput"
               class="form-input"
-              aria-label="自定义标签"
-              placeholder="添加自定义标签"
+              :aria-label="t('food.customTag')"
+              :placeholder="t('food.addCustomTag')"
               :disabled="formLocked"
               @confirm="addCustomTag"
             />
@@ -293,7 +330,7 @@
               :disabled="formLocked || !customTagInput.trim()"
               @tap="addCustomTag"
             >
-              添加
+              {{ t('food.add') }}
             </button>
           </view>
           <view v-if="customTags.length" class="custom-tags">
@@ -301,7 +338,7 @@
               ><text class="custom-tag-label">{{ tag }}</text
               ><button
                 class="custom-tag-remove"
-                :aria-label="'移除标签 ' + tag"
+                :aria-label="t('food.removeTagNamed', { tag })"
                 :disabled="formLocked"
                 @tap="removeCustomTag(tag)"
               >
@@ -311,27 +348,27 @@
         </view>
 
         <view class="form-section">
-          <text class="section-title">已知过敏原</text>
-          <text class="field-hint">仅填写已了解的原料信息；不确定时可留空。</text>
+          <text class="section-title">{{ t('food.knownAllergens') }}</text>
+          <text class="field-hint">{{ t('food.enterIngredientsYouKnowAboutLeaveBlankIf') }}</text>
           <view class="choice-list badge-list">
             <button
               v-for="allergen in commonAllergens"
-              :key="allergen"
+              :key="allergen.value"
               class="choice badge-choice"
-              :class="{ 'is-selected': formData.allergens?.includes(allergen) }"
-              :aria-pressed="formData.allergens?.includes(allergen)"
+              :class="{ 'is-selected': formData.allergens?.includes(allergen.value) }"
+              :aria-pressed="formData.allergens?.includes(allergen.value)"
               :disabled="formLocked"
-              @tap="toggleAllergen(allergen)"
+              @tap="toggleAllergen(allergen.value)"
             >
-              <text class="badge-label">{{ allergen }}</text>
+              <text class="badge-label">{{ allergen.label }}</text>
             </button>
           </view>
           <view class="custom-input">
             <input
               v-model="customAllergenInput"
               class="form-input"
-              aria-label="自定义过敏原"
-              placeholder="添加自定义过敏原"
+              :aria-label="t('food.customAllergen')"
+              :placeholder="t('food.addCustomAllergen')"
               :disabled="formLocked"
               @confirm="addCustomAllergen"
             />
@@ -340,7 +377,7 @@
               :disabled="formLocked || !customAllergenInput.trim()"
               @tap="addCustomAllergen"
             >
-              添加
+              {{ t('food.add') }}
             </button>
           </view>
           <view v-if="customAllergens.length" class="custom-tags">
@@ -348,7 +385,7 @@
               ><text class="custom-tag-label">{{ allergen }}</text
               ><button
                 class="custom-tag-remove"
-                :aria-label="'移除过敏原 ' + allergen"
+                :aria-label="t('food.removeAllergenNamed', { allergen })"
                 :disabled="formLocked"
                 @tap="removeCustomAllergen(allergen)"
               >
@@ -368,19 +405,19 @@
           {{
             submitted
               ? targetDishId
-                ? '建议已提交，等待审核'
-                : '申请已提交，等待审核'
+                ? t('food.updateSuggestedAwaitingReview2')
+                : t('food.dishSuggestedAwaitingReview')
               : submitting
-                ? '提交中…'
+                ? t('food.submitting')
                 : awaitingConfirmation
-                  ? '重试确认结果'
+                  ? t('food.retryConfirmation')
                   : uploadId
                     ? targetDishId
-                      ? '重新提交建议'
-                      : '重新提交申请'
+                      ? t('food.resubmitUpdate')
+                      : t('food.resubmitDish')
                     : targetDishId
-                      ? '提交补充建议'
-                      : '申请新增菜品'
+                      ? t('food.submitUpdateSuggestion')
+                      : t('food.suggestADish')
           }}
         </button>
         <view
@@ -389,19 +426,23 @@
           role="status"
         >
           <text class="draft-label">{{
-            savingDraft ? '保存中…' : draftSaved ? '草稿已保存' : '草稿未保存'
+            savingDraft
+              ? t('food.saving')
+              : draftSaved
+                ? t('food.draftSaved')
+                : t('food.draftUnsaved')
           }}</text>
           <view class="draft-actions">
             <button v-if="!draftSaved" class="text-action" :disabled="formLocked" @tap="saveDraft">
-              保存
+              {{ t('food.save') }}
             </button>
             <button
               class="text-action draft-discard"
               :disabled="!canDiscardDraft || leaving"
-              aria-label="清除本机草稿"
+              :aria-label="t('food.clearLocalDraft')"
               @tap="discardDraft"
             >
-              清除
+              {{ t('food.clear') }}
             </button>
           </view>
         </view>
@@ -423,9 +464,10 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import EmptyState from '@/components/EmptyState.vue';
 import { openLogin } from '@/utils/login-navigation';
-import { onMounted, ref, onUnmounted, nextTick } from 'vue';
+import { onMounted, ref, onUnmounted, nextTick, watchEffect } from 'vue';
 import { onBackPress, onHide } from '@dcloudio/uni-app';
 import { nutritionFields, useAddDish } from './composables/use-add-dish';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -506,10 +548,15 @@ onMounted(async () => {
     targetDishId: options.targetDishId,
     uploadId: options.uploadId,
   });
-  if (active)
-    uni.setNavigationBarTitle({
-      title: uploadId.value ? '修改申请资料' : targetDishId.value ? '申请补充资料' : '申请新增菜品',
-    });
+});
+watchEffect(() => {
+  uni.setNavigationBarTitle({
+    title: uploadId.value
+      ? t('food.editDishSubmission')
+      : targetDishId.value
+        ? t('food.suggestAnUpdate')
+        : t('food.suggestADish'),
+  });
 });
 onHide(() => {
   if (dirty.value && !busy.value && !awaitingConfirmation.value) void saveDraft();
@@ -519,7 +566,7 @@ const previewImage = (index: number) =>
 const openMyUploads = () =>
   uni.navigateTo({
     url:
-      '/pages/profile/my-uploads/index' +
+      '/pages/profile/records/my-uploads/index' +
       (uploadId.value ? '?id=' + encodeURIComponent(uploadId.value) : ''),
   });
 const discardDraft = async () => {
@@ -529,11 +576,11 @@ const discardDraft = async () => {
   try {
     const confirmed = await new Promise<boolean>(resolve =>
       uni.showModal({
-        title: conflict.value ? '放弃本机修改' : '清除本机草稿',
+        title: conflict.value ? t('food.discardLocalChanges') : t('food.clearLocalDraft'),
         content: conflict.value
-          ? '当前修改将被清除，并加载最新资料。已提交的资料不受影响。'
-          : '只清除此条草稿，已提交的资料不受影响。',
-        confirmText: conflict.value ? '放弃并加载' : '清除',
+          ? t('food.discardLocalChangesAndLoadTheLatestDetails')
+          : t('food.clearThisLocalDraftSubmittedInformationWillBe'),
+        confirmText: conflict.value ? t('food.discardAndReload') : t('food.clear'),
         success: result => resolve(result.confirm),
         fail: () => resolve(false),
       })
@@ -566,10 +613,10 @@ const requestLeave = async () => {
     if (dirty.value && !draftSaved.value && !awaitingConfirmation.value) {
       const confirmed = await new Promise<boolean>(resolve =>
         uni.showModal({
-          title: '保留草稿',
-          content: '保存到本机后返回，下次可继续编辑。',
-          confirmText: '保存并返回',
-          cancelText: '继续编辑',
+          title: t('food.keepDraft'),
+          content: t('food.saveOnThisDeviceAndReturnYouCan'),
+          confirmText: t('food.saveAndReturn'),
+          cancelText: t('food.keepEditing'),
           success: result => resolve(result.confirm),
           fail: () => resolve(false),
         })

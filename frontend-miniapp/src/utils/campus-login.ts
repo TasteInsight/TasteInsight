@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import type { CampusLoginStart, CampusLoginTicket } from '@/api/modules/auth';
 
 const STORAGE_KEY = 'campusLoginPendingAttempt';
@@ -36,9 +37,9 @@ export function readCampusLoginPending(): PendingCampusLogin | null {
 }
 export function campusLoginTicket(code: string): CampusLoginTicket {
   const pending = readCampusLoginPending();
-  if (!pending) throw new Error('本次登录已过期，请重新发起');
+  if (!pending) throw new Error(t('account.common.thisSignInRequestExpired'));
   const handoffCode = code.trim();
-  if (!validCode(handoffCode)) throw new Error('请粘贴校方授权完成页面的完整确认码');
+  if (!validCode(handoffCode)) throw new Error(t('account.common.pasteTheFullConfirmationCode'));
   return { attemptId: pending.attemptId, loginVerifier: pending.loginVerifier, handoffCode };
 }
 export function campusLoginMessage(

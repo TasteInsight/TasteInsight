@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getMyUploads, getMyUpload, withdrawMyUpload } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -100,7 +101,7 @@ export function useMyUploads() {
         const response = await getMyUploads({ page: current, pageSize: 10 });
         if (!isCurrent() || request !== version) return false;
         if (response.code !== 200 || !response.data)
-          throw new Error(response.message || '上传记录加载失败');
+          throw new Error(response.message || t('account.profile.unableToLoadUploads'));
         next.push(...response.data.items);
         loaded = current;
         totalPages = response.data.meta.totalPages;
@@ -124,9 +125,12 @@ export function useMyUploads() {
           const response = await getMyUpload(focusId.value);
           if (!isCurrent() || request !== version) return false;
           if (response.code !== 200 || !response.data)
-            throw Object.assign(new Error(response.message || '上传详情加载失败'), {
-              statusCode: response.code,
-            });
+            throw Object.assign(
+              new Error(response.message || t('account.profile.unableToLoadUploadDetails')),
+              {
+                statusCode: response.code,
+              }
+            );
           focusedUpload.value = uploadSummary(response.data);
         } catch (cause: any) {
           if (!isCurrent() || request !== version) return false;
@@ -170,7 +174,7 @@ export function useMyUploads() {
       const response = await withdrawMyUpload(item.id, item.revision);
       if (!isCurrent()) return false;
       if (response.code !== 200 && response.code !== 201)
-        throw new Error(response.message || '撤回失败');
+        throw new Error(response.message || t('account.profile.unableToWithdrawSubmission'));
       version++;
       loading.value = false;
       replace({ ...item, status: 'withdrawn', revision: item.revision + 1 });

@@ -1,64 +1,255 @@
+import { t } from '@/i18n';
 import { ref, type Ref } from 'vue';
 import type { GetDishesRequest } from '@/types/api';
 
 export const useFilter = () => {
   const filterOptions = [
-    { key: 'price', label: '预算' },
-    { key: 'rating', label: '评分' },
-    { key: 'mealTime', label: '餐时' },
-    { key: 'taste', label: '口味' },
-    { key: 'meat', label: '荤素' },
-    { key: 'tag', label: '标签' },
-    { key: 'avoid', label: '忌口' },
+    {
+      key: 'price',
+      get label() {
+        return t('food.budget');
+      },
+    },
+    {
+      key: 'rating',
+      get label() {
+        return t('food.rating');
+      },
+    },
+    {
+      key: 'mealTime',
+      get label() {
+        return t('food.mealTime');
+      },
+    },
+    {
+      key: 'taste',
+      get label() {
+        return t('food.taste');
+      },
+    },
+    {
+      key: 'meat',
+      get label() {
+        return t('food.meat');
+      },
+    },
+    {
+      key: 'tag',
+      get label() {
+        return t('food.tags');
+      },
+    },
+    {
+      key: 'avoid',
+      get label() {
+        return t('food.avoid2');
+      },
+    },
   ];
 
   const priceOptions = [
-    { label: '不限', value: '' },
-    { label: '10元以下', value: '0-10' },
-    { label: '10-15元', value: '10-15' },
-    { label: '15-20元', value: '15-20' },
-    { label: '20元以上', value: '20-999' },
+    {
+      get label() {
+        return t('food.any');
+      },
+      value: '',
+    },
+    {
+      get label() {
+        return t('food.under10');
+      },
+      value: '0-10',
+    },
+    {
+      get label() {
+        return t('food.1015');
+      },
+      value: '10-15',
+    },
+    {
+      get label() {
+        return t('food.1520');
+      },
+      value: '15-20',
+    },
+    {
+      get label() {
+        return t('food.over20');
+      },
+      value: '20-999',
+    },
   ];
 
   const ratingOptions = [
-    { label: '不限', value: 0 },
-    { label: '4.5分以上', value: 4.5 },
-    { label: '4.0分以上', value: 4.0 },
-    { label: '3.5分以上', value: 3.5 },
+    {
+      get label() {
+        return t('food.any');
+      },
+      value: 0,
+    },
+    {
+      get label() {
+        return t('food.45OrHigher');
+      },
+      value: 4.5,
+    },
+    {
+      get label() {
+        return t('food.40OrHigher');
+      },
+      value: 4.0,
+    },
+    {
+      get label() {
+        return t('food.35OrHigher');
+      },
+      value: 3.5,
+    },
   ];
 
   const mealTimeOptions = [
-    { label: '早餐', value: 'breakfast' },
-    { label: '午餐', value: 'lunch' },
-    { label: '晚餐', value: 'dinner' },
-    { label: '夜宵', value: 'nightsnack' },
+    {
+      get label() {
+        return t('food.breakfast');
+      },
+      value: 'breakfast',
+    },
+    {
+      get label() {
+        return t('food.lunch');
+      },
+      value: 'lunch',
+    },
+    {
+      get label() {
+        return t('food.dinner');
+      },
+      value: 'dinner',
+    },
+    {
+      get label() {
+        return t('food.lateNight');
+      },
+      value: 'nightsnack',
+    },
   ];
 
   const meatOptions = [
-    { label: '纯素', value: '素' },
-    { label: '纯荤', value: '荤' },
-    { label: '荤素搭配', value: '荤素' },
-    { label: '海鲜', value: '海鲜' },
+    {
+      get label() {
+        return t('food.vegetarian');
+      },
+      value: '素',
+    },
+    {
+      get label() {
+        return t('food.meatOnly');
+      },
+      value: '荤',
+    },
+    {
+      get label() {
+        return t('food.meatAndVegetables');
+      },
+      value: '荤素',
+    },
+    {
+      get label() {
+        return t('food.seafood');
+      },
+      value: '海鲜',
+    },
   ];
 
   const tagOptions = [
-    { label: '招牌', value: '招牌' },
-    { label: '新品', value: '新品' },
-    { label: '热销', value: '热销' },
-    { label: '特价', value: '特价' },
-    { label: '清真', value: '清真' },
-    { label: '健康', value: '健康' },
+    {
+      get label() {
+        return t('food.signature');
+      },
+      value: '招牌',
+    },
+    {
+      get label() {
+        return t('food.new');
+      },
+      value: '新品',
+    },
+    {
+      get label() {
+        return t('food.popular');
+      },
+      value: '热销',
+    },
+    {
+      get label() {
+        return t('food.specialOffer');
+      },
+      value: '特价',
+    },
+    {
+      get label() {
+        return t('food.halal');
+      },
+      value: '清真',
+    },
+    {
+      get label() {
+        return t('food.healthy');
+      },
+      value: '健康',
+    },
   ];
 
   const avoidOptions = [
-    { label: '葱', value: '葱' },
-    { label: '姜', value: '姜' },
-    { label: '蒜', value: '蒜' },
-    { label: '香菜', value: '香菜' },
-    { label: '辣椒', value: '辣椒' },
-    { label: '花生', value: '花生' },
-    { label: '牛奶', value: '牛奶' },
-    { label: '鸡蛋', value: '鸡蛋' },
+    {
+      get label() {
+        return t('food.scallion');
+      },
+      value: '葱',
+    },
+    {
+      get label() {
+        return t('food.ginger');
+      },
+      value: '姜',
+    },
+    {
+      get label() {
+        return t('food.garlic');
+      },
+      value: '蒜',
+    },
+    {
+      get label() {
+        return t('food.cilantro');
+      },
+      value: '香菜',
+    },
+    {
+      get label() {
+        return t('food.chili');
+      },
+      value: '辣椒',
+    },
+    {
+      get label() {
+        return t('food.peanuts');
+      },
+      value: '花生',
+    },
+    {
+      get label() {
+        return t('food.milk');
+      },
+      value: '牛奶',
+    },
+    {
+      get label() {
+        return t('food.eggs');
+      },
+      value: '鸡蛋',
+    },
   ];
 
   const activeFilter = ref<string>('');
@@ -100,19 +291,47 @@ export const useFilter = () => {
 
   const getTasteRangeLabel = (type: string, minVal: number, maxVal: number): string => {
     const labels: Record<string, string[]> = {
-      spicy: ['', '微辣', '中辣', '辣', '很辣', '超辣'],
-      salty: ['', '微咸', '适中', '偏咸', '很咸', '超咸'],
-      sweet: ['', '微甜', '适中', '偏甜', '很甜', '超甜'],
-      oily: ['', '少油', '适中', '偏油', '较油', '很油'],
+      spicy: [
+        '',
+        t('food.mildlySpicy'),
+        t('food.mediumSpicy'),
+        t('food.spicy'),
+        t('food.verySpicy'),
+        t('food.extraSpicy'),
+      ],
+      salty: [
+        '',
+        t('food.lightlySalted'),
+        t('food.moderate'),
+        t('food.salty'),
+        t('food.verySalty'),
+        t('food.extraSalty'),
+      ],
+      sweet: [
+        '',
+        t('food.lightlySweet'),
+        t('food.moderate'),
+        t('food.sweet'),
+        t('food.verySweet'),
+        t('food.extraSweet'),
+      ],
+      oily: [
+        '',
+        t('food.lowOil'),
+        t('food.moderate'),
+        t('food.oily'),
+        t('food.quiteOily'),
+        t('food.veryOily'),
+      ],
     };
 
-    if (minVal === 0 && maxVal === 0) return '不限';
+    if (minVal === 0 && maxVal === 0) return t('food.any');
 
-    const minLabel = minVal === 0 ? '不限' : labels[type]?.[minVal] || String(minVal);
-    const maxLabel = maxVal === 0 ? '不限' : labels[type]?.[maxVal] || String(maxVal);
+    const minLabel = minVal === 0 ? t('food.any') : labels[type]?.[minVal] || String(minVal);
+    const maxLabel = maxVal === 0 ? t('food.any') : labels[type]?.[maxVal] || String(maxVal);
 
-    if (minVal === 0) return `最高${maxLabel}`;
-    if (maxVal === 0) return `最低${minLabel}`;
+    if (minVal === 0) return t('food.atMostValue', { value: maxLabel });
+    if (maxVal === 0) return t('food.atLeastValue', { value: minLabel });
     return `${minLabel} - ${maxLabel}`;
   };
 
@@ -127,15 +346,17 @@ export const useFilter = () => {
     const max = maxStr ? Number(maxStr) : 999;
 
     if (minStr && (!Number.isFinite(min!) || min! < 0)) {
-      priceError.value = '最低价必须是非负数字';
+      priceError.value = t('food.enterAMinimumPriceOfZeroOrMore');
       return false;
     }
     if (maxStr && (!Number.isFinite(max!) || max! < 0)) {
-      priceError.value = '最高价必须是非负数字';
+      priceError.value = t('food.enterAMaximumPriceOfZeroOrMore');
       return false;
     }
     if (min > max) {
-      priceError.value = maxStr ? '最低价不能大于最高价' : '最低价超过默认上限999元，请填写最高价';
+      priceError.value = maxStr
+        ? t('food.minimumPriceMustBeAtMostTheMaximum')
+        : t('food.enterAMaximumPriceWhenTheMinimumExceeds');
       return false;
     }
     return true;
@@ -161,15 +382,15 @@ export const useFilter = () => {
     const max = maxStr ? Number(maxStr) : null;
 
     if (minStr && (isNaN(min!) || min! < 0 || min! > 5)) {
-      ratingError.value = '最低分必须在 0-5 之间';
+      ratingError.value = t('food.minimumRatingMustBeBetween0And5');
       return false;
     }
     if (maxStr && (isNaN(max!) || max! < 0 || max! > 5)) {
-      ratingError.value = '最高分必须在 0-5 之间';
+      ratingError.value = t('food.maximumRatingMustBeBetween0And5');
       return false;
     }
     if (min !== null && max !== null && min > max) {
-      ratingError.value = '最低分不能大于最高分';
+      ratingError.value = t('food.minimumRatingMustBeAtMostTheMaximum');
       return false;
     }
     return true;
@@ -192,25 +413,25 @@ export const useFilter = () => {
       selectedSpicyMax.value > 0 &&
       selectedSpicyMin.value > selectedSpicyMax.value
     ) {
-      tasteError.value = '辣度最大值不能小于最小值';
+      tasteError.value = t('food.maximumSpicinessMustBeAtLeastTheMinimum');
     } else if (
       selectedSaltyMin.value > 0 &&
       selectedSaltyMax.value > 0 &&
       selectedSaltyMin.value > selectedSaltyMax.value
     ) {
-      tasteError.value = '咸度最大值不能小于最小值';
+      tasteError.value = t('food.maximumSaltinessMustBeAtLeastTheMinimum');
     } else if (
       selectedSweetMin.value > 0 &&
       selectedSweetMax.value > 0 &&
       selectedSweetMin.value > selectedSweetMax.value
     ) {
-      tasteError.value = '甜度最大值不能小于最小值';
+      tasteError.value = t('food.maximumSweetnessMustBeAtLeastTheMinimum');
     } else if (
       selectedOilyMin.value > 0 &&
       selectedOilyMax.value > 0 &&
       selectedOilyMin.value > selectedOilyMax.value
     ) {
-      tasteError.value = '油腻度最大值不能小于最小值';
+      tasteError.value = t('food.maximumOilinessMustBeAtLeastTheMinimum');
     }
 
     return !tasteError.value;

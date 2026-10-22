@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, reactive, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getDishById, uploadDish } from '@/api/modules/dish';
@@ -22,20 +23,40 @@ import {
 } from './draft-images';
 
 export const nutritionFields = [
-  { key: 'calories', label: '热量（kcal）' },
-  { key: 'protein', label: '蛋白质（g）' },
-  { key: 'carbohydrate', label: '碳水化合物（g）' },
-  { key: 'fat', label: '脂肪（g）' },
+  {
+    key: 'calories',
+    get label() {
+      return t('food.caloriesKcal');
+    },
+  },
+  {
+    key: 'protein',
+    get label() {
+      return t('food.proteinG');
+    },
+  },
+  {
+    key: 'carbohydrate',
+    get label() {
+      return t('food.carbohydratesG');
+    },
+  },
+  {
+    key: 'fat',
+    get label() {
+      return t('food.fatG');
+    },
+  },
 ] as const;
-type NutritionField = typeof nutritionFields[number]['key'];
+type NutritionField = (typeof nutritionFields)[number]['key'];
 const nutritionValue = (value: unknown): number | null =>
   value == null || String(value).trim() === '' ? null : Number(value);
 type FormData = Omit<DishUserCreateRequest, 'price' | NutritionField> &
   Record<NutritionField, number | string | null> & {
-  name: string;
-  floor: string;
-  price: number | string;
-};
+    name: string;
+    floor: string;
+    price: number | string;
+  };
 type RouteOptions = { keyword?: string; targetDishId?: string; uploadId?: string };
 type PendingSubmission = { payload: DishUserCreateRequest; revision: number; uploadId: string };
 type SavedDraft = {
@@ -206,61 +227,209 @@ export function useAddDish() {
   };
   const validationErrors = computed(() => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = '请输入菜品名称';
+    if (!formData.name.trim()) errors.name = t('food.enterADishName');
     if (formData.price === '' || String(formData.price).trim() === '')
-      errors.price = '请输入菜品价格';
+      errors.price = t('food.enterADishPrice');
     else if (!Number.isFinite(Number(formData.price)) || Number(formData.price) < 0)
-      errors.price = '价格应为 0 或正数';
+      errors.price = t('food.priceMustBeZeroOrMore');
     for (const { key, label } of nutritionFields) {
       const value = nutritionValue(formData[key]);
       if (value !== null && (!Number.isFinite(value) || value < 0))
-        errors[key] = `${label}应为 0 或正数`;
+        errors[key] = t('food.labelMustBeZeroOrMore', { label: label });
     }
-    if (!formData.canteenName.trim()) errors.canteen = '请选择所在食堂';
-    if (!formData.availableMealTime.length) errors.availableMealTime = '请选择至少一个供应时段';
+    if (!formData.canteenName.trim()) errors.canteen = t('food.selectACanteen');
+    if (!formData.availableMealTime.length)
+      errors.availableMealTime = t('food.selectAtLeastOneMealTime');
     return errors;
   });
   const fieldErrors = computed(() => (validationAttempted.value ? validationErrors.value : {}));
   const isFormValid = computed(() => Object.keys(validationErrors.value).length === 0);
   const mealTimeOptions = [
-    { label: '早餐', value: 'breakfast' },
-    { label: '午餐', value: 'lunch' },
-    { label: '晚餐', value: 'dinner' },
-    { label: '夜宵', value: 'nightsnack' },
+    {
+      get label() {
+        return t('food.breakfast');
+      },
+      value: 'breakfast',
+    },
+    {
+      get label() {
+        return t('food.lunch');
+      },
+      value: 'lunch',
+    },
+    {
+      get label() {
+        return t('food.dinner');
+      },
+      value: 'dinner',
+    },
+    {
+      get label() {
+        return t('food.lateNight');
+      },
+      value: 'nightsnack',
+    },
   ];
   const commonTags = [
-    '辣',
-    '甜',
-    '清淡',
-    '油腻',
-    '新品',
-    '招牌',
-    '米饭',
-    '面食',
-    '小炒',
-    '汤类',
-    '素食',
-    '荤菜',
-    '凉菜',
-    '主食',
-    '小吃',
+    {
+      value: '辣',
+      get label() {
+        return t('food.spicy');
+      },
+    },
+    {
+      value: '甜',
+      get label() {
+        return t('food.sweetTag');
+      },
+    },
+    {
+      value: '清淡',
+      get label() {
+        return t('food.light');
+      },
+    },
+    {
+      value: '油腻',
+      get label() {
+        return t('food.oilyTag');
+      },
+    },
+    {
+      value: '新品',
+      get label() {
+        return t('food.new');
+      },
+    },
+    {
+      value: '招牌',
+      get label() {
+        return t('food.signature');
+      },
+    },
+    {
+      value: '米饭',
+      get label() {
+        return t('food.rice');
+      },
+    },
+    {
+      value: '面食',
+      get label() {
+        return t('food.noodlesAndWheatDishes');
+      },
+    },
+    {
+      value: '小炒',
+      get label() {
+        return t('food.stirFry');
+      },
+    },
+    {
+      value: '汤类',
+      get label() {
+        return t('food.soup');
+      },
+    },
+    {
+      value: '素食',
+      get label() {
+        return t('food.vegetarianTag');
+      },
+    },
+    {
+      value: '荤菜',
+      get label() {
+        return t('food.meatDishes');
+      },
+    },
+    {
+      value: '凉菜',
+      get label() {
+        return t('food.coldDishes');
+      },
+    },
+    {
+      value: '主食',
+      get label() {
+        return t('food.staples');
+      },
+    },
+    {
+      value: '小吃',
+      get label() {
+        return t('food.snacks');
+      },
+    },
   ];
   const commonAllergens = [
-    '花生',
-    '牛奶',
-    '鸡蛋',
-    '大豆',
-    '小麦',
-    '海鲜',
-    '坚果',
-    '芝麻',
-    '虾',
-    '蟹',
+    {
+      value: '花生',
+      get label() {
+        return t('food.peanuts');
+      },
+    },
+    {
+      value: '牛奶',
+      get label() {
+        return t('food.milk');
+      },
+    },
+    {
+      value: '鸡蛋',
+      get label() {
+        return t('food.eggs');
+      },
+    },
+    {
+      value: '大豆',
+      get label() {
+        return t('food.soy');
+      },
+    },
+    {
+      value: '小麦',
+      get label() {
+        return t('food.wheat');
+      },
+    },
+    {
+      value: '海鲜',
+      get label() {
+        return t('food.seafood');
+      },
+    },
+    {
+      value: '坚果',
+      get label() {
+        return t('food.treeNuts');
+      },
+    },
+    {
+      value: '芝麻',
+      get label() {
+        return t('food.sesame');
+      },
+    },
+    {
+      value: '虾',
+      get label() {
+        return t('food.shrimp');
+      },
+    },
+    {
+      value: '蟹',
+      get label() {
+        return t('food.crab');
+      },
+    },
   ];
   const updateCustomChoices = () => {
-    customTags.value = (formData.tags || []).filter(tag => !commonTags.includes(tag));
+    customTags.value = (formData.tags || []).filter(
+      tag => !commonTags.some(option => option.value === tag)
+    );
     customAllergens.value = (formData.allergens || []).filter(
-      tag => !commonAllergens.includes(tag)
+      tag => !commonAllergens.some(option => option.value === tag)
     );
   };
   const syncLocation = () => {
@@ -275,12 +444,12 @@ export function useAddDish() {
     try {
       const response = await getCanteenList({ page: 1, pageSize: 100 });
       if (!isCurrent()) return false;
-      if (response.code !== 200 || !response.data) throw new Error('加载食堂列表失败');
+      if (response.code !== 200 || !response.data) throw new Error(t('food.couldNotLoadCanteens'));
       canteenList.value = response.data.items;
       syncLocation();
       return true;
     } catch {
-      if (isCurrent()) canteenError.value = '加载食堂列表失败，请重试';
+      if (isCurrent()) canteenError.value = t('food.couldNotLoadCanteensTryAgain');
       return false;
     } finally {
       if (isCurrent()) loading.value = false;
@@ -378,8 +547,7 @@ export function useAddDish() {
   const assetFor = (path: string): DraftImage => images.get(path) || { path, source: 'temporary' };
   const storageFailure = () => {
     draftSaved.value = false;
-    draftError.value =
-      '草稿未保存：本机存储不足或图片无法读取。可减少图片后重试，或保持页面打开直接提交。';
+    draftError.value = t('food.draftUnsavedStorageIsFullOrPhotosCould');
   };
   const saveDraft = async (): Promise<boolean> => {
     if (disposed || savingDraft.value || submitted.value || !draftKey()) return false;
@@ -485,7 +653,7 @@ export function useAddDish() {
   const initialize = async (route: RouteOptions = options): Promise<boolean> => {
     options = { ...route };
     if (!userStore.isLoggedIn || !userStore.userInfo?.capabilities?.canContribute) {
-      initializationError.value = '完成校园身份认证后即可提交菜品申请';
+      initializationError.value = t('food.verifyYourCampusIdentityToSuggestDishes');
       return false;
     }
     ready = false;
@@ -503,7 +671,7 @@ export function useAddDish() {
         const response = await getMyUpload(uploadId.value);
         if (!isCurrent()) return false;
         if (response.code !== 200 || !response.data)
-          throw new Error(response.message || '上传记录读取失败');
+          throw new Error(response.message || t('food.couldNotLoadTheUpload'));
         source = response.data;
         revision.value = source.revision;
         targetDishId.value = source.targetDishId || '';
@@ -517,7 +685,7 @@ export function useAddDish() {
         const response = await getDishById(targetDishId.value);
         if (!isCurrent()) return false;
         if (response.code !== 200 || !response.data)
-          throw new Error(response.message || '菜品读取失败');
+          throw new Error(response.message || t('food.couldNotLoadTheDish'));
         source = response.data;
         formBaseline = toForm(source);
         targetDishUpdatedAt = source.updatedAt;
@@ -557,7 +725,7 @@ export function useAddDish() {
         )
           conflict.value = 'target';
       } else if (draft && !pending.value)
-        draftError.value = '上传记录已更新，旧草稿未覆盖最新资料。';
+        draftError.value = t('food.thisUploadHasChangedYourPreviousDraftWas');
       if (pending.value) {
         clientRequestId.value = pending.value.payload.clientRequestId || clientRequestId.value;
         if (!draftRestored.value) {
@@ -570,7 +738,8 @@ export function useAddDish() {
       await loadCanteenList();
       return isCurrent();
     } catch (err: any) {
-      if (isCurrent()) initializationError.value = err.message || '上传资料加载失败，请重试';
+      if (isCurrent())
+        initializationError.value = err.message || t('food.couldNotLoadUploadDetailsTryAgain');
       return false;
     } finally {
       if (isCurrent()) initializing.value = false;
@@ -634,7 +803,9 @@ export function useAddDish() {
     clearDraft();
     pending.value = null;
     uni.showToast({
-      title: targetDishId.value ? '补充建议已提交，等待审核' : '申请已提交，等待审核',
+      title: targetDishId.value
+        ? t('food.updateSuggestedAwaitingReview')
+        : t('food.dishSuggestedAwaitingReview'),
       icon: 'success',
     });
     const isCurrent = captureOperation();
@@ -642,7 +813,7 @@ export function useAddDish() {
       navigationTimer = null;
       if (isCurrent())
         uni.redirectTo({
-          url: '/pages/profile/my-uploads/index' + (id ? '?id=' + encodeURIComponent(id) : ''),
+          url: '/pages/profile/records/my-uploads/index' + (id ? '?id=' + encodeURIComponent(id) : ''),
         });
     }, 1500);
   };
@@ -659,7 +830,7 @@ export function useAddDish() {
     if (!isCurrent()) return false;
     validationAttempted.value = true;
     if (!pending.value && !isFormValid.value) {
-      uni.showToast({ title: '请填写必填项', icon: 'none' });
+      uni.showToast({ title: t('food.completeTheRequiredFields'), icon: 'none' });
       return false;
     }
     const submissionForm = clone(formData);
@@ -687,13 +858,13 @@ export function useAddDish() {
         }
         const payload = payloadFor(submissionForm, urls);
         if (payload.targetDishId && !payload.changedFields?.length)
-          throw new Error('尚未修改菜品信息');
+          throw new Error(t('food.changeTheDishInformationBeforeSubmitting'));
         const record = { payload, revision: revision.value, uploadId: uploadId.value };
         // 发出写请求前保存确认记录，关闭页面后仍使用同一请求标识。
         try {
           uni.setStorageSync(submissionKey(), record);
         } catch {
-          throw new Error('无法保存提交确认记录，请清理本机存储后重试');
+          throw new Error(t('food.couldNotSaveSubmissionStatusFreeUpLocal'));
         }
         pending.value = record;
       } else if (pending.value.uploadId) {
@@ -714,7 +885,9 @@ export function useAddDish() {
             complete(saved.id);
             return true;
           }
-          throw Object.assign(new Error('资料已更新，请到我的上传查看最新状态'), { code: 409 });
+          throw Object.assign(new Error(t('food.theseDetailsHaveChangedCheckMyUploadsFor')), {
+            code: 409,
+          });
         }
       }
       const record = pending.value!;
@@ -723,7 +896,9 @@ export function useAddDish() {
         : await uploadDish(record.payload);
       if (!isCurrent()) return false;
       if (response.code !== 200 && response.code !== 201)
-        throw Object.assign(new Error(response.message || '提交失败'), { code: response.code });
+        throw Object.assign(new Error(response.message || t('food.submissionFailed')), {
+          code: response.code,
+        });
       complete(response.data?.id || record.uploadId);
       return true;
     } catch (err: any) {
@@ -743,10 +918,10 @@ export function useAddDish() {
       }
       error.value =
         code === 410
-          ? '图片保存期限已过，重试将重新上传本机图片。'
+          ? t('food.theSavedPhotosHaveExpiredRetryingWillUpload')
           : pending.value
-            ? '提交结果尚未确认。请重试，确认后可在我的上传修改。'
-            : err.message || '提交失败，请稍后重试';
+            ? t('food.submissionStatusIsPendingRetryToConfirmThen')
+            : err.message || t('food.submissionFailedTryAgainLater');
       uni.showToast({ title: error.value, icon: 'none' });
       return false;
     } finally {
@@ -774,7 +949,7 @@ export function useAddDish() {
       submitting.value = false;
       initializing.value = false;
       savingDraft.value = false;
-      initializationError.value = '账号已切换，请重新打开资料提交页面';
+      initializationError.value = t('food.yourAccountHasChangedReopenTheDishSubmission');
     },
     { flush: 'sync' }
   );

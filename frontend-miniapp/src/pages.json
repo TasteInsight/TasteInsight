@@ -11,7 +11,7 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "食鉴",
+        "navigationBarTitleText": "%nav.home%",
         "navigationBarBackgroundColor": "#FFFFFF",
         "enablePullDownRefresh": true
       }
@@ -19,33 +19,33 @@
     {
       "path": "pages/login/index",
       "style": {
-        "navigationBarTitleText": "登录",
+        "navigationBarTitleText": "%nav.login%",
         "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/search/index",
       "style": {
-        "navigationBarTitleText": "搜索"
+        "navigationBarTitleText": "%nav.search%"
       }
     },
     {
       "path": "pages/canteen/index",
       "style": {
-        "navigationBarTitleText": "食堂",
+        "navigationBarTitleText": "%nav.canteen%",
         "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/window/index",
       "style": {
-        "navigationBarTitleText": "窗口详情"
+        "navigationBarTitleText": "%nav.window%"
       }
     },
     {
       "path": "pages/dish/index",
       "style": {
-        "navigationBarTitleText": "菜品详情",
+        "navigationBarTitleText": "%nav.dish%",
         "disableScroll": false,
         "enablePullDownRefresh": true,
         "navigationStyle": "default"
@@ -54,27 +54,27 @@
     {
       "path": "pages/dish/components/TagList",
       "style": {
-        "navigationBarTitleText": "标签菜品",
+        "navigationBarTitleText": "%nav.tags%",
         "enablePullDownRefresh": false
       }
     },
     {
       "path": "pages/news/index",
       "style": {
-        "navigationBarTitleText": "新闻",
+        "navigationBarTitleText": "%nav.news%",
         "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/news/components/detail",
       "style": {
-        "navigationBarTitleText": "新闻详情"
+        "navigationBarTitleText": "%nav.newsDetail%"
       }
     },
     {
       "path": "pages/planning/index",
       "style": {
-        "navigationBarTitleText": "规划",
+        "navigationBarTitleText": "%nav.planning%",
         "enablePullDownRefresh": true
       }
     },
@@ -86,71 +86,71 @@
           "softinputMode": "adjustResize"
         },
         // #endif
-        "navigationBarTitleText": "AI 助手"
+        "navigationBarTitleText": "%nav.ai%"
       }
     },
     {
       "path": "pages/profile/index",
       "style": {
-        "navigationBarTitleText": "我的",
+        "navigationBarTitleText": "%nav.profile%",
         "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/profile/identity",
-      "style": { "navigationBarTitleText": "账号与校园身份" }
+      "style": { "navigationBarTitleText": "%nav.identity%" }
     },
     // #ifdef MP-WEIXIN
     {
       "path": "pages/login/campus-auth",
-      "style": { "navigationBarTitleText": "校园账号登录" }
+      "style": { "navigationBarTitleText": "%nav.campusLogin%" }
     },
     {
       "path": "pages/profile/campus-auth",
-      "style": { "navigationBarTitleText": "校园统一认证" }
+      "style": { "navigationBarTitleText": "%nav.campusOAuth%" }
     },
     // #endif
     // #ifndef MP-WEIXIN
     {
       "path": "pages/community/index",
-      "style": { "navigationBarTitleText": "校园", "enablePullDownRefresh": true }
+      "style": { "navigationBarTitleText": "%nav.community%", "enablePullDownRefresh": true }
     },
     {
       "path": "pages/community/detail",
-      "style": { "navigationBarTitleText": "帖子" }
+      "style": { "navigationBarTitleText": "%nav.post%" }
     },
     {
       "path": "pages/community/editor",
-      "style": { "navigationBarTitleText": "写帖子" }
+      "style": { "navigationBarTitleText": "%nav.compose%" }
     },
     {
       "path": "pages/profile/public",
-      "style": { "navigationBarTitleText": "个人主页" }
+      "style": { "navigationBarTitleText": "%nav.publicProfile%" }
     },
     {
       "path": "pages/planning/dining",
-      "style": { "navigationBarTitleText": "约饭", "enablePullDownRefresh": true }
+      "style": { "navigationBarTitleText": "%nav.dining%", "enablePullDownRefresh": true }
     },
     // #endif
     {
       "path": "pages/notifications/index",
-      "style": { "navigationBarTitleText": "消息", "enablePullDownRefresh": true }
+      "style": { "navigationBarTitleText": "%nav.notifications%", "enablePullDownRefresh": true }
     },
     {
       "path": "pages/notifications/weekly",
-      "style": { "navigationBarTitleText": "本周推荐" }
+      "style": { "navigationBarTitleText": "%nav.weekly%" }
     },
 
     {
       "path": "pages/easter-egg/index",
       "style": {
-        "navigationBarTitleText": "食鉴彩蛋"
+        "navigationBarTitleText": "%nav.easterEgg%"
       }
     },
     {
       "path": "pages/add-dish/index",
       "style": {
-        "navigationBarTitleText": "申请新增菜品"
+        "navigationBarTitleText": "%nav.addDish%"
       }
     }
   ],
@@ -159,119 +159,49 @@
     {
       "root": "pages/settings",
       "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationBarTitleText": "设置"
-          }
-        },
-        {
-          "path": "components/personal",
-          "style": {
-            "navigationBarTitleText": "个人信息"
-          }
-        },
-        {
-          "path": "components/avatar-crop",
-          "style": {
-            "navigationBarTitleText": "裁剪头像"
-          }
-        },
+        { "path": "index", "style": { "navigationBarTitleText": "%nav.settings%" } },
+        { "path": "language", "style": { "navigationBarTitleText": "%nav.language%" } },
+        { "path": "components/personal", "style": { "navigationBarTitleText": "%nav.personal%" } },
+        { "path": "components/avatar-crop", "style": { "navigationBarTitleText": "%nav.crop%" } },
         {
           "path": "components/allergens",
-          "style": {
-            "navigationBarTitleText": "过敏原设置"
-          }
+          "style": { "navigationBarTitleText": "%nav.allergens%" }
         },
         {
           "path": "components/preferences",
-          "style": {
-            "navigationBarTitleText": "偏好设置"
-          }
+          "style": { "navigationBarTitleText": "%nav.preferences%" }
         },
-        {
-          "path": "components/display",
-          "style": {
-            "navigationBarTitleText": "显示设置"
-          }
-        },
+        { "path": "components/display", "style": { "navigationBarTitleText": "%nav.display%" } },
         {
           "path": "components/notifications",
-          "style": {
-            "navigationBarTitleText": "通知设置"
-          }
+          "style": { "navigationBarTitleText": "%nav.notificationSettings%" }
+        },
+        { "path": "privacy", "style": { "navigationBarTitleText": "%nav.privacy%" } },
+        { "path": "about", "style": { "navigationBarTitleText": "%nav.about%" } }
+      ]
+    },
+    {
+      "root": "pages/profile/records",
+      "pages": [
+        {
+          "path": "my-uploads/index",
+          "style": { "navigationBarTitleText": "%nav.uploads%", "enablePullDownRefresh": true }
         },
         {
-          "path": "privacy",
-          "style": {
-            "navigationBarTitleText": "隐私政策"
-          }
+          "path": "my-reviews/index",
+          "style": { "navigationBarTitleText": "%nav.reviews%", "enablePullDownRefresh": true }
         },
         {
-          "path": "about",
-          "style": {
-            "navigationBarTitleText": "关于食鉴"
-          }
-        }
-      ]
-    },
-    {
-      "root": "pages/profile/my-uploads",
-      "pages": [
+          "path": "my-reports/index",
+          "style": { "navigationBarTitleText": "%nav.reports%", "enablePullDownRefresh": true }
+        },
         {
-          "path": "index",
-          "style": {
-            "navigationBarTitleText": "我的上传",
-            "enablePullDownRefresh": true
-          }
-        }
-      ]
-    },
-    {
-      "root": "pages/profile/my-reviews",
-      "pages": [
+          "path": "history/index",
+          "style": { "navigationBarTitleText": "%nav.history%", "enablePullDownRefresh": true }
+        },
         {
-          "path": "index",
-          "style": {
-            "navigationBarTitleText": "我的评价",
-            "enablePullDownRefresh": true
-          }
-        }
-      ]
-    },
-    {
-      "root": "pages/profile/my-reports",
-      "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationBarTitleText": "我的举报",
-            "enablePullDownRefresh": true
-          }
-        }
-      ]
-    },
-    {
-      "root": "pages/profile/history",
-      "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationBarTitleText": "历史浏览",
-            "enablePullDownRefresh": true
-          }
-        }
-      ]
-    },
-    {
-      "root": "pages/profile/my-favorites",
-      "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationBarTitleText": "我的收藏",
-            "enablePullDownRefresh": true
-          }
+          "path": "my-favorites/index",
+          "style": { "navigationBarTitleText": "%nav.favorites%", "enablePullDownRefresh": true }
         }
       ]
     }
@@ -287,14 +217,14 @@
         "pagePath": "pages/index/index",
         "iconPath": "static/tabbar/index-line.png",
         "selectedIconPath": "static/tabbar/index-line-active.png",
-        "text": "首页"
+        "text": "%nav.tabHome%"
       },
       // #ifdef MP-WEIXIN
       {
         "pagePath": "pages/news/index",
         "iconPath": "static/tabbar/news-line.png",
         "selectedIconPath": "static/tabbar/news-line-active.png",
-        "text": "新闻"
+        "text": "%nav.tabNews%"
       },
       // #endif
       // #ifndef MP-WEIXIN
@@ -302,26 +232,26 @@
         "pagePath": "pages/community/index",
         "iconPath": "static/tabbar/campus-line.png",
         "selectedIconPath": "static/tabbar/campus-line-active.png",
-        "text": "校园"
+        "text": "%nav.tabCampus%"
       },
       // #endif
       {
         "pagePath": "pages/planning/index",
         "iconPath": "static/tabbar/planning-line.png",
         "selectedIconPath": "static/tabbar/planning-line-active.png",
-        "text": "规划"
+        "text": "%nav.tabPlans%"
       },
       {
         "pagePath": "pages/ai-chat/index",
         "iconPath": "static/tabbar/ai-chat-line.png",
         "selectedIconPath": "static/tabbar/ai-chat-line-active.png",
-        "text": "问AI"
+        "text": "%nav.tabAI%"
       },
       {
         "pagePath": "pages/profile/index",
         "iconPath": "static/tabbar/profile-line.png",
         "selectedIconPath": "static/tabbar/profile-line-active.png",
-        "text": "我的"
+        "text": "%nav.tabProfile%"
       }
     ]
   },

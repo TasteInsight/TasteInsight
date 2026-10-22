@@ -1,11 +1,12 @@
+import { t } from '@/i18n';
 export function confirmDiscardChanges(dirty: boolean, content: string): Promise<boolean> {
   if (!dirty) return Promise.resolve(true);
   return new Promise(resolve => {
     uni.showModal({
-      title: '放弃修改？',
+      title: t('account.common.discardChanges'),
       content,
-      confirmText: '放弃修改',
-      cancelText: '继续编辑',
+      confirmText: t('account.common.discardChanges2'),
+      cancelText: t('account.common.keepEditing'),
       success: result => resolve(result.confirm),
       fail: () => resolve(false),
     });

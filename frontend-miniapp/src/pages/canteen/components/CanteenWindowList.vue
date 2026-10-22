@@ -1,25 +1,27 @@
 <template>
   <view v-if="windows.length" class="canteen-windows">
-    <text class="canteen-windows-title">按窗口浏览</text>
+    <text class="canteen-windows-title">{{ t('food.browseCounters') }}</text>
     <scroll-view
       scroll-x
       :show-scrollbar="false"
       class="canteen-windows-scroll"
-      aria-label="食堂窗口"
+      :aria-label="t('food.canteenCounters')"
     >
       <view class="canteen-windows-row">
         <button
           v-for="window in windows"
           :key="window.id"
-          class="canteen-window"
-          :aria-label="`浏览${window.name}`"
+          class="canteen-window list-row-action"
+          hover-class="list-row-pressed"
+          :hover-stay-time="80"
+          :aria-label="t('food.browseName2', { name: window.name })"
           :title="window.name"
           @tap="emit('click', window.id)"
         >
           <view class="canteen-window-copy">
             <text class="canteen-window-name">{{ window.name }}</text>
             <text v-if="window.floor?.name || window.floor?.level" class="canteen-window-floor">{{
-              window.floor.name || window.floor.level + '层'
+              window.floor.name || t('food.floorLevel', { floor: window.floor.level })
             }}</text>
           </view>
           <uni-icons type="right" size="14" color="#667085" aria-hidden="true" />
@@ -29,6 +31,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import type { Window } from '@/types/api';
 defineProps<{ windows: Window[] }>();
 const emit = defineEmits<{ (e: 'click', id: string): void }>();
@@ -63,7 +66,7 @@ const emit = defineEmits<{ (e: 'click', id: string): void }>();
   max-width: 160px;
   min-height: 52px;
   margin: 0;
-  padding: 7px 0;
+  padding-block: 7px;
   box-sizing: border-box;
   border: 0;
   border-radius: 8px;
@@ -77,21 +80,9 @@ const emit = defineEmits<{ (e: 'click', id: string): void }>();
 .canteen-window::after {
   border: 0;
 }
-.canteen-window:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: -2px;
-}
-.canteen-window:active {
-  background: #f4f4f5;
-}
 .canteen-window-copy {
   flex: 1;
   min-width: 0;
-}
-@media (hover: hover) {
-  .canteen-window:hover {
-    background: #f4f4f5;
-  }
 }
 .canteen-window-name,
 .canteen-window-floor {

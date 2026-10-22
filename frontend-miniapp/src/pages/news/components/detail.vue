@@ -5,19 +5,19 @@
         :loading="loading"
         :initialized="initialized"
         :has-content="!!newsDetail.id"
-        :error="notFound ? '新闻不存在或已下架' : error"
-        loading-title="正在加载新闻…"
-        :retry-text="notFound ? '返回新闻列表' : '重新加载'"
+        :error="notFound ? t('social.newsNotFound') : error"
+        :loading-title="t('social.loadingNews')"
+        :retry-text="notFound ? t('social.backToNews') : t('social.reload')"
         @retry="notFound ? backToNews() : retry()"
       />
       <view v-if="initialized && newsDetail.id">
         <view class="article-title">{{ newsDetail.title }}</view>
         <view class="article-meta">
-          <text>{{ newsDetail.canteenName || '校园新闻' }}</text>
+          <text>{{ newsDetail.canteenName || t('social.campusNews') }}</text>
           <text>{{ newsDetail.publishedAt ? formatTime(newsDetail.publishedAt) : '' }}</text>
         </view>
         <view v-if="newsDetail.sourceName" class="article-source"
-          ><text>来源：{{ newsDetail.sourceName }}</text></view
+          ><text>{{ t('social.sourcePrefix') }}{{ newsDetail.sourceName }}</text></view
         >
         <view class="article-body">
           <!-- 使用处理后的富文本内容，支持图片自适应 -->
@@ -38,7 +38,7 @@
           class="original-link"
           @click="openNewsOriginal(newsDetail.sourceUrl)"
         >
-          查看微信原文
+          {{ t('social.viewWechatOriginal') }}
         </button>
       </view>
     </view>
@@ -46,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import MpHtml from 'mp-html/dist/uni-app/components/mp-html/mp-html.vue';
 import { openNewsOriginal, originalArticleUrl } from '@/utils/news-original';
 import AsyncState from '@/components/AsyncState.vue';

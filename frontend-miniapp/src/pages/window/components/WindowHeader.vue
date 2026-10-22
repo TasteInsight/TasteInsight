@@ -4,7 +4,7 @@
       :loading="loading"
       :has-content="!!window"
       :error="error"
-      loading-title="正在加载窗口…"
+      :loading-title="t('food.loadingCounter')"
       @retry="emit('retry')"
     />
     <template v-if="window">
@@ -16,7 +16,9 @@
         {{ window.description }}
       </view>
 
-      <view v-if="locationText" class="text-xs text-gray-500 mt-2"> 位置：{{ locationText }} </view>
+      <view v-if="locationText" class="text-xs text-gray-500 mt-2">
+        {{ t('food.locationLabel', { location: locationText }) }}
+      </view>
 
       <view v-if="window.tags && window.tags.length > 0" class="flex flex-wrap mt-2 gap-1.5">
         <TagBadge v-for="(tag, index) in window.tags" :key="index" :label="tag" />
@@ -26,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import AsyncState from '@/components/AsyncState.vue';
 import { computed } from 'vue';
 import type { Window } from '@/types/api';
@@ -42,7 +45,8 @@ const locationText = computed(() => {
   if (!props.window) return '';
   const parts = [];
   if (props.window.floor?.name) parts.push(props.window.floor.name);
-  else if (props.window.floor?.level) parts.push(props.window.floor.level + '层');
+  else if (props.window.floor?.level)
+    parts.push(t('food.floorLevel', { floor: props.window.floor.level }));
   if (props.window.position) parts.push(props.window.position);
   return parts.join(' - ');
 });

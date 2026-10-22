@@ -1,19 +1,19 @@
 <template>
   <view class="page-content dish-list-page page-state-layout">
-    <LoginGate title="登录后查看个人记录" icon="user">
+    <LoginGate :title="t('account.profile.signInToViewYour')" icon="user">
       <view class="dish-list-content page-state-content">
         <AsyncState
           :loading="loading"
           :initialized="initialized"
-          :has-content="!!favoriteItems.length"
+          :has-content="!!historyItems.length"
           :error="error"
-          empty-title="暂无收藏"
-          empty-icon="bookmark"
+          :empty-title="t('account.profile.noBrowsingHistoryYet')"
+          empty-icon="history"
           @retry="retry"
         />
-        <template v-if="favoriteItems.length">
+        <template v-if="historyItems.length">
           <DishCard
-            v-for="item in favoriteItems"
+            v-for="item in historyItems"
             :key="item.dishId"
             :dish="{
               id: item.dishId,
@@ -31,15 +31,13 @@
               tags: item.tags,
               averageRating: item.averageRating,
             }"
-            :show-favorite="true"
-            :favorite-disabled="loading || removingIds.includes(item.dishId)"
-            :removing="removingIds.includes(item.dishId)"
-            @unfavorite="removeFavorite(item.dishId)"
             @click="goToDishDetail(item.dishId)"
           />
           <view v-if="!loading && !error" class="dish-list-footer">
-            <button v-if="hasMore" class="dish-list-action" @click="loadMore">加载更多</button>
-            <text v-else>没有更多了</text>
+            <button v-if="hasMore" class="dish-list-action" @click="loadMore">
+              {{ t('account.profile.loadMore') }}
+            </button>
+            <text v-else>{{ t('account.profile.youVeReachedTheEnd') }}</text>
           </view>
         </template>
       </view>
@@ -47,23 +45,14 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import AsyncState from '@/components/AsyncState.vue';
 import LoginGate from '@/components/LoginGate.vue';
-import { useFavorites } from './composables/use-favorites';
-const {
-  favoriteItems,
-  loading,
-  initialized,
-  error,
-  hasMore,
-  loadMore,
-  refresh,
-  retry,
-  removeFavorite,
-  removingIds,
-} = useFavorites();
+import { useHistory } from './composables/use-history';
+const { historyItems, loading, initialized, error, hasMore, loadMore, refresh, retry } =
+  useHistory();
 onShow(() => {
   void refresh();
 });
@@ -80,7 +69,7 @@ onPullDownRefresh(async () => {
 function goToDishDetail(dishId: string) {
   uni.navigateTo({
     url: `/pages/dish/index?id=${dishId}`,
-    fail: () => uni.showToast({ title: '页面跳转失败', icon: 'none' }),
+    fail: () => uni.showToast({ title: t('account.profile.unableToOpenPage'), icon: 'none' }),
   });
 }
 </script>

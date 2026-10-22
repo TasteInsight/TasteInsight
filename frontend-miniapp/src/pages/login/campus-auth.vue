@@ -2,13 +2,15 @@
   <web-view v-if="url" :src="url" /><view v-else class="campus-error">{{ message }}</view>
 </template>
 <script setup lang="ts">
-import { ref, onScopeDispose } from 'vue';
+import { t } from '@/i18n';
+import { computed, ref, onScopeDispose } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { startCampusLogin } from '@/api/modules/auth';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { saveCampusLoginPending } from '@/utils/campus-login';
 const url = ref('');
-const message = ref('正在打开校园登录…');
+const messageKey = ref('account.login.openingCampusSignIn');
+const message = computed(() => t(messageKey.value));
 const user = useUserStore();
 let disposed = false;
 onScopeDispose(() => {
@@ -17,7 +19,7 @@ onScopeDispose(() => {
 onLoad(async () => {
   const session = user.sessionVersion;
   if (user.isLoggedIn) {
-    message.value = '当前账号已登录，请返回应用。';
+    messageKey.value = 'account.login.youAreSignedInReturn';
     return;
   }
   try {
@@ -28,7 +30,7 @@ onLoad(async () => {
     }
   } catch {
     if (!disposed && session === user.sessionVersion)
-      message.value = '登录页面暂时无法打开，请返回重试。';
+      messageKey.value = 'account.login.unableToOpenSignIn';
   }
 });
 </script>

@@ -7,7 +7,8 @@
       <div class="flex-1">
         <div class="font-semibold text-gray-800">{{ window.name }}</div>
         <div class="text-xs text-gray-500 mt-1">
-          {{ canteenName }} · {{ window.floor?.name || `${window.floor?.level}楼` }}
+          {{ canteenName }} ·
+          {{ window.floor?.name || t('food.floorNumber', { floor: window.floor?.level ?? '' }) }}
         </div>
         <div v-if="window.tags?.length" class="flex flex-wrap gap-1 mt-2">
           <span
@@ -25,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import type { Window } from '@/types/api';
 
 interface ExtendedWindow extends Window {

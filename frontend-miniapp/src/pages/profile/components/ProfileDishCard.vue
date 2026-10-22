@@ -4,18 +4,19 @@
     <view v-if="showFavorite" class="profile-dish__actions">
       <button
         class="profile-dish__unfavorite"
-        :aria-label="'取消收藏' + dish.name"
+        :aria-label="t('account.profile.removeFavoriteDish', { dish: dish.name })"
         :class="{ 'is-disabled': favoriteDisabled }"
         :disabled="favoriteDisabled"
         @click="emit('unfavorite')"
       >
-        {{ removing ? '取消中…' : '取消收藏' }}
+        {{ removing ? t('account.profile.removing') : t('account.profile.removeFromFavorites') }}
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import DishSummaryCard from '@/components/DishSummaryCard.vue';
 import type { Dish } from '@/types/api';
 

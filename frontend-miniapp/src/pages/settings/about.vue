@@ -2,8 +2,10 @@
   <view class="page-content settings-page about-page">
     <view class="about-identity">
       <button
-        class="about-logo-button"
-        aria-label="食鉴应用标志"
+        class="settings-button about-logo-button"
+        hover-class="settings-button--pressed"
+        :hover-stay-time="80"
+        :aria-label="t('account.settings.tasteinsightAppLogo')"
         role="button"
         tabindex="0"
         @tap="secretButton.activate"
@@ -13,18 +15,19 @@
       >
         <image src="/static/logo.png" class="about-logo" mode="aspectFit" aria-hidden="true" />
       </button>
-      <text class="about-name">食鉴 TasteInsight</text>
+      <text class="about-name">{{ t('account.settings.tasteinsight') }}</text>
       <text class="about-version">Version 1.0.0</text>
-      <text class="about-description about-intro"
-        >食鉴是一款面向校园的食堂菜品点评与推荐应用。浏览菜品与评价，记录用餐体验，管理自己的饮食偏好。</text
-      >
+      <text class="about-description about-intro">{{
+        t('account.settings.tasteinsightHelpsYouExploreAnd')
+      }}</text>
     </view>
 
     <view class="about-section">
-      <text class="about-section-title">协议与支持</text>
+      <text class="about-section-title">{{ t('account.settings.termsAndSupport') }}</text>
       <button
         class="settings-button settings-menu about-menu list-row-action"
         hover-class="list-row-pressed"
+        :hover-stay-time="80"
         role="button"
         tabindex="0"
         @click="agreementButton.activate"
@@ -33,11 +36,13 @@
         @blur="agreementButton.clearPress"
       >
         <UiIcon name="bookmark" :size="19" />
-        <text class="about-menu-label">用户协议</text><UiIcon name="chevron-right" :size="16" />
+        <text class="about-menu-label">{{ t('account.settings.termsOfService') }}</text
+        ><UiIcon name="chevron-right" :size="16" />
       </button>
       <button
         class="settings-button settings-menu about-menu list-row-action"
         hover-class="list-row-pressed"
+        :hover-stay-time="80"
         role="button"
         tabindex="0"
         @click="privacyButton.activate"
@@ -46,11 +51,13 @@
         @blur="privacyButton.clearPress"
       >
         <UiIcon name="shield" :size="19" />
-        <text class="about-menu-label">隐私政策</text><UiIcon name="chevron-right" :size="16" />
+        <text class="about-menu-label">{{ t('account.settings.privacyPolicy') }}</text
+        ><UiIcon name="chevron-right" :size="16" />
       </button>
       <button
         class="settings-button settings-menu about-menu about-contact list-row-action"
         hover-class="list-row-pressed"
+        :hover-stay-time="80"
         role="button"
         tabindex="0"
         @click="feedbackButton.activate"
@@ -60,9 +67,9 @@
       >
         <UiIcon name="chat" :size="19" />
         <view class="about-menu-label"
-          ><text class="about-contact-label">项目反馈</text
+          ><text class="about-contact-label">{{ t('account.settings.projectFeedback') }}</text
           ><text class="settings-hint">GitHub Issues</text></view
-        ><text class="about-action-label">复制链接</text>
+        ><text class="about-action-label">{{ t('account.settings.copyLink') }}</text>
       </button>
     </view>
 
@@ -70,6 +77,7 @@
       <button
         class="settings-button settings-menu about-menu list-row-action"
         hover-class="list-row-pressed"
+        :hover-stay-time="80"
         :aria-expanded="showFeatures"
         role="button"
         tabindex="0"
@@ -78,7 +86,7 @@
         @keyup="featuresButton.handleKeyup"
         @blur="featuresButton.clearPress"
       >
-        <text class="about-menu-label">主要功能</text>
+        <text class="about-menu-label">{{ t('account.settings.features') }}</text>
         <UiIcon :name="showFeatures ? 'chevron-down' : 'chevron-right'" :size="16" />
       </button>
       <view v-if="showFeatures" class="about-features">
@@ -87,6 +95,7 @@
       <button
         class="settings-button settings-menu about-menu list-row-action"
         hover-class="list-row-pressed"
+        :hover-stay-time="80"
         :aria-expanded="showTechnicalDetails"
         role="button"
         tabindex="0"
@@ -95,7 +104,7 @@
         @keyup="technicalButton.handleKeyup"
         @blur="technicalButton.clearPress"
       >
-        <text class="about-menu-label">技术与开源</text>
+        <text class="about-menu-label">{{ t('account.settings.technologyAndOpenSource') }}</text>
         <UiIcon :name="showTechnicalDetails ? 'chevron-down' : 'chevron-right'" :size="16" />
       </button>
       <view v-if="showTechnicalDetails" class="about-technical">
@@ -103,22 +112,21 @@
           ><text class="settings-label">{{ item.name }}</text
           ><text class="settings-hint">{{ item.detail }}</text></view
         >
-        <text class="settings-hint about-thanks"
-          >感谢开源项目贡献者为应用开发提供的工具与支持。</text
-        >
+        <text class="settings-hint about-thanks">{{
+          t('account.settings.thanksToTheOpenSource')
+        }}</text>
       </view>
     </view>
 
     <view class="about-disclaimer">
-      <text class="about-section-title">免责声明</text>
-      <text class="about-description"
-        >菜品评价信息仅供参考，实际菜品质量可能因季节、厨师等因素有所变化，请以实地情况为准。如有食物过敏或其他健康问题，请向窗口核对食材并咨询专业医生。</text
-      >
+      <text class="about-section-title">{{ t('account.settings.disclaimer') }}</text>
+      <text class="about-description">{{ t('account.settings.dishReviewsAreForReference') }}</text>
     </view>
   </view>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { t } from '@/i18n';
+import { computed, ref } from 'vue';
 import UiIcon from '@/components/UiIcon.vue';
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app';
 import { useButtonActivation } from '@/composables/use-button-activation';
@@ -137,13 +145,13 @@ const privacyButton = useButtonActivation(openPrivacy);
 const technicalButton = useButtonActivation(() => {
   showTechnicalDetails.value = !showTechnicalDetails.value;
 });
-const features = [
-  '菜品星级、文字与图片评价',
-  '基于饮食偏好的 AI 推荐与对话',
-  '浏览食堂、窗口、菜品与价格',
-  '按日、周、月查看饮食规划',
-  '收藏菜品、查看历史与管理个人偏好',
-];
+const features = computed(() => [
+  t('account.settings.rateDishesAndShareText'),
+  t('account.settings.aiRecommendationsAndChatBased'),
+  t('account.settings.browseCanteensStallsDishesAnd'),
+  t('account.settings.viewMealPlansByDay'),
+  t('account.settings.saveDishesViewHistoryAnd'),
+]);
 const technologies = [
   { name: 'Vue 3', detail: 'MIT License' },
   { name: 'uni-app', detail: 'Apache-2.0' },
@@ -171,12 +179,16 @@ function handleSecretTap() {
   uni.navigateTo({
     url: '/pages/easter-egg/index',
     success: () => {
-      uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 });
+      uni.showToast({
+        title: t('account.settings.hiddenLabUnlocked'),
+        icon: 'none',
+        duration: 1200,
+      });
       if (typeof uni.vibrateShort === 'function') uni.vibrateShort({ fail: () => undefined });
     },
     fail: () => {
       isOpeningSecret = false;
-      uni.showToast({ title: '页面跳转失败，请重试', icon: 'none' });
+      uni.showToast({ title: t('account.settings.unableToOpenPageTry'), icon: 'none' });
     },
   });
 }
@@ -194,14 +206,13 @@ function openPrivacy() {
 </script>
 <style scoped>
 .about-page {
-  padding-top: 24px;
   padding-bottom: 32px;
 }
 .about-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 0 28px;
+  padding: 4px 0 24px;
   text-align: center;
 }
 .about-logo-button {
@@ -216,10 +227,6 @@ function openPrivacy() {
 }
 .about-logo-button::after {
   border: 0;
-}
-.about-logo-button:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 3px;
 }
 .about-logo {
   width: 64px;
@@ -259,11 +266,6 @@ function openPrivacy() {
   font-weight: 600;
   line-height: 1.6;
 }
-.about-menu {
-  min-height: 56px;
-  gap: 12px;
-  font-size: 15px;
-}
 .about-menu-label {
   flex: 1;
   min-width: 0;
@@ -271,12 +273,12 @@ function openPrivacy() {
 }
 .about-contact-label {
   display: block;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
 }
 .about-action-label {
   flex-shrink: 0;
-  color: #660874;
+  color: #667085;
   font-size: 13px;
 }
 .about-features,

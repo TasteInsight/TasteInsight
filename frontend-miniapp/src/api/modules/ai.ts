@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 // @/api/modules/ai.ts
 import request from '@/utils/request';
 import { createParser, type EventSourceMessage } from 'eventsource-parser';
@@ -109,7 +110,7 @@ function dispatchAIEvent(event: EventSourceMessage, callbacks: AIStreamCallbacks
       (json && typeof json.error === 'string' && json.error) ||
       (json && typeof json.message === 'string' && json.message) ||
       event.data ||
-      'AI 流式请求失败';
+      t('common.errors.aiStream');
     callbacks.onError?.(new Error(message));
     return;
   }
@@ -372,8 +373,8 @@ export const streamAIChat = (
         readResponse();
         completeAttempt();
       };
-      xhr.onerror = () => failAttempt(new Error('网络连接异常，请稍后重试'));
-      xhr.ontimeout = () => failAttempt(new Error('请求超时，请重试'));
+      xhr.onerror = () => failAttempt(new Error(t('common.errors.networkRetry')));
+      xhr.ontimeout = () => failAttempt(new Error(t('common.errors.timeout')));
       xhr.send(JSON.stringify(payload));
       return;
     }

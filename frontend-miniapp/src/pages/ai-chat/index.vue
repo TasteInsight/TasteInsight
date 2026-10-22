@@ -10,14 +10,14 @@
         :hover-stay-time="80"
         role="button"
         tabindex="0"
-        aria-label="新对话"
+        :aria-label="t('social.newConversation')"
         @click="handleNewChat"
         @keydown="handleActionKeydown"
         @keyup="handleActionKeyup($event, handleNewChat)"
         @blur="keyPressed = false"
       >
         <image class="chat-tool-icon" src="/static/icons/chat-new.png" aria-hidden="true" />
-        <text>新对话</text>
+        <text>{{ t('social.newConversation') }}</text>
       </button>
       <button
         class="chat-button chat-toolbar-action chat-toolbar-history"
@@ -25,17 +25,17 @@
         :hover-stay-time="80"
         role="button"
         tabindex="0"
-        aria-label="历史对话"
+        :aria-label="t('social.conversationHistory')"
         @click="openHistory"
         @keydown="handleActionKeydown"
         @keyup="handleActionKeyup($event, openHistory)"
         @blur="keyPressed = false"
       >
         <image class="chat-tool-icon" src="/static/icons/history.png" aria-hidden="true" />
-        <text>历史</text>
+        <text>{{ t('social.history') }}</text>
       </button>
     </view>
-    <LoginGate title="登录后使用 AI 助手" icon="chat">
+    <LoginGate :title="t('social.aiLogin')" icon="chat">
       <scroll-view
         ref="messageScroller"
         scroll-y
@@ -55,16 +55,16 @@
             :initialized="!isInitialLoading && !isInitializing"
             :has-content="!!messages.length"
             :error="initialError"
-            error-title="连接暂时不可用"
-            loading-title="正在连接 AI 助手…"
-            empty-title="今天想吃什么？"
-            retry-text="重试连接"
+            :error-title="t('social.connectionUnavailable')"
+            :loading-title="t('social.connectingAi')"
+            :empty-title="t('social.whatToEat')"
+            :retry-text="t('social.retryConnection')"
             @retry="retryConnection"
           >
             <template #empty>
               <view class="chat-state">
-                <text class="chat-state-title">今天想吃什么？</text>
-                <text class="chat-state-description">告诉我你的口味，或选择下方的问题开始。</text>
+                <text class="chat-state-title">{{ t('social.whatToEat') }}</text>
+                <text class="chat-state-description">{{ t('social.chatIntroduction') }}</text>
               </view>
             </template>
           </AsyncState>
@@ -97,12 +97,14 @@
                   </view>
                   <view
                     v-else-if="segment.type === 'card_dish'"
-                    class="chat-card-stack chat-card-stack-dishes"
+                    class="chat-card-stack chat-card-stack-dishes list-row-group"
                     role="group"
-                    aria-label="推荐菜品"
+                    :aria-label="t('social.recommendedDishes')"
                   >
                     <template v-for="(dish, dishIndex) in segment.data" :key="dishIndex">
-                      <view v-if="dish?.dish" class="chat-dish-row"><DishCard :dish="dish" /></view>
+                      <view v-if="dish?.dish" class="chat-dish-row list-row-group-item"
+                        ><DishCard :dish="dish"
+                      /></view>
                     </template>
                   </view>
                   <view
@@ -128,12 +130,22 @@
                       @apply="handleApplyPlan"
                     />
                   </view>
-                  <view v-else-if="segment.type === 'card_canteen'" class="chat-card-stack"
-                    ><CanteenCard v-for="(canteen, i) in segment.data" :key="i" :canteen="canteen"
-                  /></view>
-                  <view v-else-if="segment.type === 'card_window'" class="chat-card-stack"
-                    ><WindowCard v-for="(window, i) in segment.data" :key="i" :window="window"
-                  /></view>
+                  <view
+                    v-else-if="segment.type === 'card_canteen'"
+                    class="chat-card-stack list-row-group"
+                  >
+                    <view v-for="(canteen, i) in segment.data" :key="i" class="list-row-group-item"
+                      ><CanteenCard :canteen="canteen"
+                    /></view>
+                  </view>
+                  <view
+                    v-else-if="segment.type === 'card_window'"
+                    class="chat-card-stack list-row-group"
+                  >
+                    <view v-for="(window, i) in segment.data" :key="i" class="list-row-group-item"
+                      ><WindowCard :window="window"
+                    /></view>
+                  </view>
                 </view>
               </template>
               <view v-if="message.type === 'user'" class="chat-message-meta">
@@ -160,7 +172,9 @@
                 >{{ replyStates[message.replyStatus] }}</text
               >
             </view>
-            <text v-if="aiLoading" class="chat-reply-status" role="status">正在回复…</text>
+            <text v-if="aiLoading" class="chat-reply-status" role="status">{{
+              t('social.replying')
+            }}</text>
           </template>
           <SuggestionChips
             v-if="suggestions.length && !aiLoading"
@@ -178,7 +192,7 @@
           :hover-stay-time="80"
           :class="{ 'chat-latest-visible': !followingLatest }"
           role="button"
-          aria-label="回到最新"
+          :aria-label="t('social.scrollToLatest')"
           :aria-hidden="followingLatest"
           :tabindex="followingLatest ? -1 : 0"
           :disabled="followingLatest"
@@ -198,7 +212,7 @@
           @focus="scrollToBottom"
           @blur="scrollToBottom"
         />
-        <text class="chat-content-notice">内容由 AI 生成，结果仅供参考</text>
+        <text class="chat-content-notice">{{ t('social.aiDisclaimer') }}</text>
       </view>
       <!-- #ifdef MP-WEIXIN -->
       <page-container
@@ -210,16 +224,21 @@
       />
       <!-- #endif -->
       <view v-if="showHistory" class="chat-overlay chat-history-overlay" @click="closeHistory">
-        <view class="chat-history" role="dialog" aria-label="历史对话" @click.stop>
+        <view
+          class="chat-history"
+          role="dialog"
+          :aria-label="t('social.conversationHistory')"
+          @click.stop
+        >
           <view class="chat-dialog-header"
-            ><text class="chat-dialog-title">历史对话</text
+            ><text class="chat-dialog-title">{{ t('social.conversationHistory') }}</text
             ><button
               class="chat-button"
               hover-class="chat-control-pressed"
               :hover-stay-time="80"
               role="button"
               tabindex="0"
-              aria-label="关闭历史对话"
+              :aria-label="t('social.closeHistory')"
               @click="closeHistory"
               @keydown="handleActionKeydown"
               @keyup="handleActionKeyup($event, closeHistory)"
@@ -228,7 +247,9 @@
               <view class="chat-close-icon" aria-hidden="true" /></button
           ></view>
           <scroll-view scroll-y :show-scrollbar="false" class="chat-history-list">
-            <text v-if="!historyEntries.length" class="chat-history-empty">暂无历史对话</text>
+            <text v-if="!historyEntries.length" class="chat-history-empty">{{
+              t('social.noHistory')
+            }}</text>
             <view
               v-for="item in historyEntries"
               :key="item.sessionId"
@@ -242,22 +263,26 @@
                 role="button"
                 tabindex="0"
                 :aria-current="item.sessionId === currentSessionId ? 'true' : undefined"
-                :aria-label="`打开对话：${item.title || '对话'}`"
+                :aria-label="
+                  t('social.openConversation', { p0: item.title || t('social.conversation') })
+                "
                 @click="handleLoadHistory(item.sessionId)"
                 @keydown="handleActionKeydown"
                 @keyup="handleActionKeyup($event, () => handleLoadHistory(item.sessionId))"
                 @blur="keyPressed = false"
               >
                 <view class="chat-history-heading">
-                  <text class="chat-history-title">{{ item.title || '对话' }}</text>
+                  <text class="chat-history-title">{{
+                    item.title || t('social.conversation')
+                  }}</text>
                   <text
                     v-if="item.sessionId === currentSessionId"
                     class="chat-history-current-label"
-                    >当前</text
+                    >{{ t('social.current') }}</text
                   >
                 </view>
                 <text class="chat-history-meta"
-                  >{{ sceneLabelMap[item.scene] || '对话' }} ·
+                  >{{ t(sceneLabelMap[item.scene] || 'social.conversation') }} ·
                   {{ formatTime(item.updatedAt) }}</text
                 >
               </button>
@@ -267,7 +292,11 @@
                 :hover-stay-time="80"
                 role="button"
                 tabindex="0"
-                :aria-label="`删除对话：${item.title || '对话'}`"
+                :aria-label="
+                  t('social.deleteConversationLabel', {
+                    p0: item.title || t('social.conversation'),
+                  })
+                "
                 @click.stop="handleDeleteHistory(item.sessionId)"
                 @keydown="handleActionKeydown"
                 @keyup="handleActionKeyup($event, () => handleDeleteHistory(item.sessionId))"
@@ -280,10 +309,15 @@
         </view>
       </view>
       <view v-if="showNewChatModal" class="chat-overlay chat-modal-overlay" @click="cancelNewChat">
-        <view class="chat-dialog" role="dialog" aria-label="开始新对话" @click.stop>
-          <text class="chat-dialog-title">新对话</text
-          ><text class="chat-state-description">选择对话主题</text>
-          <view class="chat-scenes" role="group" aria-label="对话主题"
+        <view
+          class="chat-dialog"
+          role="dialog"
+          :aria-label="t('social.startNewConversation')"
+          @click.stop
+        >
+          <text class="chat-dialog-title">{{ t('social.newConversation') }}</text
+          ><text class="chat-state-description">{{ t('social.chooseConversationTopic') }}</text>
+          <view class="chat-scenes" role="group" :aria-label="t('social.conversationTopics')"
             ><button
               v-for="option in sceneOptions"
               :key="option.value"
@@ -301,7 +335,12 @@
             >
               <text>{{ option.label }}</text>
               <view class="chat-scene-indicator" aria-hidden="true">
-                <view v-if="selectedScene === option.value" class="chat-scene-check" />
+                <UiIcon
+                  v-if="selectedScene === option.value"
+                  name="check"
+                  :size="16"
+                  tone="primary"
+                />
               </view></button
           ></view>
           <view class="chat-dialog-actions"
@@ -316,7 +355,7 @@
               @keyup="handleActionKeyup($event, cancelNewChat)"
               @blur="keyPressed = false"
             >
-              取消</button
+              {{ t('social.cancel') }}</button
             ><button
               class="chat-button chat-button-primary"
               hover-class="chat-control-pressed"
@@ -328,7 +367,7 @@
               @keyup="handleActionKeyup($event, confirmNewChat)"
               @blur="keyPressed = false"
             >
-              开始对话
+              {{ t('social.startConversation') }}
             </button></view
           >
         </view>
@@ -337,10 +376,12 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+import UiIcon from '@/components/UiIcon.vue';
 import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 import AsyncState from '@/components/AsyncState.vue';
 import LoginGate from '@/components/LoginGate.vue';
-import { ref, watch, nextTick, onScopeDispose } from 'vue';
+import { computed, ref, watch, nextTick, onScopeDispose } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useChat } from './composables/use-chat';
 import DishCard from './components/DishCard.vue';
@@ -405,15 +446,15 @@ watch(
   },
   { flush: 'sync' }
 );
-const sceneOptions: { value: AIScene; label: string }[] = [
-  { value: 'general_chat', label: '聊聊吃什么' },
-  { value: 'dish_critic', label: '菜品点评' },
-  { value: 'meal_planner', label: '餐单规划' },
-];
+const sceneOptions = computed<{ value: AIScene; label: string }[]>(() => [
+  { value: 'general_chat', label: t('social.foodChat') },
+  { value: 'dish_critic', label: t('social.dishCritic') },
+  { value: 'meal_planner', label: t('social.mealPlanner') },
+]);
 const sceneLabelMap: Record<string, string> = {
-  general_chat: '聊聊吃什么',
-  dish_critic: '菜品点评',
-  meal_planner: '餐单规划',
+  general_chat: 'social.foodChat',
+  dish_critic: 'social.dishCritic',
+  meal_planner: 'social.mealPlanner',
 };
 const keyPressed = ref(false);
 const handleActionKeydown = (event: KeyboardEvent) => {
@@ -513,7 +554,7 @@ const handleSend = async (text: string) => {
     if (accepted) {
       if (draft.value === snapshot) draft.value = '';
       returnToLatest();
-    } else uni.showToast({ title: '消息未发送，请重试', icon: 'none' });
+    } else uni.showToast({ title: t('social.messageSendRetry'), icon: 'none' });
   } finally {
     if (ownsOperation()) sending.value = false;
   }
@@ -550,16 +591,18 @@ const handleLoadHistory = (sessionId: string) =>
     if (loaded) {
       closeHistory();
       returnToLatest();
-    } else uni.showToast({ title: '加载历史失败', icon: 'none' });
+    } else uni.showToast({ title: t('social.loadHistoryFailed'), icon: 'none' });
   });
 const handleDeleteHistory = (sessionId: string) => {
   const item = historyEntries.value.find(entry => entry.sessionId === sessionId);
   const ownsOperation = captureOperation();
   return new Promise<boolean | undefined>(resolve =>
     uni.showModal({
-      title: '删除对话',
-      content: `确定删除“${item?.title || '对话'}”吗？`,
-      confirmText: '删除',
+      title: t('social.deleteConversation'),
+      content: t('social.deleteConversationQuestion', {
+        p0: item?.title || t('social.conversation'),
+      }),
+      confirmText: t('social.delete'),
       confirmColor: '#660874',
       success: async result => {
         if (!result.confirm || !ownsOperation()) {
@@ -613,16 +656,16 @@ const handleApplyPlan = async (
   if (!isCurrent() || applyFeedbackOwner.value || plan.appliedStatus === 'success') return;
   cancelPlanFollowUp();
   applyFeedbackOwner.value = isCurrent;
-  uni.showLoading({ title: '正在加入规划…' });
+  uni.showLoading({ title: t('social.addingPlan') });
   try {
     const applied = await applyMealPlan(plan);
     if (!isCurrent()) return;
     releaseApplyLoading();
     if (!applied) return;
-    uni.showToast({ title: '已加入我的规划', icon: 'success' });
+    uni.showToast({ title: t('social.addedToPlans'), icon: 'success' });
     planFollowUpTimer = setTimeout(() => {
       planFollowUpTimer = null;
-      if (isCurrent()) void sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
+      if (isCurrent()) void sendMessage(t('social.planAppliedPrompt'));
     }, 500);
   } catch (error) {
     if (!isCurrent()) return;
@@ -641,24 +684,26 @@ const formatTimeShort = (timestamp: number) => {
     ? `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
     : `${date.getMonth() + 1}/${date.getDate()}`;
 };
-const replyStates = {
-  failed: '回复失败，请稍后重试',
-  stopped: '已停止回复',
-  interrupted: '回复已中断',
-};
-const deliveryStates: Record<string, { label: string; icon?: string; text?: string }> = {
-  sending: { label: '发送中', icon: '/static/icons/history.png' },
-  received: { label: '服务端已接收', icon: '/static/icons/check-double.png' },
-  failed: {
-    label: '发送异常，接收未确认',
-    icon: '/static/icons/alert.png',
-    text: '发送异常，接收未确认',
-  },
-  unconfirmed: { label: '接收未确认', text: '接收未确认' },
-};
+const replyStates = computed(() => ({
+  failed: t('social.replyFailed'),
+  stopped: t('social.replyStopped'),
+  interrupted: t('social.replyInterrupted'),
+}));
+const deliveryStates = computed<Record<string, { label: string; icon?: string; text?: string }>>(
+  () => ({
+    sending: { label: t('social.messageSending'), icon: '/static/icons/history.png' },
+    received: { label: t('social.messageReceived'), icon: '/static/icons/check-double.png' },
+    failed: {
+      label: t('social.messageDeliveryError'),
+      icon: '/static/icons/alert.png',
+      text: t('social.messageDeliveryError'),
+    },
+    unconfirmed: { label: t('social.messageUnconfirmed'), text: t('social.messageUnconfirmed') },
+  })
+);
 const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   message.type === 'user' && message.deliveryStatus
-    ? deliveryStates[message.deliveryStatus]
+    ? deliveryStates.value[message.deliveryStatus]
     : undefined;
 </script>
 <style scoped>
@@ -868,20 +913,6 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
 .chat-card-stack {
   width: 100%;
   min-width: 0;
-}
-.chat-card-stack-dishes {
-  box-sizing: border-box;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  overflow: hidden;
-}
-.chat-dish-row + .chat-dish-row::before {
-  content: '';
-  display: block;
-  height: 1px;
-  margin: 0 14px;
-  background: #e5e7eb;
 }
 .chat-card-stack-plans,
 .chat-card-stack-preferences {
@@ -1244,14 +1275,6 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
 }
 .chat-scene-selected .chat-scene-indicator {
   border-color: #660874;
-}
-.chat-scene-check {
-  width: 4px;
-  height: 8px;
-  margin-top: -2px;
-  border: solid #660874;
-  border-width: 0 1.7px 1.7px 0;
-  transform: rotate(45deg);
 }
 .chat-dialog-actions {
   display: flex;

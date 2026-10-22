@@ -12,8 +12,12 @@
         <text class="upload-location">{{ location }}</text>
         <DishNutrition :dish="item" />
         <text class="upload-meta"
-          >{{ item.kind === 'update' ? '补充资料' : '新增菜品' }} ·
-          {{ formatDate(item.createdAt) }}</text
+          >{{
+            item.kind === 'update'
+              ? t('account.profile.additionalDetails')
+              : t('account.profile.newDish')
+          }}
+          · {{ formatDate(item.createdAt) }}</text
         >
       </view>
       <image
@@ -26,9 +30,9 @@
         @error="imageFailed = true"
       />
     </view>
-    <text v-if="item.status === 'rejected' && item.rejectReason" class="upload-reason"
-      >未通过原因：{{ item.rejectReason }}</text
-    >
+    <text v-if="item.status === 'rejected' && item.rejectReason" class="upload-reason">{{
+      t('account.profile.reason', { reason: item.rejectReason })
+    }}</text>
     <view class="upload-footer">
       <text class="upload-price"
         >¥{{ item.price
@@ -40,7 +44,7 @@
           class="upload-action"
           @click="emit('openDish', item.approvedDishId)"
         >
-          查看菜品<UiIcon name="chevron-right" :size="14" />
+          {{ t('account.profile.viewDish') }}<UiIcon name="chevron-right" :size="14" />
         </button>
         <template v-if="item.status === 'pending' || item.status === 'rejected'">
           <button
@@ -49,7 +53,7 @@
             :disabled="actionsDisabled"
             @click="emit('edit')"
           >
-            修改资料
+            {{ t('account.profile.editDetails') }}
           </button>
           <button
             class="upload-action upload-secondary"
@@ -57,7 +61,7 @@
             :disabled="actionsDisabled"
             @click="emit('withdraw')"
           >
-            {{ withdrawing ? '撤回中…' : '撤回' }}
+            {{ withdrawing ? t('account.profile.withdrawing') : t('account.profile.withdraw') }}
           </button>
         </template>
       </view>
@@ -65,6 +69,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import UiIcon from '@/components/UiIcon.vue';
@@ -79,16 +84,15 @@ const props = defineProps<{
   withdrawing?: boolean;
 }>();
 const emit = defineEmits<{ edit: []; withdraw: []; openDish: [id: string] }>();
-const statuses: Record<
-  DishContributionStatus,
-  { label: string; icon: UiIconName; tone: UiIconTone }
-> = {
-  pending: { label: '待审核', icon: 'history', tone: 'muted' },
-  approved: { label: '已采纳', icon: 'shield', tone: 'muted' },
-  rejected: { label: '未通过', icon: 'info', tone: 'danger' },
-  withdrawn: { label: '已撤回', icon: 'close', tone: 'muted' },
-};
-const status = computed(() => statuses[props.item.status]);
+const statuses = computed<
+  Record<DishContributionStatus, { label: string; icon: UiIconName; tone: UiIconTone }>
+>(() => ({
+  pending: { label: t('account.profile.pendingReview'), icon: 'history', tone: 'muted' },
+  approved: { label: t('account.profile.accepted'), icon: 'shield', tone: 'muted' },
+  rejected: { label: t('account.profile.unsuccessful'), icon: 'info', tone: 'danger' },
+  withdrawn: { label: t('account.profile.withdrawn'), icon: 'close', tone: 'muted' },
+}));
+const status = computed(() => statuses.value[props.item.status]);
 const location = computed(() =>
   [props.item.canteenName, props.item.windowName].filter(Boolean).join(' · ')
 );

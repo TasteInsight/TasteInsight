@@ -1,5 +1,5 @@
 <template>
-  <view class="skeleton-page" role="status" aria-label="正在加载规划">
+  <view class="skeleton-page" role="status" :aria-label="t('common.skeleton.planning')">
     <view class="skeleton-inline planning-skeleton-tabs">
       <SkeletonBase width="40%" height="24px" />
       <SkeletonBase width="40%" height="24px" />
@@ -24,6 +24,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 </script>
 <style scoped>

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue';
 import config from '@/config';
 
@@ -42,7 +43,7 @@ export function useWechatAuthorization(enabled: Ref<boolean> = ref(true)) {
     });
 
   function authorize(): Promise<string> {
-    if (!available.value) return Promise.reject(new Error('当前平台未配置微信登录'));
+    if (!available.value) return Promise.reject(new Error(t('common.errors.wechat')));
     return new Promise((resolve, reject) =>
       uni.login({
         provider: 'weixin',

@@ -314,7 +314,7 @@ describe('useAddDish', () => {
     expect(res).toBe(true);
     // run timers to execute navigateBack
     jest.runAllTimers();
-    expect(uni.redirectTo as jest.Mock).toHaveBeenCalledWith({ url: '/pages/profile/my-uploads/index' });
+    expect(uni.redirectTo as jest.Mock).toHaveBeenCalledWith({ url: '/pages/profile/records/my-uploads/index' });
     jest.useRealTimers();
   });
 });

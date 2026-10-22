@@ -4,14 +4,14 @@
     :class="{ 'uploads-page--state': !user.isLoggedIn }"
     :aria-busy="loading"
   >
-    <LoginGate title="登录后查看上传记录" icon="edit">
+    <LoginGate :title="t('account.profile.signInToViewYour3')" icon="edit">
       <AsyncState
         :loading="loading"
         :initialized="initialized"
         :has-content="!!items.length || !!detachedUpload"
         :error="error"
-        loading-title="正在加载上传记录…"
-        empty-title="暂无上传记录"
+        :loading-title="t('account.profile.loadingUploads')"
+        :empty-title="t('account.profile.noUploadsYet')"
         empty-icon="edit"
         @retry="retry"
       />
@@ -25,7 +25,7 @@
           :disabled="loading"
           @click="refresh()"
         >
-          重试
+          {{ t('account.profile.retry') }}
         </button>
       </view>
       <view class="uploads-list">
@@ -43,12 +43,14 @@
       </view>
       <view v-if="items.length && !error" class="uploads-footer">
         <button v-if="hasMore" class="upload-action" :disabled="loading" @click="loadMore">
-          加载更多
+          {{ t('account.profile.loadMore') }}
         </button>
-        <text v-else-if="!loading">没有更多了</text>
+        <text v-else-if="!loading">{{ t('account.profile.youVeReachedTheEnd') }}</text>
       </view>
       <view v-if="detachedUpload" id="upload-notification-detail" class="notification-detail">
-        <text class="notification-detail-title">消息对应记录</text>
+        <text class="notification-detail-title">{{
+          t('account.profile.recordLinkedToThisMessage')
+        }}</text>
         <UploadRecord
           :item="detachedUpload"
           highlighted
@@ -62,13 +64,14 @@
     </LoginGate>
     <FloatingActionButton
       v-if="user.isLoggedIn"
-      label="申请新增菜品"
+      :label="t('account.profile.suggestANewDish')"
       icon="plus"
       @click="createContribution"
     />
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, nextTick, ref, watch, onScopeDispose } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import AsyncState from '@/components/AsyncState.vue';
@@ -198,9 +201,9 @@ async function confirmWithdraw(item: MyUploadItem) {
   try {
     const confirmed = await new Promise<boolean>(resolve =>
       uni.showModal({
-        title: '撤回提交',
-        content: '撤回后停止审核，上传记录会保留。',
-        confirmText: '撤回',
+        title: t('account.profile.withdrawSubmission'),
+        content: t('account.profile.withdrawingStopsTheReviewYour'),
+        confirmText: t('account.profile.withdraw'),
         success: result => resolve(result.confirm),
         fail: () => resolve(false),
       })

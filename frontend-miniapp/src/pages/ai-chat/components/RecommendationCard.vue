@@ -11,12 +11,12 @@
           <text class="rating-icon">★</text>
           <text class="rating-text">{{
             recommendation.dish.averageRating === 0
-              ? '暂无'
+              ? t('social.notAvailable')
               : recommendation.dish.averageRating.toFixed(1)
           }}</text>
         </view>
         <view class="ai-reason">
-          <text class="text-xs text-gray-500">推荐理由: </text>
+          <text class="text-xs text-gray-500">{{ t('social.recommendationReason') }} </text>
           <text class="text-xs text-primary">{{ recommendation.reason }}</text>
         </view>
       </view>
@@ -25,16 +25,17 @@
     <!-- 反馈按钮 -->
     <view class="feedback-actions">
       <button class="feedback-btn like" @click.stop="submitFeedback('like')">
-        <text class="iconfont icon-thumb-up-outline"></text> 喜欢
+        <text class="iconfont icon-thumb-up-outline"></text> {{ t('social.liked') }}
       </button>
       <button class="feedback-btn dislike" @click.stop="submitFeedback('dislike')">
-        <text class="iconfont icon-thumb-down-outline"></text> 不喜欢
+        <text class="iconfont icon-thumb-down-outline"></text> {{ t('social.disliked') }}
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import type { RecommendationItem } from '@/types/api';
 

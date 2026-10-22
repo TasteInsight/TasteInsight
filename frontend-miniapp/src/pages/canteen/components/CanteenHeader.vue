@@ -4,7 +4,7 @@
       :loading="loading"
       :has-content="!!canteen"
       :error="error"
-      loading-title="正在加载食堂…"
+      :loading-title="t('food.loadingCanteen')"
       @retry="emit('retry')"
     />
     <template v-if="canteen">
@@ -37,7 +37,7 @@
           {{ canteen.description }}
         </view>
         <view v-if="formattedHours" class="text-xs text-gray-500 mt-2">
-          营业时间：{{ formattedHours }}
+          {{ t('food.hoursLabel', { hours: formattedHours }) }}
         </view>
       </view>
     </template>
@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import AsyncState from '@/components/AsyncState.vue';
 import { computed, ref, watch } from 'vue';
 import type { Canteen } from '@/types/api';
@@ -86,13 +87,13 @@ const formattedHours = computed(() => {
 
       const floorLabel =
         !floorHours.floorLevel || floorHours.floorLevel === 'default'
-          ? '通用'
+          ? t('food.general')
           : `${floorHours.floorLevel}F`;
       return `${floorLabel} ${timeStr}`;
     })
     .filter(Boolean) as string[];
 
-  if (parts.length === 0) return '今日休息';
+  if (parts.length === 0) return t('food.closedToday');
   return parts.join(' | ');
 });
 

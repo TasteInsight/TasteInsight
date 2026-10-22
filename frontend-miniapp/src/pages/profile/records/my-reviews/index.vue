@@ -1,13 +1,13 @@
 <template>
   <view class="page-content dish-list-page page-state-layout">
-    <LoginGate title="登录后查看个人记录" icon="user">
+    <LoginGate :title="t('account.profile.signInToViewYour')" icon="user">
       <view class="dish-list-content page-state-content">
         <AsyncState
           :loading="loading"
           :initialized="initialized"
           :has-content="!!reviews.length"
           :error="error"
-          empty-title="暂无评价"
+          :empty-title="t('account.profile.noReviewsYet2')"
           empty-icon="star"
           @retry="retry"
         />
@@ -19,8 +19,10 @@
             @click="goToDishDetail(item.dishId)"
           />
           <view v-if="!loading && !error" class="dish-list-footer">
-            <button v-if="hasMore" class="dish-list-action" @click="loadMore">加载更多</button>
-            <text v-else>没有更多了</text>
+            <button v-if="hasMore" class="dish-list-action" @click="loadMore">
+              {{ t('account.profile.loadMore') }}
+            </button>
+            <text v-else>{{ t('account.profile.youVeReachedTheEnd') }}</text>
           </view>
         </template>
       </view>
@@ -28,11 +30,12 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
-import ReviewCard from '../components/ReviewCard.vue';
+import ReviewCard from '@/pages/profile/components/ReviewCard.vue';
 import AsyncState from '@/components/AsyncState.vue';
 import LoginGate from '@/components/LoginGate.vue';
-import { useMyReviews } from '../composables/use-my-reviews';
+import { useMyReviews } from '@/pages/profile/composables/use-my-reviews';
 const { reviews, loading, initialized, error, hasMore, loadMore, refresh, retry } = useMyReviews();
 onShow(() => {
   void refresh();
@@ -50,7 +53,7 @@ onPullDownRefresh(async () => {
 function goToDishDetail(dishId: string) {
   uni.navigateTo({
     url: `/pages/dish/index?id=${dishId}`,
-    fail: () => uni.showToast({ title: '页面跳转失败', icon: 'none' }),
+    fail: () => uni.showToast({ title: t('account.profile.unableToOpenPage'), icon: 'none' }),
   });
 }
 </script>

@@ -1,39 +1,45 @@
 <template>
   <SettingsPage v-bind="pageState" :can-save="canSave" @retry="loadProfile" @save="handleSave">
-    <view class="settings-note"
-      >过敏原用于过滤推荐菜品。菜品资料可能不完整，就餐前请向窗口核对食材及交叉接触情况。</view
-    >
+    <view class="settings-note">{{
+      t('account.settings.allergensFilterRecommendedDishesDish')
+    }}</view>
     <view class="settings-section">
-      <label for="allergens-input" class="settings-title">过敏原列表</label>
+      <label for="allergens-input" class="settings-title">{{
+        t('account.settings.allergenList')
+      }}</label>
       <textarea
         id="allergens-input"
         v-model="form.allergens"
         class="settings-field allergens-input"
         :disabled="!canEdit"
-        placeholder="多个过敏原用逗号分隔"
+        :aria-disabled="!canEdit"
+        :placeholder="t('account.settings.separateMultipleAllergensWithCommas')"
         maxlength="200"
       />
       <text class="settings-hint allergens-count">{{ form.allergens.length }}/200</text>
     </view>
     <view class="settings-section">
-      <text class="settings-title">常见过敏原</text>
+      <text class="settings-title">{{ t('account.settings.commonAllergens') }}</text>
       <view class="settings-options">
         <button
           v-for="item in commonAllergens"
-          :key="item"
+          :key="item.value"
           class="settings-button"
-          :class="{ 'settings-option--selected': isSelected(item) }"
-          :aria-pressed="isSelected(item)"
+          hover-class="settings-button--pressed"
+          :hover-stay-time="80"
+          :class="{ 'settings-option--selected': isSelected(item.value) }"
+          :aria-pressed="isSelected(item.value)"
           :disabled="!canEdit"
-          @click="toggleAllergen(item)"
+          @click="toggleAllergen(item.value)"
         >
-          {{ item }}
+          {{ item.label }}
         </button>
       </view>
     </view>
   </SettingsPage>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { useAllergens } from '../composables/use-allergens';

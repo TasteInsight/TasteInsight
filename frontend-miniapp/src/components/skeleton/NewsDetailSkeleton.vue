@@ -1,5 +1,9 @@
 <template>
-  <view class="skeleton-page news-detail-skeleton" role="status" aria-label="正在加载公告">
+  <view
+    class="skeleton-page news-detail-skeleton"
+    role="status"
+    :aria-label="t('common.skeleton.news')"
+  >
     <view class="skeleton-copy">
       <SkeletonBase width="92%" height="28px" />
       <SkeletonBase width="62%" height="28px" />
@@ -16,6 +20,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
+
 import SkeletonBase from './SkeletonBase.vue';
 </script>
 <style scoped>

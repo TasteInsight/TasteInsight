@@ -7,8 +7,8 @@
         :initialized="initialized"
         :has-content="!!list.length"
         :error="error"
-        loading-title="正在加载新闻…"
-        empty-title="暂无新闻"
+        :loading-title="t('social.loadingNews')"
+        :empty-title="t('social.noNews')"
         empty-icon="info"
         @retry="retry"
       />
@@ -17,13 +17,14 @@
         class="news-retry news-more"
         @click="loadMore"
       >
-        加载更多
+        {{ t('social.loadMore') }}
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { useNewsList } from '../composables/use-news-list';
 import NewsItem from './NewsItem.vue';
 import AsyncState from '@/components/AsyncState.vue';

@@ -3,42 +3,44 @@
     <button
       class="dish-action-button dish-action-secondary"
       :class="{ 'is-favorited': isFavorited, 'dish-action-disabled': favoriteLoading }"
-      :aria-label="isFavorited ? '取消收藏' : '收藏此菜品'"
+      :aria-label="isFavorited ? t('food.removeFavorite') : t('food.favoriteThisDish')"
       :aria-pressed="isFavorited"
       :disabled="favoriteLoading"
       @click="emit('favorite')"
     >
       <text class="dish-action-icon" aria-hidden="true">{{ isFavorited ? '★' : '☆' }}</text
-      ><text>{{ isFavorited ? '已收藏' : '收藏' }}</text>
+      ><text>{{ isFavorited ? t('food.favorited') : t('food.favorite') }}</text>
     </button>
     <button
       class="dish-action-button dish-action-secondary"
-      aria-label="加入规划"
+      :aria-label="t('food.addToPlan')"
       @click="emit('plan')"
     >
-      <text class="dish-action-icon" aria-hidden="true">＋</text><text>加入规划</text>
+      <text class="dish-action-icon" aria-hidden="true">＋</text
+      ><text>{{ t('food.addToPlan') }}</text>
     </button>
     <button
       class="dish-action-button dish-action-primary"
       :class="{ 'dish-action-disabled': reviewLoading || reviewDisabled }"
-      :aria-label="hasReview ? '修改评价' : '写评价'"
+      :aria-label="hasReview ? t('food.editReview') : t('food.writeAReview')"
       :disabled="reviewLoading || reviewDisabled"
       @click="emit('review')"
     >
       {{
         reviewLoading
-          ? '读取评价中…'
+          ? t('food.loadingReview')
           : reviewDisabled
-            ? '评价暂不可用'
+            ? t('food.reviewUnavailable')
             : hasReview
-              ? '修改评价'
-              : '写评价'
+              ? t('food.editReview')
+              : t('food.writeAReview')
       }}
     </button>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 defineProps<{
   isFavorited: boolean;
   favoriteLoading: boolean;

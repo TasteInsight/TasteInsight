@@ -1,38 +1,54 @@
 <template>
   <view class="report-record">
     <view class="report-heading">
-      <text class="report-title">{{ targetLabel }}举报</text>
+      <text class="report-title">{{ t('account.profile.report', { target: targetLabel }) }}</text>
       <text class="report-status" :class="'report-status--' + item.status">{{ statusLabel }}</text>
     </view>
     <text class="report-reason"
       >{{ reasonLabel }}<template v-if="item.reason">：{{ item.reason }}</template></text
     >
-    <text v-if="item.status !== 'pending'" class="report-result"
-      >处理结论：{{ item.handleResult || statusLabel }}</text
-    >
-    <text class="report-time">提交时间 {{ formatDate(item.createdAt) }}</text>
-    <text v-if="item.handledAt" class="report-time">处理时间 {{ formatDate(item.handledAt) }}</text>
+    <text v-if="item.status !== 'pending'" class="report-result">{{
+      t('account.profile.outcome', { result: item.handleResult || statusLabel })
+    }}</text>
+    <text class="report-time">{{
+      t('account.profile.submitted', { date: formatDate(item.createdAt) })
+    }}</text>
+    <text v-if="item.handledAt" class="report-time">{{
+      t('account.profile.handled', { date: formatDate(item.handledAt) })
+    }}</text>
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import dayjs from 'dayjs';
 import type { Report } from '@/types/api';
 const props = defineProps<{ item: Report }>();
 const targetLabel = computed(
   () =>
-    ({ review: '评价', comment: '评价回复', post: '动态', postComment: '动态回复' })[
-      props.item.targetType
-    ] || '内容'
+    ({
+      review: t('account.profile.reviews'),
+      comment: t('account.profile.reviewReply'),
+      post: t('account.profile.posts'),
+      postComment: t('account.profile.postReply'),
+    })[props.item.targetType] || t('account.profile.content')
 );
 const statusLabel = computed(
-  () => ({ pending: '处理中', approved: '举报成立', rejected: '举报未成立' })[props.item.status]
+  () =>
+    ({
+      pending: t('account.profile.inProgress'),
+      approved: t('account.profile.reportUpheld'),
+      rejected: t('account.profile.reportDismissed'),
+    })[props.item.status]
 );
 const reasonLabel = computed(
   () =>
-    ({ spam: '垃圾广告', inappropriate: '不当内容', false_info: '不实信息', other: '其他问题' })[
-      props.item.type
-    ] || props.item.type
+    ({
+      spam: t('account.profile.spamOrAdvertising'),
+      inappropriate: t('account.profile.inappropriateContent'),
+      false_info: t('account.profile.falseInformation'),
+      other: t('account.profile.otherIssue'),
+    })[props.item.type] || props.item.type
 );
 const formatDate = (date: string) => dayjs(date).format('YYYY/M/D HH:mm');
 </script>

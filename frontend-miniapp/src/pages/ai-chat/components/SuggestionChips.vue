@@ -1,5 +1,5 @@
 <template>
-  <view class="suggestions" role="group" aria-label="推荐问题">
+  <view class="suggestions" role="group" :aria-label="t('social.suggestedQuestions')">
     <button
       v-for="(suggestion, index) in suggestions"
       :key="index"
@@ -21,6 +21,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref } from 'vue';
 const props = defineProps<{ suggestions: string[]; disabled?: boolean }>();
 const emit = defineEmits<{ (e: 'select', text: string): void }>();

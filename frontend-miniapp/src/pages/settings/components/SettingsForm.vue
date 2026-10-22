@@ -11,11 +11,13 @@
         </view>
       </view>
       <view class="flex-1">
-        <text class="text-sm font-semibold tracking-wide text-ts-purple ml-3">头像地址</text>
+        <text class="text-sm font-semibold tracking-wide text-ts-purple ml-3">{{
+          t('account.settings.photoUrl')
+        }}</text>
         <input
           class="mt-2 h-11 w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
           type="text"
-          placeholder="输入图片链接"
+          :placeholder="t('account.settings.enterImageUrl')"
           :value="props.form.avatar"
           @input="onInput('avatar', $event)"
         />
@@ -23,22 +25,26 @@
     </view>
 
     <view>
-      <text class="text-sm font-semibold tracking-wide text-ts-purple">昵称</text>
+      <text class="text-sm font-semibold tracking-wide text-ts-purple">{{
+        t('account.settings.nickname')
+      }}</text>
       <input
         class="mt-2 h-12 w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
         type="text"
         maxlength="20"
-        placeholder="请输入昵称"
+        :placeholder="t('account.settings.enterNickname')"
         :value="props.form.nickname"
         @input="onInput('nickname', $event)"
       />
     </view>
 
     <view>
-      <text class="text-sm font-semibold tracking-wide text-ts-purple">过敏食材</text>
+      <text class="text-sm font-semibold tracking-wide text-ts-purple">{{
+        t('account.settings.foodAllergies')
+      }}</text>
       <textarea
         class="mt-2 min-h-[80px] w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 py-3 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
-        placeholder="例如：花生, 芒果, 海鲜"
+        :placeholder="t('account.settings.eGPeanutsMangoSeafood')"
         :value="props.form.allergensText"
         @input="onInput('allergensText', $event)"
       />
@@ -81,20 +87,22 @@
     </view>
 
     <view class="rounded-2xl bg-purple-50/80 p-5">
-      <text class="text-sm font-semibold tracking-wide text-ts-purple">价格区间 (元)</text>
+      <text class="text-sm font-semibold tracking-wide text-ts-purple">{{
+        t('account.settings.priceRangeCny')
+      }}</text>
       <view class="mt-3 flex items-center space-x-3">
         <input
           class="h-11 flex-1 rounded-xl border-2 border-ts-purple/40 bg-white px-4 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
           type="number"
-          placeholder="最低价格"
+          :placeholder="t('account.settings.minimumPrice')"
           :value="props.form.priceRangeMin"
           @input="onInput('priceRangeMin', $event)"
         />
-        <text class="text-base font-medium text-purple-400">到</text>
+        <text class="text-base font-medium text-purple-400">{{ t('account.settings.to') }}</text>
         <input
           class="h-11 flex-1 rounded-xl border-2 border-ts-purple/40 bg-white px-4 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
           type="number"
-          placeholder="最高价格"
+          :placeholder="t('account.settings.maximumPrice')"
           :value="props.form.priceRangeMax"
           @input="onInput('priceRangeMax', $event)"
         />
@@ -138,7 +146,9 @@
       hover-class=""
       @click="emit('save')"
     >
-      <text class="tracking-wide text-black">{{ saving ? '保存中…' : '保存设置' }}</text>
+      <text class="tracking-wide text-black">{{
+        saving ? t('account.profile.saving') : t('account.settings.saveSettings')
+      }}</text>
     </button>
 
     <button
@@ -146,12 +156,13 @@
       hover-class=""
       @click="emit('logout')"
     >
-      退出登录
+      {{ t('account.profile.signOut') }}
     </button>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import type { SettingsField, SettingsFormState } from '../composables/use-settings';
 
@@ -169,69 +180,76 @@ const emit = defineEmits<{
   (e: 'logout'): void;
 }>();
 
-const preferenceTextareas = [
+const preferenceTextareas = computed(() => [
   {
     field: 'favoriteIngredientsText' as const,
-    label: '喜欢的食材',
-    placeholder: '用逗号分隔，例如：牛肉, 鸡肉',
+    label: t('account.settings.favoriteIngredients'),
+    placeholder: t('account.settings.separateWithCommasEG'),
   },
   {
     field: 'avoidIngredientsText' as const,
-    label: '避开的食材',
-    placeholder: '与过敏不同，可输入不喜欢吃的',
+    label: t('account.settings.ingredientsToAvoid'),
+    placeholder: t('account.settings.addFoodsYouDislikeSeparately'),
   },
   {
     field: 'canteenPreferencesText' as const,
-    label: '常去食堂',
-    placeholder: '输入食堂名称，如：一食堂, 二食堂',
+    label: t('account.settings.frequentCanteens'),
+    placeholder: t('account.settings.enterCanteenNamesEG'),
   },
   {
     field: 'tagPreferencesText' as const,
-    label: '偏好菜系',
-    placeholder: '例如：川菜, 湘菜, 素食',
+    label: t('account.settings.preferredCuisines'),
+    placeholder: t('account.settings.eGSichuanHunanVegetarian'),
   },
-];
+]);
 
-const tasteSliders = [
+const tasteSliders = computed(() => [
   {
     field: 'spicyLevel' as const,
-    label: '辣度偏好',
-    steps: ['不辣', '微辣', '中辣', '偏辣', '很辣', '特辣'],
+    label: t('account.settings.spicinessPreference'),
+    steps: [
+      t('account.settings.noSpice'),
+      t('account.settings.mild'),
+      t('account.settings.medium'),
+      t('account.settings.hot'),
+      t('account.settings.veryHot'),
+      t('account.settings.extraHot'),
+    ],
   },
-  { field: 'sweetness' as const, label: '甜度' },
-  { field: 'saltiness' as const, label: '咸度' },
-  { field: 'oiliness' as const, label: '油腻度' },
-];
+  { field: 'sweetness' as const, label: t('account.settings.sweetness') },
+  { field: 'saltiness' as const, label: t('account.settings.saltiness') },
+  { field: 'oiliness' as const, label: t('account.settings.oiliness') },
+]);
 
-const portionSizeOptions = [
-  { label: '小份', value: 'small' as const },
-  { label: '中份', value: 'medium' as const },
-  { label: '大份', value: 'large' as const },
-];
+const portionSizeOptions = computed(() => [
+  { label: t('account.settings.small'), value: 'small' as const },
+  { label: t('account.settings.medium2'), value: 'medium' as const },
+  { label: t('account.settings.large'), value: 'large' as const },
+]);
 
-const displayToggles = [
-  { field: 'showCalories' as const, label: '显示卡路里' },
-  { field: 'showNutrition' as const, label: '显示营养信息' },
-];
+const displayToggles = computed(() => [
+  { field: 'showCalories' as const, label: t('account.settings.showCalories') },
+  { field: 'showNutrition' as const, label: t('account.settings.showNutrition') },
+]);
 
-const notificationToggles = [
-  { field: 'newDishAlert' as const, label: '新菜品提醒' },
-  { field: 'priceChangeAlert' as const, label: '价格变动提醒' },
-  { field: 'reviewReplyAlert' as const, label: '点评回复提醒' },
-  { field: 'weeklyRecommendation' as const, label: '每周推荐' },
-];
+const notificationToggles = computed(() => [
+  { field: 'newDishAlert' as const, label: t('account.settings.newDishAlerts') },
+  { field: 'priceChangeAlert' as const, label: t('account.settings.priceChangeAlerts') },
+  { field: 'reviewReplyAlert' as const, label: t('account.settings.reviewReplyAlerts') },
+  { field: 'weeklyRecommendation' as const, label: t('account.settings.weeklyRecommendations') },
+]);
 
-const sortByOptions = [
-  { label: '综合排序', value: '' as const },
-  { label: '评分优先', value: 'rating' as const },
-  { label: '价格从低到高', value: 'price_low' as const },
-  { label: '价格从高到低', value: 'price_high' as const },
-  { label: '人气优先', value: 'popularity' as const },
-  { label: '最新发布', value: 'newest' as const },
-];
+const sortByOptions = computed(() => [
+  { label: t('account.settings.recommendedOrder'), value: '' as const },
+  { label: t('account.settings.highestRated'), value: 'rating' as const },
+  { label: t('account.settings.priceLowToHigh'), value: 'price_low' as const },
+  { label: t('account.settings.priceHighToLow'), value: 'price_high' as const },
+  { label: t('account.settings.mostPopular'), value: 'popularity' as const },
+  { label: t('account.settings.newestFirst'), value: 'newest' as const },
+]);
 
 const sortByIndex = computed(() => {
-  const found = sortByOptions.findIndex(option => option.value === props.form.sortBy);
+  const found = sortByOptions.value.findIndex(option => option.value === props.form.sortBy);
   return found >= 0 ? found : 0;
 });
 
@@ -253,7 +271,7 @@ function onSwitchChange(field: SettingsField, event: any) {
 
 function onPickerChange(field: SettingsField, event: any) {
   const index = Number(event?.detail?.value ?? 0);
-  const option = sortByOptions[index] ?? sortByOptions[0];
+  const option = sortByOptions.value[index] ?? sortByOptions.value[0];
   emit('update-field', { field, value: option.value });
 }
 </script>

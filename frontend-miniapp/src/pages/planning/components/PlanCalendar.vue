@@ -1,8 +1,15 @@
 <template>
-  <view class="plan-calendar" :class="'plan-calendar-' + mode" aria-label="饮食计划日历">
+  <view
+    class="plan-calendar"
+    :class="'plan-calendar-' + mode"
+    :aria-label="t('social.planCalendar')"
+  >
     <view class="calendar-heading">
       <UiPicker class="calendar-date-picker" mode="date" :value="anchor" @change="pickDate">
-        <button class="calendar-control calendar-period" :aria-label="'选择日期，当前 ' + anchor">
+        <button
+          class="calendar-control calendar-period"
+          :aria-label="t('social.selectDateCurrent') + anchor"
+        >
           <text class="calendar-period-text">{{ periodLabel }}</text>
           <uni-icons type="down" size="14" color="#667085" aria-hidden="true" />
         </button>
@@ -13,7 +20,9 @@
       <button class="calendar-control" :aria-label="nextLabel" @click="move(1)">
         <uni-icons type="right" size="18" color="#475467" />
       </button>
-      <button class="calendar-control calendar-today" @click="goToday">今天</button>
+      <button class="calendar-control calendar-today" @click="goToday">
+        {{ t('social.today') }}
+      </button>
     </view>
     <view v-if="mode !== 'day'" class="calendar-week" aria-hidden="true">
       <text v-for="day in weekdays" :key="day">{{ day }}</text>
@@ -28,7 +37,9 @@
           'calendar-day-selected': anchor === day.date,
           'calendar-day-today': day.isToday,
         }"
-        :aria-label="`${day.date}，${day.count} 个计划，${day.completed} 个已吃`"
+        :aria-label="
+          t('social.calendarDayLabel', { p0: day.date, p1: day.count, p2: day.completed })
+        "
         :aria-pressed="anchor === day.date"
         @click="$emit('select', day.date)"
       >
@@ -48,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import UiPicker from '@/components/UiPicker.vue';
 import type { MealPlan } from '@/types/api';
@@ -73,18 +85,41 @@ const props = withDefaults(
   }
 );
 const emit = defineEmits<{ select: [date: string] }>();
-const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+const weekdays = computed(() => [
+  t('social.monday'),
+  t('social.tuesday'),
+  t('social.wednesday'),
+  t('social.thursday'),
+  t('social.friday'),
+  t('social.saturday'),
+  t('social.sunday'),
+]);
 const anchor = computed(() => props.selectedDate || props.today);
 const periodLabel = computed(() =>
   props.mode === 'day'
-    ? `${Number(anchor.value.slice(5, 7))} 月 ${Number(anchor.value.slice(-2))} 日 · 周${weekdays[(new Date(anchor.value + 'T00:00:00Z').getUTCDay() + 6) % 7]}`
-    : `${anchor.value.slice(0, 4)} 年 ${Number(anchor.value.slice(5, 7))} 月`
+    ? t('social.calendarDayTitle', {
+        p0: Number(anchor.value.slice(5, 7)),
+        p1: Number(anchor.value.slice(-2)),
+        p2: weekdays.value[(new Date(anchor.value + 'T00:00:00Z').getUTCDay() + 6) % 7],
+      })
+    : t('social.calendarMonthTitle', {
+        p0: anchor.value.slice(0, 4),
+        p1: Number(anchor.value.slice(5, 7)),
+      })
 );
 const previousLabel = computed(() =>
-  props.mode === 'month' ? '上个月' : props.mode === 'week' ? '上一周' : '上一天'
+  props.mode === 'month'
+    ? t('social.previousMonth')
+    : props.mode === 'week'
+      ? t('social.previousWeek')
+      : t('social.previousDay')
 );
 const nextLabel = computed(() =>
-  props.mode === 'month' ? '下个月' : props.mode === 'week' ? '下一周' : '下一天'
+  props.mode === 'month'
+    ? t('social.nextMonth')
+    : props.mode === 'week'
+      ? t('social.nextWeek')
+      : t('social.nextDay')
 );
 const days = computed(() =>
   props.mode === 'month'

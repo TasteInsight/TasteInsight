@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 export interface DraftImage {
   source: 'temporary' | 'saved' | 'embedded' | 'remote';
   path: string;
@@ -25,12 +26,12 @@ export async function persistDraftImage(image: DraftImage): Promise<DraftImage> 
     typeof fetch !== 'undefined'
   ) {
     const response = await fetch(image.path);
-    if (!response.ok) throw new Error('图片读取失败，请重新选择');
+    if (!response.ok) throw new Error(t('food.couldNotReadPhotoSelectItAgain'));
     const blob = await response.blob();
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error('图片读取失败，请重新选择'));
+      reader.onerror = () => reject(new Error(t('food.couldNotReadPhotoSelectItAgain')));
       reader.readAsDataURL(blob);
     });
     return { ...image, source: 'embedded', dataUrl };
@@ -45,7 +46,7 @@ export async function persistDraftImage(image: DraftImage): Promise<DraftImage> 
     );
     return { ...image, source: 'saved', path };
   }
-  throw new Error('当前平台无法保存图片草稿，请保持页面打开并提交');
+  throw new Error(t('food.photoDraftsCannotBeSavedOnThisPlatform'));
 }
 
 export function serializeDraftImage(image: DraftImage): DraftImage {

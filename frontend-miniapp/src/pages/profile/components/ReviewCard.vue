@@ -4,7 +4,7 @@
     hover-class="list-row-pressed"
     role="button"
     tabindex="0"
-    :aria-label="'查看' + review.dishName + '的评价'"
+    :aria-label="t('account.profile.reviewOfDish', { dish: review.dishName })"
     @click="activate"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
@@ -14,7 +14,9 @@
       <view class="my-review-title-block">
         <text class="my-review-title">{{ review.dishName }}</text>
         <view class="my-review-meta">
-          <view class="my-review-stars" :aria-label="'评分' + review.rating + '星'"
+          <view
+            class="my-review-stars"
+            :aria-label="t('account.profile.ratingStars', { rating: review.rating })"
             ><text
               v-for="star in 5"
               :key="star"
@@ -47,11 +49,13 @@
     <view class="my-review-footer"
       ><text>{{ formattedDate }}</text
       ><text class="my-review-detail"
-        >查看详情<text class="iconfont icon-chevronright" aria-hidden="true"></text></text
+        >{{ t('account.profile.viewDetails')
+        }}<text class="iconfont icon-chevronright" aria-hidden="true"></text></text
     ></view>
   </button>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import type { MyReviewItem } from '@/types/api';
 import dayjs from 'dayjs';
@@ -84,7 +88,7 @@ const validImages = computed(() =>
   display: block;
   width: 100%;
   margin: 0;
-  padding: 20px 0;
+  padding-block: 20px;
   border: 0;
   border-bottom: 1px solid #e5e7eb;
   border-radius: 0;

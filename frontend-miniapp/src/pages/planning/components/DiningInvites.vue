@@ -1,7 +1,7 @@
 <template>
   <view class="dining-page page-state-content" :aria-busy="loading">
-    <LoginGate title="登录后查看约饭邀请" icon="users">
-      <view class="dining-tabs" role="tablist" aria-label="约饭邀请">
+    <LoginGate :title="t('social.invitesLogin')" icon="users">
+      <view class="dining-tabs" role="tablist" :aria-label="t('social.mealInvites')">
         <button
           class="dining-button dining-tab"
           :class="{ 'dining-selected': !mine }"
@@ -13,7 +13,7 @@
           @keyup="squareAction.handleKeyup"
           @blur="squareAction.clearPress"
         >
-          广场
+          {{ t('social.publicFeed') }}
         </button>
         <button
           class="dining-button dining-tab"
@@ -26,37 +26,41 @@
           @keyup="mineAction.handleKeyup"
           @blur="mineAction.clearPress"
         >
-          我的
+          {{ t('social.mine') }}
         </button>
       </view>
       <button v-if="!canContribute" class="dining-access" @click="verifyIdentity">
-        <UiIcon name="shield" :size="16" /><text>认证后可参与约饭</text
+        <UiIcon name="shield" :size="16" /><text>{{ t('social.verificationRequired') }}</text
         ><UiIcon name="chevron-right" :size="16" />
       </button>
       <AsyncState
         :loading="loading"
         :initialized="initialized"
         :has-content="items.length > 0"
-        :error="error"
-        loading-title="正在加载邀请…"
-        :empty-title="mine ? '还没有邀请或申请' : '暂时没有可加入的邀请'"
+        :error="errorText"
+        :loading-title="t('social.loadingInvites')"
+        :empty-title="mine ? t('social.noInvitesOrApplications') : t('social.noAvailableInvites')"
         empty-icon="users"
         @retry="load(failedAppend)"
       />
       <view v-for="invite in items" :key="invite.id" class="dining-invite">
         <view class="dining-invite-heading"
           ><text class="dining-host">{{ invite.host.nickname }}</text
-          ><text class="dining-state">{{ statusLabels[invite.status] }}</text></view
+          ><text class="dining-state">{{ t(statusLabels[invite.status]) }}</text></view
         >
         <text class="dining-meal"
-          >{{ invite.date }} {{ mealNames[invite.mealTime] }} {{ timeText(invite.startsAt) }}</text
+          >{{ invite.date }} {{ t(mealNames[invite.mealTime]) }}
+          {{ timeText(invite.startsAt) }}</text
         >
         <text class="dining-hint">{{ invite.canteen.name }}</text>
         <text class="dining-hint"
-          >{{ invite.acceptedCount + 1 }} / {{ invite.capacity }} 人（包括发起人）</text
+          >{{ invite.acceptedCount + 1 }} / {{ invite.capacity }}
+          {{ t('social.peopleIncludingHost') }}</text
         >
         <view v-if="invite.host.id === ownerId" class="dining-applications">
-          <text v-if="!invite.applications?.length" class="dining-hint">暂未收到申请</text>
+          <text v-if="!invite.applications?.length" class="dining-hint">{{
+            t('social.noApplications')
+          }}</text>
           <view
             v-for="application in invite.applications"
             :key="application.id"
@@ -64,7 +68,7 @@
           >
             <view
               ><text>{{ application.user.nickname }}</text
-              ><text class="dining-hint">{{ applicationLabels[application.status] }}</text></view
+              ><text class="dining-hint">{{ t(applicationLabels[application.status]) }}</text></view
             >
             <view
               v-if="application.status === 'pending' && ['open', 'full'].includes(invite.status)"
@@ -75,14 +79,14 @@
                 :disabled="!!busy[invite.id] || !canContribute"
                 @click="decide(invite, application.id, 'reject')"
               >
-                拒绝
+                {{ t('social.decline') }}
               </button>
               <button
                 class="dining-button dining-primary"
                 :disabled="!!busy[invite.id] || !canContribute || invite.status === 'full'"
                 @click="decide(invite, application.id, 'accept')"
               >
-                接受
+                {{ t('social.accept') }}
               </button>
             </view>
           </view>
@@ -92,12 +96,12 @@
             :disabled="!!busy[invite.id]"
             @click="cancel(invite)"
           >
-            取消本次邀请
+            {{ t('social.cancelThisInvite') }}
           </button>
         </view>
         <view v-else class="dining-actions dining-join">
           <text v-if="invite.myApplication" class="dining-hint">{{
-            applicationLabels[invite.myApplication.status]
+            t(applicationLabels[invite.myApplication.status])
           }}</text>
           <button
             v-if="
@@ -109,7 +113,11 @@
             :disabled="!!busy[invite.id]"
             @click="run(invite, () => withdrawDiningApplication(invite.id))"
           >
-            {{ invite.myApplication.status === 'accepted' ? '退出本次同行' : '撤回申请' }}
+            {{
+              invite.myApplication.status === 'accepted'
+                ? t('social.leaveMeal')
+                : t('social.withdrawApplication')
+            }}
           </button>
           <button
             v-else-if="
@@ -120,23 +128,24 @@
             :disabled="!!busy[invite.id] || !canContribute"
             @click="run(invite, () => applyDiningInvite(invite.id))"
           >
-            {{ busy[invite.id] ? '提交中…' : '申请一起吃' }}
+            {{ busy[invite.id] ? t('social.submitting') : t('social.applyToJoin') }}
           </button>
         </view>
       </view>
       <button
-        v-if="!error && items.length && page < totalPages"
+        v-if="!errorText && items.length && page < totalPages"
         class="dining-button dining-more"
         :disabled="loading"
         @click="load(true)"
       >
-        {{ loading ? '加载中…' : '加载更多' }}
+        {{ loading ? t('social.loadingMore') : t('social.loadMore') }}
       </button>
     </LoginGate>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import {
@@ -168,6 +177,9 @@ const items = ref<DiningInvite[]>([]);
 const loading = ref(false);
 const initialized = ref(false);
 const error = ref('');
+const errorText = computed(() =>
+  error.value.startsWith('social.') ? t(error.value) : error.value
+);
 const failedAppend = ref(false);
 const busy = ref<Record<string, boolean>>({});
 const page = ref(1);
@@ -178,14 +190,24 @@ let disposed = false;
 let version = 0;
 let visibilityVersion = 0;
 let writeRevision = 0;
-const statusLabels = { open: '接受申请', full: '名额已满', expired: '已结束', cancelled: '已取消' };
-const applicationLabels = {
-  pending: '等待确认',
-  accepted: '已接受',
-  rejected: '未通过',
-  withdrawn: '已撤回',
+const statusLabels = {
+  open: 'social.acceptingApplications',
+  full: 'social.inviteFull',
+  expired: 'social.ended',
+  cancelled: 'social.cancelled',
 };
-const mealNames = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', nightsnack: '夜宵' };
+const applicationLabels = {
+  pending: 'social.waitingConfirmation',
+  accepted: 'social.accepted',
+  rejected: 'social.rejected',
+  withdrawn: 'social.withdrawn',
+};
+const mealNames = {
+  breakfast: 'social.breakfast',
+  lunch: 'social.lunch',
+  dinner: 'social.dinner',
+  nightsnack: 'social.lateNight',
+};
 const timeText = (value: string) =>
   new Date(Date.parse(value) + 8 * 3600000).toISOString().slice(11, 16);
 const capture = () => {
@@ -230,7 +252,7 @@ async function load(append = false) {
   } catch (cause) {
     if (current() && request === version) {
       failedAppend.value = append;
-      error.value = cause instanceof Error ? cause.message : '邀请加载失败，请重试';
+      error.value = cause instanceof Error ? cause.message : 'social.invitesLoadFailed';
     }
   } finally {
     if (current() && request === version) loading.value = false;
@@ -276,7 +298,7 @@ async function run(invite: DiningInvite, operation: () => Promise<ApiResponse<Di
   } catch (cause) {
     if (current())
       uni.showToast({
-        title: cause instanceof Error ? cause.message : '操作失败，请重试',
+        title: cause instanceof Error ? cause.message : t('social.actionFailed'),
         icon: 'none',
       });
   } finally {
@@ -289,8 +311,8 @@ async function cancel(invite: DiningInvite) {
   const current = capture();
   const confirmed = await new Promise<boolean>(resolve =>
     uni.showModal({
-      title: '取消邀请',
-      content: '取消后将停止接受申请，已申请的同学可以看到取消状态。',
+      title: t('social.cancelInvite'),
+      content: t('social.cancelInviteDescription'),
       success: result => resolve(!!result.confirm),
       fail: () => resolve(false),
     })

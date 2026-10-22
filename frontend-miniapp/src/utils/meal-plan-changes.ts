@@ -1,5 +1,6 @@
+import { t } from '@/i18n';
 import type { Dish, MealPlanConstraints, MealPlanChangeNotice } from '@/types/api';
-import { priceUnitSuffix } from '@/utils/price-display';
+import { normalizePriceUnit, priceUnitSuffix } from '@/utils/price-display';
 import { addDays, planDateKey } from '@/pages/planning/utils/meal-plan-date';
 
 type Schedule = { startDate: string; endDate: string; mealTime: string };
@@ -30,14 +31,54 @@ function supplyDatesCover(dish: Dish, schedule: Schedule): boolean {
   return false;
 }
 
-export function mealPlanDishNotices(dish: Dish, schedule?: Schedule): string[] {
-  if (dish.status === 'offline') return [];
-  if (!schedule) return [];
-  const notices: string[] = [];
+function mealPlanDishNoticeKeys(dish: Dish, schedule?: Schedule): string[] {
+  if (dish.status === 'offline' || !schedule) return [];
+  const keys: string[] = [];
   if (dish.availableMealTime && !dish.availableMealTime.some(time => time === schedule.mealTime))
-    notices.push('该餐次暂停供应');
-  if (!supplyDatesCover(dish, schedule)) notices.push('规划日期内部分日期暂停供应');
-  return notices;
+    keys.push('social.mealSupplyPaused');
+  if (!supplyDatesCover(dish, schedule)) keys.push('social.dateSupplyPaused');
+  return keys;
+}
+
+export function mealPlanDishNotices(dish: Dish, schedule?: Schedule): string[] {
+  return mealPlanDishNoticeKeys(dish, schedule).map(key => t(key));
+}
+
+function localMessage(messageKey: string, messageParams?: Record<string, string | number>) {
+  return { messageKey, messageParams, message: t(messageKey, messageParams) };
+}
+
+type PriceNotice = Extract<MealPlanChangeNotice, { kind: 'price' }>;
+
+export function mealPlanPreviousPriceLabel(notice: PriceNotice): string {
+  const price = notice.priceChange;
+  return price
+    ? `¥${price.previousPrice.toFixed(2)}${priceUnitSuffix(price.previousUnit)}`
+    : notice.previousPriceLabel;
+}
+
+export function mealPlanNoticeMessage(notice: MealPlanChangeNotice): string {
+  if (!notice.messageKey) return notice.message;
+  if (notice.kind === 'price' && notice.priceChange) {
+    const price = notice.priceChange;
+    const previous = mealPlanPreviousPriceLabel(notice);
+    const current = `¥${price.currentPrice.toFixed(2)}${priceUnitSuffix(price.currentUnit)}`;
+    return t(
+      notice.messageKey,
+      notice.unitChanged
+        ? { p0: previous, p1: current }
+        : {
+            p0: previous,
+            p1: t(
+              price.currentPrice > price.previousPrice
+                ? 'social.priceIncreased'
+                : 'social.priceDecreased'
+            ),
+            p2: current,
+          }
+    );
+  }
+  return t(notice.messageKey, notice.messageParams);
 }
 
 export function mealPlanChanges(
@@ -51,32 +92,38 @@ export function mealPlanChanges(
   for (const dish of current) {
     const before = beforeById.get(dish.id);
     if (before && Number.isFinite(before.price)) {
-      const previousUnit = priceUnitSuffix(before.priceUnit);
-      const currentUnit = priceUnitSuffix(dish.priceUnit);
+      const previousUnit = normalizePriceUnit(before.priceUnit);
+      const currentUnit = normalizePriceUnit(dish.priceUnit);
       const unitChanged = previousUnit !== currentUnit;
       const priceChanged = Math.round(before.price * 100) !== Math.round(dish.price * 100);
       if (unitChanged || priceChanged) {
-        const previousPriceLabel = `¥${before.price.toFixed(2)}${previousUnit}`;
-        const currentPriceLabel = `¥${dish.price.toFixed(2)}${currentUnit}`;
-        const direction = dish.price > before.price ? '上涨' : '下降';
-        notices.push({
+        const notice: PriceNotice = {
           kind: 'price',
           dishId: dish.id,
-          previousPriceLabel,
+          previousPriceLabel: `¥${before.price.toFixed(2)}${priceUnitSuffix(previousUnit)}`,
           unitChanged,
-          message: unitChanged
-            ? `计价方式由 ${previousPriceLabel} 调整为 ${currentPriceLabel}`
-            : `单价由 ${previousPriceLabel} ${direction}至 ${currentPriceLabel}`,
-        });
+          priceChange: {
+            previousPrice: before.price,
+            currentPrice: dish.price,
+            previousUnit,
+            currentUnit,
+          },
+          messageKey: unitChanged ? 'social.pricingUnitChanged' : 'social.unitPriceChanged',
+          message: '',
+        };
+        notice.message = mealPlanNoticeMessage(notice);
+        notices.push(notice);
       }
     }
     if (dish.status === 'offline')
-      notices.push({ kind: 'status', dishId: dish.id, message: '已下架' });
-    const supply = mealPlanDishNotices(dish, schedule);
-    notices.push(...supply.map(message => ({ kind: 'supply' as const, dishId: dish.id, message })));
+      notices.push({ kind: 'status', dishId: dish.id, ...localMessage('social.unavailable') });
+    const supply = mealPlanDishNoticeKeys(dish, schedule);
+    notices.push(
+      ...supply.map(key => ({ kind: 'supply' as const, dishId: dish.id, ...localMessage(key) }))
+    );
     if (dish.status !== 'offline' && !supply.length && before) {
       if (before.status === 'offline' && dish.status === 'online')
-        notices.push({ kind: 'status', dishId: dish.id, message: '已恢复供应' });
+        notices.push({ kind: 'status', dishId: dish.id, ...localMessage('social.supplyRestored') });
       else if (
         (before.availableMealTime &&
           JSON.stringify([...before.availableMealTime].sort()) !==
@@ -84,14 +131,17 @@ export function mealPlanChanges(
         (before.availableDates !== undefined &&
           JSON.stringify(supplyRanges(before)) !== JSON.stringify(supplyRanges(dish)))
       )
-        notices.push({ kind: 'supply', dishId: dish.id, message: '供应安排已更新' });
+        notices.push({ kind: 'supply', dishId: dish.id, ...localMessage('social.supplyUpdated') });
     }
   }
   const total = current.reduce((sum, dish) => sum + Math.round(dish.price * 100), 0);
   if (constraints?.totalBudget !== undefined && total > Math.round(constraints.totalBudget * 100))
     notices.push({
       kind: 'budget',
-      message: `当前单价合计 ¥${(total / 100).toFixed(2)}，高于原预算 ¥${constraints.totalBudget.toFixed(2)}`,
+      ...localMessage('social.overBudget', {
+        p0: (total / 100).toFixed(2),
+        p1: constraints.totalBudget.toFixed(2),
+      }),
     });
   return notices;
 }

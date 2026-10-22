@@ -8,21 +8,34 @@
       :disabled="isLoggedIn && !userInfo"
       :aria-label="
         isLoggedIn
-          ? '管理个人资料：' +
-            userInfo?.nickname +
-            (userInfo?.capabilities?.canContribute ? '，已认证学生' : '') +
-            (userInfo?.bio ? '，' + userInfo.bio : '')
-          : '登录食鉴'
+          ? [
+              t('account.profile.manageProfile', {
+                nickname: userInfo?.nickname || t('account.common.user'),
+              }),
+              userInfo?.capabilities?.canContribute ? t('account.profile.verifiedStudent') : '',
+              userInfo?.bio,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : t('account.profile.signInToTasteinsight')
       "
       @click="activate"
       @keydown="handleKeydown"
       @keyup="handleKeyup"
       @blur="clearPress"
     >
-      <UserAvatar :src="userInfo?.avatar" :size="52" :label="userInfo?.nickname || '个人头像'" />
+      <UserAvatar
+        :src="userInfo?.avatar"
+        :size="52"
+        :label="userInfo?.nickname || t('account.profile.profilePhoto')"
+      />
       <view class="user-copy">
         <view class="user-name-row">
-          <text class="user-name">{{ isLoggedIn ? userInfo?.nickname : '欢迎来到食鉴' }}</text>
+          <text class="user-name">{{
+            isLoggedIn
+              ? userInfo?.nickname || t('account.common.user')
+              : t('account.profile.welcomeToTasteinsight')
+          }}</text>
           <UiIcon
             v-if="userInfo?.capabilities?.canContribute"
             name="shield"
@@ -31,14 +44,30 @@
           />
         </view>
         <text class="user-bio">{{
-          isLoggedIn ? userInfo?.bio || '填写个人简介' : '点击登录，记录用餐体验'
+          isLoggedIn
+            ? userInfo?.bio || t('account.profile.addABio')
+            : t('account.profile.signInToRecordYour')
         }}</text>
       </view>
     </button>
-    <text v-if="isLoggedIn && userInfo?.publicProfileSubmission" class="user-moderation-status" role="status">{{ userInfo.publicProfileSubmission.status === 'rejected' ? `资料审核未通过：${userInfo.publicProfileSubmission.reason || '请修改后重新提交'}` : '公开资料审核中，通过后展示' }}</text>
+    <text
+      v-if="isLoggedIn && userInfo?.publicProfileSubmission"
+      class="user-moderation-status"
+      role="status"
+      >{{
+        userInfo.publicProfileSubmission.status === 'rejected'
+          ? t('account.profile.profileReviewUnsuccessful', {
+              reason:
+                userInfo.publicProfileSubmission.reason ||
+                t('account.profile.pleaseEditAndResubmit'),
+            })
+          : t('account.profile.publicProfileUnderReviewIt')
+      }}</text
+    >
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import type { User } from '@/types/api';
 import UserAvatar from '@/components/UserAvatar.vue';
 import UiIcon from '@/components/UiIcon.vue';
@@ -51,7 +80,13 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
 );
 </script>
 <style scoped>
-.user-moderation-status { display: block; margin-top: 6px; color: #667085; font-size: 13px; line-height: 1.6; }
+.user-moderation-status {
+  display: block;
+  margin-top: 6px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
 .user-header {
   flex: 1;
   min-width: 0;

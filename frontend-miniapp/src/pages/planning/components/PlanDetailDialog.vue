@@ -4,15 +4,15 @@
       class="meal-detail-sheet"
       role="dialog"
       aria-modal="true"
-      aria-label="规划详情"
+      :aria-label="t('social.planDetails')"
       @tap.stop
       @touchmove.stop
     >
       <view class="meal-detail-heading"
-        ><text>规划详情</text
+        ><text>{{ t('social.planDetails') }}</text
         ><button
           class="meal-detail-button meal-detail-close"
-          aria-label="关闭规划详情"
+          :aria-label="t('social.closePlanDetails')"
           @tap="handleClose"
         >
           ×
@@ -23,11 +23,13 @@
           ><text class="meal-detail-date">{{ dateText }}</text
           ><text>{{ mealTimeText }}</text
           ><text v-if="plan.dishesReady" class="meal-detail-price"
-            >所列单价合计 ¥{{ totalPrice.toFixed(2) }}</text
-          ><text v-else class="meal-detail-price">菜品资料尚未完整载入</text></view
+            >{{ t('social.listedPriceTotal') }}{{ totalPrice.toFixed(2) }}</text
+          ><text v-else class="meal-detail-price">{{
+            t('social.dishDetailsIncomplete')
+          }}</text></view
         >
         <view class="meal-detail-list"
-          ><text class="meal-detail-label">这一餐的菜品</text>
+          ><text class="meal-detail-label">{{ t('social.mealDishes') }}</text>
           <button
             v-for="dish in plan.dishes"
             :key="dish.id"
@@ -45,9 +47,12 @@
             <view class="meal-detail-copy"
               ><view class="meal-detail-name-row"
                 ><text class="meal-detail-name">{{ dish.name }}</text
-                ><TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" /></view
+                ><TagBadge
+                  v-if="dish.status === 'offline'"
+                  :label="t('social.unavailable')"
+                  tone="neutral" /></view
               ><text class="meal-detail-location"
-                >{{ dish.canteenName || '食堂信息暂缺'
+                >{{ dish.canteenName || t('social.canteenUnavailable')
                 }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
               ><text
                 v-for="notice in mealPlanDishNotices(dish, plan)"
@@ -63,7 +68,7 @@
       </scroll-view>
       <view class="meal-detail-footer"
         ><button class="meal-detail-button meal-detail-footer-button" @tap="handleClose">
-          关闭
+          {{ t('social.close') }}
         </button></view
       >
     </view>
@@ -71,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import dayjs from 'dayjs';
@@ -82,17 +88,24 @@ import { mealPlanDishNotices } from '@/utils/meal-plan-changes';
 const props = defineProps<{ visible: boolean; plan: EnrichedMealPlan | null }>();
 const emit = defineEmits<{ close: [] }>();
 const failedImages = ref<Record<string, boolean>>({});
-const mealTimeMap = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', nightsnack: '夜宵' };
-const mealTimeText = computed(() => (props.plan ? mealTimeMap[props.plan.mealTime] || '用餐' : ''));
+const mealTimeMap = {
+  breakfast: 'social.breakfast',
+  lunch: 'social.lunch',
+  dinner: 'social.dinner',
+  nightsnack: 'social.lateNight',
+};
+const mealTimeText = computed(() =>
+  props.plan ? t(mealTimeMap[props.plan.mealTime] || 'social.meal') : ''
+);
 const totalPrice = computed(
   () => props.plan?.dishes.reduce((sum, dish) => sum + dish.price, 0) || 0
 );
 const dateText = computed(() => {
   if (!props.plan) return '';
-  const start = dayjs(props.plan.startDate).format('YYYY年MM月DD日');
+  const start = dayjs(props.plan.startDate).format(t('social.fullDateFormat'));
   return dayjs(props.plan.startDate).isSame(props.plan.endDate, 'day')
     ? start
-    : start + ' — ' + dayjs(props.plan.endDate).format('YYYY年MM月DD日');
+    : start + ' — ' + dayjs(props.plan.endDate).format(t('social.fullDateFormat'));
 });
 const goToDishDetail = (dishId: string) =>
   uni.navigateTo({ url: '/pages/dish/index?id=' + encodeURIComponent(dishId) });

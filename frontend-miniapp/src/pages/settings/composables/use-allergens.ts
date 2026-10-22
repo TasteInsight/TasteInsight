@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { reactive, onMounted } from 'vue';
 import { useSettingsProfile } from './use-settings-profile';
 import type { UserProfileUpdateRequest } from '@/types/api';
@@ -8,20 +9,25 @@ export interface AllergensForm {
 
 // 常见过敏原列表
 export const COMMON_ALLERGENS = [
-  '花生',
-  '牛奶',
-  '鸡蛋',
-  '海鲜',
-  '大豆',
-  '小麦',
-  '坚果',
-  '芝麻',
-  '芒果',
-  '菠萝',
-  '猕猴桃',
-  '桃子',
-  '蚕豆',
-];
+  ['花生', 'food.peanuts'],
+  ['牛奶', 'food.milk'],
+  ['鸡蛋', 'food.eggs'],
+  ['海鲜', 'food.seafood'],
+  ['大豆', 'food.soy'],
+  ['小麦', 'food.wheat'],
+  ['坚果', 'food.treeNuts'],
+  ['芝麻', 'food.sesame'],
+  ['芒果', 'food.mango'],
+  ['菠萝', 'food.pineapple'],
+  ['猕猴桃', 'food.kiwi'],
+  ['桃子', 'food.peach'],
+  ['蚕豆', 'food.broadBeans'],
+].map(([value, labelKey]) => ({
+  value,
+  get label() {
+    return t(labelKey);
+  },
+}));
 
 export function useAllergens() {
   const form = reactive<AllergensForm>({

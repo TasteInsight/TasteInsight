@@ -3,15 +3,15 @@
     <view class="search-toolbar">
       <view v-if="isScoped" class="search-scope">
         <text class="search-scope__name">{{
-          scopeName || (scope.windowId ? '当前窗口' : '当前食堂')
+          scopeName || (scope.windowId ? t('food.thisCounter') : t('food.thisCanteen'))
         }}</text>
-        <text class="search-scope__caption">在这里查找菜品</text>
+        <text class="search-scope__caption">{{ t('food.findDishesHere') }}</text>
       </view>
       <SearchBar
         v-model="keyword"
         editable
         :focus="inputFocused"
-        :placeholder="isScoped ? '搜索这里的菜品' : '搜索菜品或食堂'"
+        :placeholder="isScoped ? t('food.searchDishesHere') : t('food.searchDishesOrCanteens')"
         @submit="handleSearch"
         @clear="handleClearSearch"
         @blur="inputFocused = false"
@@ -19,14 +19,16 @@
     </view>
     <view class="search-content page-state-content" :aria-busy="loading">
       <view v-if="canteenError && (hasResults || !error)" class="error-feedback" role="alert">
-        <text class="error-feedback__message">食堂搜索未完成：{{ canteenError }}</text>
+        <text class="error-feedback__message">{{
+          t('food.canteenSearchError', { error: canteenError })
+        }}</text>
         <button
           class="error-feedback__action"
           hover-class="error-feedback__action--pressed"
           :disabled="loading"
           @tap="retrySearch"
         >
-          重试食堂搜索
+          {{ t('food.retryCanteenSearch') }}
         </button>
       </view>
       <AsyncState
@@ -34,17 +36,19 @@
         :initialized="initialized && !canteenError"
         :has-content="hasResults"
         :error="error"
-        refreshing-title="正在更新结果…"
-        :empty-title="`未找到“${submittedKeyword}”相关结果`"
+        :refreshing-title="t('food.updatingResults')"
+        :empty-title="t('food.noResultsForKeyword', { keyword: submittedKeyword })"
         empty-icon="search"
-        empty-action-text="申请新增菜品"
-        retry-text="重新搜索"
+        :empty-action-text="t('food.suggestADish')"
+        :retry-text="t('food.searchAgain')"
         @retry="retrySearch"
         @action="goToAddDish"
       />
       <view v-if="hasResults">
         <view v-if="searchResults.canteens.length" class="search-results">
-          <text class="search-heading">食堂 · {{ searchResults.canteens.length }}</text>
+          <text class="search-heading">{{
+            t('food.canteenResultsCount', { count: searchResults.canteens.length })
+          }}</text>
           <CanteenResultItem
             v-for="canteen in searchResults.canteens"
             :key="canteen.id"
@@ -52,10 +56,12 @@
           />
         </view>
         <view v-if="searchResults.dishes.length" class="search-results">
-          <text class="search-heading">菜品 · 已显示 {{ searchResults.dishes.length }} 道</text>
+          <text class="search-heading">{{
+            t('food.dishResultsCount', { count: searchResults.dishes.length })
+          }}</text>
           <DishResultItem v-for="dish in searchResults.dishes" :key="dish.id" :dish="dish" />
           <view :class="loadMoreError ? 'error-feedback' : 'search-state search-state--compact'">
-            <text v-if="loadingMore">正在加载更多…</text>
+            <text v-if="loadingMore">{{ t('food.loadingMore') }}</text>
             <template v-else-if="loadMoreError">
               <text class="error-feedback__message">{{ loadMoreError }}</text>
               <button
@@ -63,7 +69,7 @@
                 hover-class="error-feedback__action--pressed"
                 @tap="loadMore"
               >
-                重试加载更多
+                {{ t('food.retryLoadingMore') }}
               </button>
             </template>
             <button
@@ -71,14 +77,16 @@
               class="search-button search-link"
               @tap="loadMore"
             >
-              加载更多
+              {{ t('food.loadMore') }}
             </button>
-            <text v-else-if="!loading && !error">没有更多了</text>
+            <text v-else-if="!loading && !error">{{ t('food.youVeReachedTheEnd') }}</text>
           </view>
         </view>
         <view class="search-contribution">
-          <text>没找到想要的菜品？</text>
-          <button class="search-button search-link" @tap="goToAddDish">申请新增菜品</button>
+          <text>{{ t('food.canTFindYourDish') }}</text>
+          <button class="search-button search-link" @tap="goToAddDish">
+            {{ t('food.suggestADish') }}
+          </button>
         </view>
       </view>
     </view>
@@ -86,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { onHide, onLoad, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { useSearch, type SearchScope } from './composables/use-search';

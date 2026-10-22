@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getMyFavorites } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -42,7 +43,7 @@ export function useFavorites() {
         const response = await getMyFavorites({ page, pageSize });
         if (!isCurrent()) return false;
         if (response.code !== 200 || !response.data) {
-          throw new Error(response.message || '获取收藏列表失败');
+          throw new Error(response.message || t('account.profile.unableToLoadFavorites'));
         }
         nextItems.push(...response.data.items);
         loadedPage = page;
@@ -57,7 +58,7 @@ export function useFavorites() {
       return true;
     } catch (err) {
       if (!isCurrent()) return false;
-      error.value = err instanceof Error ? err.message : '获取收藏列表失败';
+      error.value = err instanceof Error ? err.message : t('account.profile.unableToLoadFavorites');
       return false;
     } finally {
       if (isCurrent()) loading.value = false;
@@ -79,15 +80,16 @@ export function useFavorites() {
     try {
       const response = await unfavoriteDish(dishId);
       if (!isCurrent()) return false;
-      if (response.code !== 200) throw new Error(response.message || '取消收藏失败');
+      if (response.code !== 200)
+        throw new Error(response.message || t('account.profile.unableToRemoveFavorite'));
       favoriteItems.value = favoriteItems.value.filter(item => item.dishId !== dishId);
       needsRevalidation = true;
       succeeded = true;
-      uni.showToast({ title: '已取消收藏', icon: 'success' });
+      uni.showToast({ title: t('account.profile.removedFromFavorites'), icon: 'success' });
     } catch (err) {
       if (isCurrent())
         uni.showToast({
-          title: err instanceof Error ? err.message : '取消收藏失败',
+          title: err instanceof Error ? err.message : t('account.profile.unableToRemoveFavorite'),
           icon: 'none',
         });
     } finally {

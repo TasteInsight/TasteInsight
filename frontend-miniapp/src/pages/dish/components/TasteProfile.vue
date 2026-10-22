@@ -5,7 +5,7 @@
       :class="{ 'taste-heading-collapsed': collapsible && (!taste || !expanded) }"
     >
       <slot name="summary">
-        <text v-if="!collapsible" class="taste-title">口味</text>
+        <text v-if="!collapsible" class="taste-title">{{ t('food.taste') }}</text>
       </slot>
       <button
         v-if="collapsible && taste"
@@ -14,12 +14,12 @@
         tabindex="0"
         :aria-expanded="expanded"
         :aria-controls="detailsId"
-        :aria-label="expanded ? '收起口味明细' : '展开口味明细'"
+        :aria-label="expanded ? t('food.collapseTasteDetails') : t('food.expandTasteDetails')"
         @tap.stop="toggleDetails"
         @keydown.enter.stop.prevent="toggleDetails"
         @keydown.space.stop.prevent="toggleDetails"
       >
-        <text>口味明细</text>
+        <text>{{ t('food.tasteDetails') }}</text>
         <image
           class="taste-disclosure-icon"
           :class="{ 'taste-disclosure-icon-expanded': expanded }"
@@ -28,12 +28,12 @@
           aria-hidden="true"
         />
       </button>
-      <text v-else-if="!collapsible && taste" class="taste-direction" aria-hidden="true"
-        >低 → 高</text
-      >
+      <text v-else-if="!collapsible && taste" class="taste-direction" aria-hidden="true">{{
+        t('food.lowHigh')
+      }}</text>
     </view>
     <view v-if="collapsible && taste && expanded" class="taste-detail-heading">
-      <text class="taste-direction" aria-hidden="true">低 → 高</text>
+      <text class="taste-direction" aria-hidden="true">{{ t('food.lowHigh') }}</text>
     </view>
     <view v-if="taste" :id="detailsId" v-show="!collapsible || expanded" class="taste-grid">
       <view
@@ -44,8 +44,8 @@
         role="img"
         :aria-label="
           item.level > 0
-            ? `${item.label}，强度 ${item.level}，共 5 级，从低到高`
-            : `${item.label}，暂无信息`
+            ? t('food.labelIntensityLevelOf5FromLowTo', { label: item.label, level: item.level })
+            : t('food.labelNoInformation', { label: item.label })
         "
       >
         <text class="taste-label" aria-hidden="true">{{ item.label }}</text>
@@ -57,13 +57,14 @@
             :class="{ 'taste-segment-active': step <= item.level }"
           />
         </view>
-        <text v-else class="taste-unknown" aria-hidden="true">暂无信息</text>
+        <text v-else class="taste-unknown" aria-hidden="true">{{ t('food.noInformation') }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, getCurrentInstance, ref } from 'vue';
 import type { Dish } from '@/types/api';
 
@@ -81,10 +82,30 @@ const toggleDetails = () => {
 };
 
 const fields = [
-  { key: 'spicyLevel', label: '辣度' },
-  { key: 'sweetness', label: '甜度' },
-  { key: 'saltiness', label: '咸度' },
-  { key: 'oiliness', label: '油腻度' },
+  {
+    key: 'spicyLevel',
+    get label() {
+      return t('food.spiciness');
+    },
+  },
+  {
+    key: 'sweetness',
+    get label() {
+      return t('food.sweetness');
+    },
+  },
+  {
+    key: 'saltiness',
+    get label() {
+      return t('food.saltiness');
+    },
+  },
+  {
+    key: 'oiliness',
+    get label() {
+      return t('food.oiliness');
+    },
+  },
 ] as const;
 
 const items = computed(() =>

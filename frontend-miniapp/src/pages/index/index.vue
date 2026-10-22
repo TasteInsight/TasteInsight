@@ -13,14 +13,14 @@
         class="error-feedback page-state-region"
         role="alert"
       >
-        <text class="error-feedback__title">首页暂时无法加载</text>
+        <text class="error-feedback__title">{{ t('food.homePageUnavailable') }}</text>
         <text class="error-feedback__message">{{ homeError }}</text>
         <button
           class="error-feedback__action"
           hover-class="error-feedback__action--pressed"
           @click="retryCanteens"
         >
-          重新加载
+          {{ t('food.reload') }}
         </button>
       </view>
       <template v-else>
@@ -31,7 +31,7 @@
           :show-scrollbar="false"
           :lower-threshold="80"
           class="canteen-scroll"
-          aria-label="按食堂浏览"
+          :aria-label="t('food.browseCanteens')"
           @scrolltolower="!canteenStore.error && loadMoreCanteens()"
         >
           <view class="canteen-row">
@@ -48,7 +48,9 @@
               @click="loadMoreCanteens"
             >
               <text class="canteen-more__icon" aria-hidden="true">›</text>
-              <text>{{ canteenStore.loadingMore ? '加载中…' : '更多食堂' }}</text>
+              <text>{{
+                canteenStore.loadingMore ? t('food.loading') : t('food.moreCanteens')
+              }}</text>
             </button>
           </view>
         </scroll-view>
@@ -64,13 +66,13 @@
             data-testid="canteen-retry"
             @click="retryCanteens"
           >
-            重试加载
+            {{ t('food.retry') }}
           </button>
         </view>
 
         <!-- 菜品列表 -->
         <view class="home-heading">
-          {{ hasActiveFilters ? '筛选结果' : '今日推荐' }}
+          {{ hasActiveFilters ? t('food.filterResults') : t('food.todaySPicks') }}
         </view>
 
         <FilterBar ref="filterBarRef" :filter="currentFilter" @filter-change="handleFilterChange" />
@@ -80,11 +82,13 @@
           :initialized="recommendationsInitialized"
           :has-content="!!topThreeDishes.length"
           :error="recommendError"
-          loading-title="正在加载推荐…"
-          refreshing-title="正在更新菜品…"
-          :empty-title="hasActiveFilters ? '没有符合条件的菜品' : '暂无推荐菜品'"
+          :loading-title="t('food.loadingRecommendations')"
+          :refreshing-title="t('food.updatingDishes')"
+          :empty-title="
+            hasActiveFilters ? t('food.noDishesMatchTheseFilters') : t('food.noRecommendationsYet')
+          "
           empty-icon="search"
-          :empty-action-text="hasActiveFilters ? '清除全部筛选' : ''"
+          :empty-action-text="hasActiveFilters ? t('food.clearAllFilters') : ''"
           @retry="retryLoadRecommend"
           @action="handleFilterChange({})"
         />
@@ -105,7 +109,7 @@
             <view
               class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
             ></view>
-            <text>加载中...</text>
+            <text>{{ t('food.loading2') }}</text>
           </template>
           <template v-else-if="recommendMoreError">
             <text class="error-feedback__message">{{ recommendMoreError }}</text>
@@ -114,14 +118,16 @@
               hover-class="error-feedback__action--pressed"
               @click="loadMoreRecommendations"
             >
-              重试加载更多
+              {{ t('food.retryLoadingMore') }}
             </button>
           </template>
           <template v-else-if="dishesHasMore">
-            <button class="home-text-button" @click="loadMoreRecommendations">加载更多</button>
+            <button class="home-text-button" @click="loadMoreRecommendations">
+              {{ t('food.loadMore') }}
+            </button>
           </template>
           <template v-else>
-            <text>没有更多了</text>
+            <text>{{ t('food.youVeReachedTheEnd') }}</text>
           </template>
         </view>
       </template>
@@ -142,6 +148,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { onMounted, onScopeDispose, computed, ref, watch } from 'vue';
 import { onPullDownRefresh, onReachBottom, onShow, onBackPress, onHide } from '@dcloudio/uni-app';
 
@@ -334,7 +341,7 @@ const fetchRecommendations = async (
         pagination: { page, pageSize: 10 },
       });
       if (!ownsResult()) return 'superseded';
-      if (response.code !== 200 || !response.data) throw new Error('加载菜品失败');
+      if (response.code !== 200 || !response.data) throw new Error(t('food.couldNotLoadDishes'));
       dishesStore.dishes = append
         ? [...dishesStore.dishes, ...response.data.items]
         : response.data.items;
@@ -354,7 +361,7 @@ const fetchRecommendations = async (
     const response = await getRecommendations(params);
     if (!ownsResult()) return 'superseded';
     if (response.code !== 200 || !response.data)
-      throw new Error(response.message || '加载推荐菜品失败');
+      throw new Error(response.message || t('food.couldNotLoadRecommendations'));
 
     // 使用后端返回的 requestId
     if (response.data.requestId) {
@@ -383,7 +390,7 @@ const fetchRecommendations = async (
     const dishesResponse = await getDishesByIds(dishIds);
     if (!ownsResult()) return 'superseded';
     if (dishesResponse.code !== 200 || !dishesResponse.data)
-      throw new Error(dishesResponse.message || '加载菜品详情失败');
+      throw new Error(dishesResponse.message || t('food.couldNotLoadDishDetails'));
 
     const fullDishes = dishesResponse.data.items;
 
@@ -412,11 +419,11 @@ const fetchRecommendations = async (
     if (!ownsResult()) return 'superseded';
     if (!append) {
       recommendError.value = options.home
-        ? '加载首页数据失败，请重试'
+        ? t('food.couldNotLoadTheHomePageTryAgain')
         : error?.message?.includes('400') || error?.message?.includes('Bad Request')
-          ? '网络开小差了，请稍后再试'
-          : '加载推荐菜品失败，请稍后再试';
-    } else recommendMoreError.value = '加载更多菜品失败，请重试';
+          ? t('food.connectionProblemTryAgainLater')
+          : t('food.couldNotLoadRecommendationsTryAgainLater');
+    } else recommendMoreError.value = t('food.couldNotLoadMoreDishesTryAgain');
     console.error('加载推荐菜品失败:', error);
     return 'failed';
   } finally {

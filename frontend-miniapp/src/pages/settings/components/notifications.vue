@@ -1,24 +1,34 @@
 <template>
   <SettingsPage v-bind="pageState" :can-save="canSave" @retry="loadProfile" @save="handleSave">
     <view class="settings-section">
-      <view v-for="item in notificationOptions" :key="item.key" class="settings-row">
+      <label v-for="item in notificationOptions" :key="item.key" class="settings-choice-label">
         <view
-          ><text class="settings-label">{{ item.label }}</text
-          ><text class="settings-hint">{{ item.description }}</text></view
+          class="settings-row settings-choice-row list-row-action"
+          :hover-class="canEdit ? 'list-row-pressed' : 'none'"
+          :hover-stay-time="80"
+          :aria-disabled="!canEdit"
         >
-        <switch
-          :checked="form[item.key]"
-          :disabled="!canEdit"
-          color="#660874"
-          :aria-label="item.label"
-          @change="updateField(item.key, $event)"
-        />
-      </view>
+          <view
+            ><text class="settings-label">{{ item.label }}</text
+            ><text class="settings-hint">{{ item.description }}</text></view
+          >
+          <switch
+            :checked="form[item.key]"
+            :disabled="!canEdit"
+            color="#660874"
+            :aria-label="item.label"
+            @change="updateField(item.key, $event)"
+          />
+        </view>
+      </label>
     </view>
-    <text class="settings-hint">您可以随时在此处管理通知偏好设置</text>
+    <text class="settings-hint">{{
+      t('account.settings.manageYourNotificationPreferencesHere')
+    }}</text>
   </SettingsPage>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { useNotifications } from '../composables/use-notifications';
@@ -33,14 +43,45 @@ const pageState = computed(() => ({
   saved: state.saved.value,
   restoredDraft: state.restoredDraft.value,
 }));
-const notificationOptions = [
-  { key: 'newDishAlert', label: '新菜品提醒', description: '当食堂上架新菜品时通知您' },
-  { key: 'priceChangeAlert', label: '价格变动提醒', description: '当收藏菜品价格变动时通知您' },
-  { key: 'reviewReplyAlert', label: '评价回复提醒', description: '当您的评价收到回复时通知您' },
-  { key: 'likeAlert', label: '点赞提醒', description: '有人赞了您的评价、帖子或回复' },
-  { key: 'postReplyAlert', label: '帖子回复提醒', description: '有人回复您的帖子或留言' },
-  { key: 'diningAlert', label: '约饭提醒', description: '用餐申请、邀请结果与取消通知' },
-  { key: 'weeklyRecommendation', label: '每周推荐', description: '每周为您推荐本周热门菜品' },
-] as const;
+const notificationOptions = computed(
+  () =>
+    [
+      {
+        key: 'newDishAlert',
+        label: t('account.settings.newDishAlerts'),
+        description: t('account.settings.notifyMeWhenACanteen'),
+      },
+      {
+        key: 'priceChangeAlert',
+        label: t('account.settings.priceChangeAlerts'),
+        description: t('account.settings.notifyMeWhenThePrice'),
+      },
+      {
+        key: 'reviewReplyAlert',
+        label: t('account.settings.reviewReplyAlerts2'),
+        description: t('account.settings.notifyMeWhenSomeoneReplies'),
+      },
+      {
+        key: 'likeAlert',
+        label: t('account.settings.likeAlerts'),
+        description: t('account.settings.someoneLikedYourReviewPost'),
+      },
+      {
+        key: 'postReplyAlert',
+        label: t('account.settings.postReplyAlerts'),
+        description: t('account.settings.someoneRepliedToYourPost'),
+      },
+      {
+        key: 'diningAlert',
+        label: t('account.settings.diningInvitationAlerts'),
+        description: t('account.settings.joinRequestsInvitationResultsAnd'),
+      },
+      {
+        key: 'weeklyRecommendation',
+        label: t('account.settings.weeklyRecommendations'),
+        description: t('account.settings.recommendPopularDishesEachWeek'),
+      },
+    ] as const
+);
 onBackPress(handleBackPress);
 </script>

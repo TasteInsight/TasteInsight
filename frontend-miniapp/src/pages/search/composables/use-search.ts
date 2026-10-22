@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, computed, watch, getCurrentScope, onScopeDispose, type Ref } from 'vue';
 import { getCanteenList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
@@ -122,21 +123,22 @@ export function useSearch(scope: Ref<SearchScope> = ref({})) {
           if (!ownsQuery()) return;
 
           if (first.code !== 200 || !first.data)
-            throw new Error(first.message || '食堂搜索失败，请重试');
+            throw new Error(first.message || t('food.couldNotSearchCanteensTryAgain'));
           allCanteens = first.data.items || [];
           const totalPages = first.data.meta?.totalPages ?? 1;
           for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
             const next = await getCanteenList({ page: pageNum, pageSize: 50 });
             if (!ownsQuery()) return;
             if (next.code !== 200 || !next.data)
-              throw new Error(next.message || '食堂搜索失败，请重试');
+              throw new Error(next.message || t('food.couldNotSearchCanteensTryAgain'));
             allCanteens = [...allCanteens, ...(next.data.items || [])];
           }
         } catch (e) {
           if (!ownsQuery()) return;
           // 食堂列表失败时继续搜索菜品
           console.error('获取食堂列表失败:', e);
-          canteenError.value = e instanceof Error ? e.message : '食堂搜索失败，请重试';
+          canteenError.value =
+            e instanceof Error ? e.message : t('food.couldNotSearchCanteensTryAgain');
         }
 
         const matchedCanteens = allCanteens.filter(c =>
@@ -176,12 +178,12 @@ export function useSearch(scope: Ref<SearchScope> = ref({})) {
         page.value = meta.page || 1;
         hasMore.value = (meta.page ?? 1) < (meta.totalPages ?? 1);
       } else {
-        error.value = response.message || '搜索失败';
+        error.value = response.message || t('food.searchFailed');
       }
     } catch (err: any) {
       if (!ownsQuery()) return;
       console.error('搜索失败:', err);
-      error.value = err.message || '搜索失败，请稍后重试';
+      error.value = err.message || t('food.searchFailedTryAgainLater');
     } finally {
       if (ownsQuery()) {
         loading.value = false;
@@ -221,12 +223,12 @@ export function useSearch(scope: Ref<SearchScope> = ref({})) {
         page.value = meta.page || nextPage;
         hasMore.value = (meta.page ?? page.value) < (meta.totalPages ?? 1);
       } else {
-        loadMoreError.value = response.message || '加载更多失败，请重试';
+        loadMoreError.value = response.message || t('food.couldNotLoadMoreTryAgain');
       }
     } catch (err) {
       if (!ownsQuery()) return;
       console.error('加载更多失败:', err);
-      loadMoreError.value = err instanceof Error ? err.message : '加载更多失败，请重试';
+      loadMoreError.value = err instanceof Error ? err.message : t('food.couldNotLoadMoreTryAgain');
     } finally {
       if (ownsQuery()) loadingMore.value = false;
     }

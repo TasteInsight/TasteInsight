@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 export function toUserFriendlyErrorMessage(err: unknown): string {
   if (err instanceof Error) {
     const message = err.message || '';
@@ -6,24 +7,24 @@ export function toUserFriendlyErrorMessage(err: unknown): string {
     const httpMatch = message.match(/^HTTP\s+(\d{3})$/);
     if (httpMatch) {
       const code = Number(httpMatch[1]);
-      if (code === 401) return '登录已过期，请重新登录';
-      if (code === 403) return '没有权限执行此操作';
-      if (code === 409) return '内容已更新，请刷新后重试';
-      if (code === 410) return '内容已过期，请刷新后重试';
-      if (code === 413) return '上传内容过大，请压缩图片后重试';
-      if (code === 429) return '操作太频繁，请稍后再试';
-      return '网络开小差了，请稍后再试';
+      if (code === 401) return t('common.errors.expired');
+      if (code === 403) return t('common.errors.forbidden');
+      if (code === 409) return t('common.errors.conflict');
+      if (code === 410) return t('common.errors.gone');
+      if (code === 413) return t('common.errors.tooLarge');
+      if (code === 429) return t('common.errors.rateLimit');
+      return t('common.errors.network');
     }
 
-    if (message.includes('网络连接异常')) {
-      return '网络开小差了，请稍后再试';
+    if (message.includes(t('common.errors.disconnected'))) {
+      return t('common.errors.network');
     }
 
     // Preserve business errors / validation messages
     if (message.trim()) return message;
   }
 
-  return '网络开小差了，请稍后再试';
+  return t('common.errors.network');
 }
 
 export type HttpRequestError = Error & { statusCode: number; code?: string };

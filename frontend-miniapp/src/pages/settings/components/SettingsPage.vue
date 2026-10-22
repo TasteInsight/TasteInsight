@@ -1,6 +1,6 @@
 <template>
   <view class="page-content settings-page settings-form-page page-state-layout">
-    <LoginGate title="登录后管理个人设置" icon="settings">
+    <LoginGate :title="t('account.settings.signInToManagePersonal')" icon="settings">
       <view class="settings-form-body page-state-content" :aria-busy="loading">
         <AsyncState
           class="settings-load-state"
@@ -8,12 +8,14 @@
           :initialized="initialized"
           :has-content="initialized"
           :error="loadError"
-          error-title="资料未能加载"
-          loading-title="正在加载设置…"
+          :error-title="t('account.settings.unableToLoadProfile')"
+          :loading-title="t('account.settings.loadingSettings')"
           @retry="emit('retry')"
         />
         <template v-if="initialized">
-          <view v-if="restoredDraft" class="settings-note">已恢复未保存的修改</view>
+          <view v-if="restoredDraft" class="settings-note">{{
+            t('account.settings.unsavedChangesRestored')
+          }}</view>
           <slot />
         </template>
       </view>
@@ -21,6 +23,8 @@
     <view v-if="user.isLoggedIn && initialized" class="settings-save-bar">
       <button
         class="settings-button settings-button--primary"
+        hover-class="settings-button--pressed"
+        :hover-stay-time="80"
         :disabled="!canSave"
         :aria-disabled="!canSave"
         :aria-busy="saving"
@@ -31,13 +35,20 @@
         @blur="saveButton.clearPress"
         role="button"
       >
-        <text aria-live="polite">{{ saved ? '已保存' : saving ? '保存中…' : '保存修改' }}</text>
+        <text aria-live="polite">{{
+          saved
+            ? t('account.settings.saved')
+            : saving
+              ? t('account.profile.saving')
+              : t('account.settings.saveChanges')
+        }}</text>
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { useUserStore } from '@/store/modules/use-user-store';
 import AsyncState from '@/components/AsyncState.vue';
 import LoginGate from '@/components/LoginGate.vue';
@@ -64,6 +75,7 @@ const saveButton = useButtonActivation(
 .settings-form-page {
   display: flex;
   flex-direction: column;
+  padding-bottom: 0;
 }
 .settings-form-body {
   flex: 1;
@@ -76,7 +88,7 @@ const saveButton = useButtonActivation(
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 16px 0 calc(4px + env(safe-area-inset-bottom));
+  padding: 16px 0 calc(20px + env(safe-area-inset-bottom));
   background: #fff;
 }
 .settings-save-bar .settings-button {

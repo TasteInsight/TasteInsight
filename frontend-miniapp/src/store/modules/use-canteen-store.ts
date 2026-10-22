@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { useUserStore } from './use-user-store';
@@ -38,10 +39,14 @@ export const useCanteenStore = defineStore('canteen', () => {
     return { page, pageSize, total, totalPages };
   };
 
-  async function fetchCanteenList(params?: PaginationParams, isOperationCurrent: () => boolean = () => true) {
+  async function fetchCanteenList(
+    params?: PaginationParams,
+    isOperationCurrent: () => boolean = () => true
+  ) {
     const sessionVersion = userStore.sessionVersion;
     const request = ++listRequest;
-    const ownsRequest = () => userStore.sessionVersion === sessionVersion && request === listRequest;
+    const ownsRequest = () =>
+      userStore.sessionVersion === sessionVersion && request === listRequest;
     loading.value = true;
     error.value = null;
 
@@ -53,11 +58,11 @@ export const useCanteenStore = defineStore('canteen', () => {
         canteenList.value = response.data.items;
         pagination.value = normalizePaginationMeta(response.data.meta);
       } else {
-        throw new Error(response.message || '获取食堂列表失败');
+        throw new Error(response.message || t('common.stores.canteensFailed'));
       }
     } catch (err) {
       if (!ownsRequest() || !isOperationCurrent()) return;
-      error.value = err instanceof Error ? err.message : '未知错误';
+      error.value = err instanceof Error ? err.message : t('common.errors.unknown');
       console.error('获取食堂列表失败:', err);
       throw err;
     } finally {
@@ -90,11 +95,11 @@ export const useCanteenStore = defineStore('canteen', () => {
         }
         pagination.value = normalizePaginationMeta(response.data.meta);
       } else {
-        throw new Error(response.message || '加载更多食堂失败');
+        throw new Error(response.message || t('common.stores.moreCanteensFailed'));
       }
     } catch (err) {
       if (userStore.sessionVersion !== sessionVersion) return;
-      error.value = err instanceof Error ? err.message : '未知错误';
+      error.value = err instanceof Error ? err.message : t('common.errors.unknown');
       console.error('加载更多食堂失败:', err);
       throw err;
     } finally {
@@ -116,11 +121,15 @@ export const useCanteenStore = defineStore('canteen', () => {
     loadingMore.value = false;
   }
 
-  watch(() => userStore.sessionVersion, () => {
-    loading.value = false;
-    loadingMore.value = false;
-    error.value = null;
-  }, { flush: 'sync' });
+  watch(
+    () => userStore.sessionVersion,
+    () => {
+      loading.value = false;
+      loadingMore.value = false;
+      error.value = null;
+    },
+    { flush: 'sync' }
+  );
 
   return {
     canteenList,

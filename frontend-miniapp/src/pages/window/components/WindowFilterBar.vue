@@ -23,7 +23,7 @@
     <view v-if="activeFilter" class="filter-panel bg-white rounded-lg shadow-lg p-4 mb-4">
       <!-- 价格筛选 -->
       <view v-if="activeFilter === 'price'" class="filter-content">
-        <view class="text-sm font-medium text-gray-700 mb-3">价格区间</view>
+        <view class="text-sm font-medium text-gray-700 mb-3">{{ t('food.priceRange') }}</view>
         <view class="flex flex-wrap gap-2">
           <view
             v-for="option in priceOptions"
@@ -43,7 +43,7 @@
 
       <!-- 评分筛选 -->
       <view v-if="activeFilter === 'rating'" class="filter-content">
-        <view class="text-sm font-medium text-gray-700 mb-3">最低评分</view>
+        <view class="text-sm font-medium text-gray-700 mb-3">{{ t('food.minimumRating') }}</view>
         <view class="flex flex-wrap gap-2">
           <view
             v-for="option in ratingOptions"
@@ -63,7 +63,7 @@
 
       <!-- 荤素筛选 -->
       <view v-if="activeFilter === 'meat'" class="filter-content">
-        <view class="text-sm font-medium text-gray-700 mb-3">荤素偏好</view>
+        <view class="text-sm font-medium text-gray-700 mb-3">{{ t('food.meatPreference') }}</view>
         <view class="flex flex-wrap gap-2">
           <view
             v-for="option in meatOptions"
@@ -83,7 +83,7 @@
 
       <!-- 口味筛选 -->
       <view v-if="activeFilter === 'taste'" class="filter-content">
-        <view class="text-sm font-medium text-gray-700 mb-3">口味偏好</view>
+        <view class="text-sm font-medium text-gray-700 mb-3">{{ t('food.tastePreference') }}</view>
         <view class="flex flex-wrap gap-2">
           <view
             v-for="option in tasteOptions"
@@ -103,7 +103,7 @@
 
       <!-- 用餐时段筛选 -->
       <view v-if="activeFilter === 'mealTime'" class="filter-content">
-        <view class="text-sm font-medium text-gray-700 mb-3">用餐时段</view>
+        <view class="text-sm font-medium text-gray-700 mb-3">{{ t('food.mealTimes') }}</view>
         <view class="flex flex-wrap gap-2">
           <view
             v-for="option in mealTimeOptions"
@@ -127,13 +127,13 @@
           class="px-4 py-1.5 rounded-full text-sm cursor-pointer bg-gray-100 text-gray-600"
           @click="resetCurrentFilter"
         >
-          重置
+          {{ t('food.reset') }}
         </view>
         <view
           class="px-4 py-1.5 rounded-full text-sm cursor-pointer bg-ts-purple text-white"
           @click="applyFilter"
         >
-          确定
+          {{ t('food.apply') }}
         </view>
       </view>
     </view>
@@ -141,6 +141,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, computed } from 'vue';
 import type { GetDishesRequest } from '@/types/api';
 
@@ -151,51 +152,176 @@ const emit = defineEmits<{
 
 // 筛选选项配置
 const filterOptions = [
-  { key: 'taste', label: '口味' },
-  { key: 'price', label: '价格' },
-  { key: 'rating', label: '评分' },
-  { key: 'meat', label: '荤素' },
-  { key: 'mealTime', label: '时段' },
+  {
+    key: 'taste',
+    get label() {
+      return t('food.taste');
+    },
+  },
+  {
+    key: 'price',
+    get label() {
+      return t('food.price');
+    },
+  },
+  {
+    key: 'rating',
+    get label() {
+      return t('food.rating');
+    },
+  },
+  {
+    key: 'meat',
+    get label() {
+      return t('food.meat');
+    },
+  },
+  {
+    key: 'mealTime',
+    get label() {
+      return t('food.time');
+    },
+  },
 ];
 
 // 价格选项
 const priceOptions = [
-  { label: '不限', value: '' },
-  { label: '10元以下', value: '0-10' },
-  { label: '10-15元', value: '10-15' },
-  { label: '15-20元', value: '15-20' },
-  { label: '20元以上', value: '20-999' },
+  {
+    get label() {
+      return t('food.any');
+    },
+    value: '',
+  },
+  {
+    get label() {
+      return t('food.under10');
+    },
+    value: '0-10',
+  },
+  {
+    get label() {
+      return t('food.1015');
+    },
+    value: '10-15',
+  },
+  {
+    get label() {
+      return t('food.1520');
+    },
+    value: '15-20',
+  },
+  {
+    get label() {
+      return t('food.over20');
+    },
+    value: '20-999',
+  },
 ];
 
 // 评分选项
 const ratingOptions = [
-  { label: '不限', value: 0 },
-  { label: '4.5分以上', value: 4.5 },
-  { label: '4.0分以上', value: 4.0 },
-  { label: '3.5分以上', value: 3.5 },
+  {
+    get label() {
+      return t('food.any');
+    },
+    value: 0,
+  },
+  {
+    get label() {
+      return t('food.45OrHigher');
+    },
+    value: 4.5,
+  },
+  {
+    get label() {
+      return t('food.40OrHigher');
+    },
+    value: 4.0,
+  },
+  {
+    get label() {
+      return t('food.35OrHigher');
+    },
+    value: 3.5,
+  },
 ];
 
 // 荤素选项
 const meatOptions = [
-  { label: '荤菜', value: '荤' },
-  { label: '素菜', value: '素' },
-  { label: '荤素搭配', value: '荤素' },
+  {
+    get label() {
+      return t('food.meatDishes');
+    },
+    value: '荤',
+  },
+  {
+    get label() {
+      return t('food.vegetarianDishes');
+    },
+    value: '素',
+  },
+  {
+    get label() {
+      return t('food.meatAndVegetables');
+    },
+    value: '荤素',
+  },
 ];
 
 // 口味选项
 const tasteOptions = [
-  { label: '辣味', value: '辣' },
-  { label: '清淡', value: '清淡' },
-  { label: '酸甜', value: '酸甜' },
-  { label: '咸鲜', value: '咸鲜' },
-  { label: '麻辣', value: '麻辣' },
+  {
+    get label() {
+      return t('food.spicy2');
+    },
+    value: '辣',
+  },
+  {
+    get label() {
+      return t('food.light');
+    },
+    value: '清淡',
+  },
+  {
+    get label() {
+      return t('food.sweetAndSour');
+    },
+    value: '酸甜',
+  },
+  {
+    get label() {
+      return t('food.savory');
+    },
+    value: '咸鲜',
+  },
+  {
+    get label() {
+      return t('food.numbingAndSpicy');
+    },
+    value: '麻辣',
+  },
 ];
 
 // 用餐时段选项
 const mealTimeOptions = [
-  { label: '早餐', value: 'breakfast' },
-  { label: '午餐', value: 'lunch' },
-  { label: '晚餐', value: 'dinner' },
+  {
+    get label() {
+      return t('food.breakfast');
+    },
+    value: 'breakfast',
+  },
+  {
+    get label() {
+      return t('food.lunch');
+    },
+    value: 'lunch',
+  },
+  {
+    get label() {
+      return t('food.dinner');
+    },
+    value: 'dinner',
+  },
 ];
 
 // 当前展开的筛选项

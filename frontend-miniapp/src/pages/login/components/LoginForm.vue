@@ -4,20 +4,20 @@
     <view class="login-brand">
       <image src="/static/logo.png" class="login-logo" mode="aspectFit" />
       <text class="login-title">TasteInsight</text>
-      <text class="login-description">发现身边的美食</text>
+      <text class="login-description">{{ t('account.login.discoverFoodAroundYou') }}</text>
     </view>
 
     <!-- 登录操作区域 -->
     <view class="login-actions">
       <view v-if="methods.phone" class="phone-login">
-        <label class="login-label" for="login-phone">手机号</label>
+        <label class="login-label" for="login-phone">{{ t('account.login.phoneNumber') }}</label>
         <input
           id="login-phone"
           v-model="phone"
           class="login-input"
           type="tel"
           maxlength="20"
-          placeholder="输入手机号，可含国际区号"
+          :placeholder="t('account.login.enterYourPhoneNumberIncluding')"
           :disabled="loading || submitted || sending"
         />
         <view class="code-row">
@@ -26,9 +26,9 @@
             class="login-input code-input"
             type="number"
             maxlength="6"
-            placeholder="6 位验证码"
+            :placeholder="t('account.login.section6DigitVerificationCode')"
             :disabled="loading || submitted"
-            aria-label="短信验证码"
+            :aria-label="t('account.login.smsVerificationCode')"
           />
           <button
             class="code-send"
@@ -38,7 +38,13 @@
             :disabled="!phone.trim() || sending || remaining > 0 || loading || submitted"
             @click="handleSendCode"
           >
-            {{ sending ? '发送中' : remaining > 0 ? `${remaining}s 后重发` : '获取验证码' }}
+            {{
+              sending
+                ? t('account.login.sending')
+                : remaining > 0
+                  ? t('account.login.resendInS', { seconds: remaining })
+                  : t('account.login.getCode')
+            }}
           </button>
         </view>
         <text v-if="codeError" class="login-error" role="alert">{{ codeError }}</text>
@@ -48,17 +54,17 @@
           :disabled="!canVerify || loading || submitted"
           @click="handleLogin(() => phoneLogin(challengeId, code))"
         >
-          {{ loading ? '正在登录…' : '验证码登录' }}
+          {{ loading ? t('account.login.signingIn') : t('account.login.signInWithCode') }}
         </button>
       </view>
       <text
         v-if="capabilitiesLoading || wechatProviderLoading"
         class="login-test-note"
         role="status"
-        >正在读取登录方式…</text
+        >{{ t('account.login.loadingSignInMethods') }}</text
       >
       <button v-if="capabilitiesError" class="login-secondary" @click="loadCapabilities">
-        登录方式加载失败，点击重试
+        {{ t('account.login.unableToLoadSignIn') }}
       </button>
       <view
         v-if="
@@ -67,9 +73,13 @@
         class="error-feedback"
         role="alert"
       >
-        <text class="error-feedback__title">暂时无法登录</text>
-        <text class="error-feedback__message">请稍后再试，或先浏览公开内容。</text>
-        <button class="error-feedback__action" @click="loadCapabilities">重新加载</button>
+        <text class="error-feedback__title">{{
+          t('account.login.signInIsTemporarilyUnavailable')
+        }}</text>
+        <text class="error-feedback__message">{{ t('account.login.tryAgainLaterOrExplore') }}</text>
+        <button class="error-feedback__action" @click="loadCapabilities">
+          {{ t('account.login.reload') }}
+        </button>
       </view>
       <view v-if="methods.campusOAuth" class="campus-login">
         <button
@@ -78,16 +88,22 @@
           :disabled="loading || submitted || campusStarting"
           @click="startCampus"
         >
-          {{ campusStarting ? '正在打开授权…' : '校园账号登录' }}
+          {{
+            campusStarting
+              ? t('account.login.openingAuthorization')
+              : t('account.login.signInWithCampusAccount')
+          }}
         </button>
         <view v-if="campusPending" class="phone-login">
-          <text class="login-test-note">校方授权完成后，返回此页并粘贴一次性确认码。</text>
+          <text class="login-test-note">{{
+            t('account.login.afterAuthorizingWithYourSchool')
+          }}</text>
           <input
             v-model="campusCode"
             class="login-input"
             maxlength="43"
-            placeholder="一次性确认码"
-            aria-label="校园登录确认码"
+            :placeholder="t('account.login.oneTimeConfirmationCode')"
+            :aria-label="t('account.login.campusSignInConfirmationCode')"
             :disabled="loading || submitted"
           />
           <button
@@ -96,10 +112,10 @@
             :disabled="campusCode.trim().length !== 43 || loading || submitted"
             @click="completeCampus"
           >
-            确认登录
+            {{ t('account.login.confirmSignIn') }}
           </button>
           <button class="login-secondary" :disabled="loading || submitted" @click="cancelCampus">
-            取消本次授权
+            {{ t('account.login.cancelAuthorization') }}
           </button>
         </view>
         <text v-if="campusError" class="login-error" role="alert">{{ campusError }}</text>
@@ -113,21 +129,33 @@
         @click="handleWechatLogin"
         hover-class="none"
       >
-        <text>{{ submitted ? '登录成功' : loading ? '正在登录…' : '微信一键登录' }}</text>
+        <text>{{
+          submitted
+            ? t('account.login.signedIn')
+            : loading
+              ? t('account.login.signingIn')
+              : t('account.login.signInWithWechat')
+        }}</text>
       </button>
       <template v-if="testLoginEnabled">
-        <text class="login-environment">开发环境</text>
+        <text class="login-environment">{{ t('account.login.developmentEnvironment') }}</text>
         <button
           class="login-button"
           :class="{ 'is-disabled': loading || submitted }"
           :disabled="loading || submitted"
           @click="handleTestLogin"
         >
-          {{ submitted ? '登录成功' : loading ? '正在登录…' : '开发测试登录' }}
+          {{
+            submitted
+              ? t('account.login.signedIn')
+              : loading
+                ? t('account.login.signingIn')
+                : t('account.login.developmentTestSignIn')
+          }}
         </button>
-        <text class="login-test-note">使用当前设备的测试账号</text>
+        <text class="login-test-note">{{ t('account.login.useThisDeviceSTest') }}</text>
       </template>
-      <button class="login-secondary" @click="browse">先逛逛</button>
+      <button class="login-secondary" @click="browse">{{ t('account.login.exploreFirst') }}</button>
     </view>
 
     <!-- 底部协议 -->
@@ -136,18 +164,23 @@
         <checkbox-group @change="handleAgreementChange">
           <label class="agreement-toggle">
             <checkbox value="agreed" :checked="agreed" color="#660874" />
-            <text>我已同意</text>
+            <text>{{ t('account.login.iAgreeToThe') }}</text>
           </label>
         </checkbox-group>
-        <text class="agreement-link" @click="openAgreement('user')">《用户协议》</text>
-        <text>和</text>
-        <text class="agreement-link" @click="openAgreement('privacy')">《隐私政策》</text>
+        <text class="agreement-link" @click="openAgreement('user')">{{
+          t('account.login.termsOfService')
+        }}</text>
+        <text>{{ t('account.login.and') }}</text>
+        <text class="agreement-link" @click="openAgreement('privacy')">{{
+          t('account.login.privacyPolicy')
+        }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, computed, onMounted, onScopeDispose } from 'vue';
 import { returnFromLogin } from '@/utils/login-navigation';
 import { useLogin } from '../composables/use-login';
@@ -227,7 +260,8 @@ async function loadCapabilities() {
 }
 onMounted(loadCapabilities);
 function startCampus() {
-  if (!agreed.value) return uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
+  if (!agreed.value)
+    return uni.showToast({ title: t('account.login.pleaseAgreeToTheTerms'), icon: 'none' });
   void authorizeCampus();
 }
 async function completeCampus() {
@@ -238,7 +272,8 @@ async function completeCampus() {
     try {
       ticket = campusLoginTicket(campusCode.value);
     } catch (error) {
-      campusError.value = error instanceof Error ? error.message : '登录确认失败，请重试';
+      campusError.value =
+        error instanceof Error ? error.message : t('account.login.unableToConfirmSignIn');
       reloadCampus();
       throw error;
     }
@@ -246,7 +281,8 @@ async function completeCampus() {
   });
 }
 function handleSendCode() {
-  if (!agreed.value) return uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
+  if (!agreed.value)
+    return uni.showToast({ title: t('account.login.pleaseAgreeToTheTerms'), icon: 'none' });
   void sendCode();
 }
 defineExpose({ loading, submitted });
@@ -279,7 +315,7 @@ async function handleTestLogin() {
 async function handleLogin(login: () => Promise<void>) {
   try {
     if (!agreed.value) {
-      uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
+      uni.showToast({ title: t('account.login.pleaseAgreeToTheTerms'), icon: 'none' });
       return;
     }
     await login();

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 // @/stores/use-plan-store.ts
 import { defineStore } from 'pinia';
 import { ref, computed, watch, toRaw } from 'vue';
@@ -26,7 +27,13 @@ export const usePlanStore = defineStore('plan', () => {
   // 状态
   const loading = ref(false);
   const initialized = ref(false);
-  const error = ref<string | null>(null);
+  const error = ref<string | { key: string; detail?: string; detailKey?: string } | null>(null);
+  const errorText = computed(() => {
+    const value = error.value;
+    return value && typeof value === 'object'
+      ? t(value.key, { p0: value.detailKey ? t(value.detailKey) : value.detail || '' })
+      : value;
+  });
   const allPlans = ref<MealPlan[]>([]);
   const dishMap = ref<Record<string, Dish>>({});
   const selectedPlan = ref<EnrichedMealPlan | null>(null);
@@ -45,7 +52,7 @@ export const usePlanStore = defineStore('plan', () => {
   };
 
   const assertSession = (sessionVersion: number) => {
-    if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
+    if (userStore.sessionVersion !== sessionVersion) throw new Error(t('social.sessionChanged'));
   };
 
   // 同一规划的更新和删除按提交顺序到达服务端，独立规划可以并行保存。
@@ -157,9 +164,14 @@ export const usePlanStore = defineStore('plan', () => {
         } catch (err) {
           if (!isCurrent()) return;
           if (revision !== writeRevision) continue;
-          error.value = err instanceof Error ? err.message : '获取规划列表失败';
+          const key = err instanceof Error && err.message.startsWith('social.') ? err.message : '';
+          error.value = key
+            ? { key }
+            : err instanceof Error
+              ? err.message
+              : { key: 'social.loadPlansFailed' };
           console.error('获取规划失败:', err);
-          throw err;
+          throw key ? new Error(t(key)) : err;
         }
       }
     } finally {
@@ -185,13 +197,13 @@ export const usePlanStore = defineStore('plan', () => {
       const response = await getDishesByIds(batch);
       if (!isCurrent()) return {};
       if (response.code !== 200 || !response.data) {
-        throw new Error(response.message || '规划菜品资料暂时无法读取，请重试。');
+        throw new Error(response.message || 'social.planDishesReadFailed');
       }
       response.data.items.forEach(dish => {
         details[dish.id] = dish;
       });
       if (batch.some(id => !details[id])) {
-        throw new Error('规划菜品资料暂时无法读取，请重试。');
+        throw new Error('social.planDishesReadFailed');
       }
     }
     return details;
@@ -208,7 +220,11 @@ export const usePlanStore = defineStore('plan', () => {
     } catch (err) {
       if (!isCurrent()) return;
       // 写入已经提交；读取失败只提供同步重试，避免重复创建或保存。
-      error.value = `规划已保存，菜品资料读取失败，请重试。${err instanceof Error ? err.message : ''}`;
+      const detail = err instanceof Error ? err.message : '';
+      error.value = {
+        key: 'social.savedPlanReadFailed',
+        ...(detail.startsWith('social.') ? { detailKey: detail } : { detail }),
+      };
       console.error('读取已保存规划的菜品资料失败:', err);
     }
   };
@@ -278,7 +294,7 @@ export const usePlanStore = defineStore('plan', () => {
   // 完成记录按校园日期保存，同一计划的写入仍按提交顺序执行。
   const executePlan = async (planId: string, selectedDate?: string, completed = true) => {
     const plan = allPlans.value.find(p => p.id === planId);
-    if (!plan) throw new Error('规划不存在');
+    if (!plan) throw new Error(t('social.planNotFound'));
     refreshClock();
     const date =
       selectedDate || (coversDate(plan, today.value) ? today.value : planDateKey(plan.startDate));
@@ -318,7 +334,7 @@ export const usePlanStore = defineStore('plan', () => {
     // 状态
     loading,
     initialized,
-    error,
+    error: errorText,
     allPlans,
     selectedPlan,
 

@@ -37,6 +37,8 @@ describe('feedback defaults', () => {
       content: '确定退出？',
       confirmColor: '#660874',
       cancelColor: '#667085',
+      confirmText: '确定',
+      cancelText: '取消',
     });
 
     const sheet: UniNamespace.ShowActionSheetOptions = { itemList: ['编辑', '删除'] };

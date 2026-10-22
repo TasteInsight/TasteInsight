@@ -1,30 +1,37 @@
 <template>
   <view class="preference-card" :aria-busy="draft.status === 'saving'">
-    <text class="preference-title">长期偏好变更</text>
+    <text class="preference-title">{{ t('social.preferenceChanges') }}</text>
     <text v-if="draft.summary && !finished" class="preference-summary">{{ draft.summary }}</text>
 
     <view v-if="rows.length" class="preference-preview">
       <view class="preference-columns preference-column-headings" aria-hidden="true">
-        <text class="preference-value">调整前</text><text class="preference-value">调整后</text>
+        <text class="preference-value">{{ t('social.before') }}</text
+        ><text class="preference-value">{{ t('social.after') }}</text>
       </view>
       <view v-for="row in rows" :key="row.key" class="preference-row">
         <text class="preference-field">{{ row.label }}</text>
         <view class="preference-columns">
-          <text class="preference-value" :aria-label="`${row.label}，调整前：${row.before}`">{{
-            row.before
-          }}</text>
-          <text class="preference-value" :aria-label="`${row.label}，调整后：${row.after}`">{{
-            row.after
-          }}</text>
+          <text
+            class="preference-value"
+            :aria-label="t('social.preferenceBefore', { p0: row.label, p1: row.before })"
+            >{{ row.before }}</text
+          >
+          <text
+            class="preference-value"
+            :aria-label="t('social.preferenceAfter', { p0: row.label, p1: row.after })"
+            >{{ row.after }}</text
+          >
         </view>
       </view>
     </view>
-    <text v-else class="preference-message" role="status">建议缺少变更内容，请重新生成。</text>
+    <text v-else class="preference-message" role="status">{{
+      t('social.missingPreferenceChanges')
+    }}</text>
 
     <text
       v-if="statusText"
       class="preference-message"
-      :class="{ 'preference-error': draft.error }"
+      :class="{ 'preference-error': draft.error || draft.errorKey }"
       role="status"
       aria-live="polite"
       >{{ statusText }}</text
@@ -60,13 +67,14 @@
         @keyup="handleKeyup($event, 'dismiss')"
         @blur="pressedAction = null"
       >
-        暂不保存
+        {{ t('social.dismissPreference') }}
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref } from 'vue';
 import type { PreferenceDraftCard } from '@/store/modules/use-chat-store';
 
@@ -86,43 +94,58 @@ const saveDisabled = computed(
     finished.value || !rows.value.length || ['stale', 'invalid'].includes(props.draft.status || '')
 );
 const saveText = computed(() => {
-  if (props.draft.status === 'saved') return '已保存';
-  if (props.draft.status === 'saving') return '保存中…';
-  if (props.draft.status === 'failed') return '重试保存';
-  return '保存偏好';
+  if (props.draft.status === 'saved') return t('social.saved');
+  if (props.draft.status === 'saving') return t('social.saving');
+  if (props.draft.status === 'failed') return t('social.retrySave');
+  return t('social.savePreferences');
 });
 const statusText = computed(() => {
+  if (props.draft.errorKey) return t(props.draft.errorKey, props.draft.errorParams);
   if (props.draft.error) return props.draft.error;
-  if (props.draft.status === 'saved') return '偏好已保存。';
-  if (props.draft.status === 'dismissed') return '本条建议暂不保存。';
-  if (props.draft.status === 'saving') return '正在核对最新偏好并保存…';
+  if (props.draft.status === 'saved') return t('social.preferencesSaved');
+  if (props.draft.status === 'dismissed') return t('social.preferenceDismissed');
+  if (props.draft.status === 'saving') return t('social.checkingPreferences');
   return '';
 });
 
 const listText = (value: unknown) =>
   Array.isArray(value) && value.every(item => typeof item === 'string')
     ? value.length
-      ? value.join('、')
-      : '无'
-    : '信息缺失';
+      ? value.join(t('social.listSeparator'))
+      : t('social.none')
+    : t('social.informationMissing');
 const priceText = (value: any) =>
   typeof value?.min === 'number' && typeof value?.max === 'number'
     ? `¥${value.min} — ¥${value.max}`
-    : '信息缺失';
+    : t('social.informationMissing');
 const tasteFields = {
-  spicyLevel: '辣度',
-  sweetness: '甜度',
-  saltiness: '咸度',
-  oiliness: '油腻度',
+  spicyLevel: 'social.spiciness',
+  sweetness: 'social.sweetness',
+  saltiness: 'social.saltiness',
+  oiliness: 'social.oiliness',
 };
 const tasteText = (value: unknown, key: string) => {
   const labels =
     key === 'spicyLevel'
-      ? ['未设置', '微辣', '中辣', '重辣', '特辣', '变态辣']
-      : ['未设置', '清淡', '适中', '偏重', '很重', '极重'];
+      ? [
+          t('social.unset'),
+          t('social.mild'),
+          t('social.mediumSpicy'),
+          t('social.hot'),
+          t('social.extraHot'),
+          t('social.extremelyHot'),
+        ]
+      : [
+          t('social.unset'),
+          t('social.light'),
+          t('social.moderate'),
+          t('social.strong'),
+          t('social.veryStrong'),
+          t('social.extreme'),
+        ];
   return typeof value === 'number' && Number.isInteger(value) && labels[value]
     ? labels[value]
-    : '信息缺失';
+    : t('social.informationMissing');
 };
 const record = (value: unknown) =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -137,14 +160,14 @@ const rows = computed(() => {
   if (preferences && 'tagPreferences' in preferences)
     changes.push({
       key: 'tags',
-      label: '偏好标签',
+      label: t('social.preferredTags'),
       before: listText(before?.preferences?.tagPreferences),
       after: listText(preferences.tagPreferences),
     });
   if (preferences && 'priceRange' in preferences)
     changes.push({
       key: 'price',
-      label: '每份价格',
+      label: t('social.pricePerServing'),
       before: priceText(before?.preferences?.priceRange),
       after: priceText(preferences.priceRange),
     });
@@ -152,7 +175,7 @@ const rows = computed(() => {
     if (!tastes || !(key in tastes)) continue;
     changes.push({
       key,
-      label: tasteFields[key],
+      label: t(tasteFields[key]),
       before: tasteText(before?.preferences?.tastePreferences?.[key], key),
       after: tasteText(tastes[key], key),
     });
@@ -160,14 +183,14 @@ const rows = computed(() => {
   if (preferences && 'avoidIngredients' in preferences)
     changes.push({
       key: 'avoid',
-      label: '忌口食材',
+      label: t('social.avoidedIngredients'),
       before: listText(before?.preferences?.avoidIngredients),
       after: listText(preferences.avoidIngredients),
     });
   if (after && 'allergens' in after)
     changes.push({
       key: 'allergens',
-      label: '过敏原',
+      label: t('social.allergens'),
       before: listText(before?.allergens),
       after: listText(after.allergens),
     });

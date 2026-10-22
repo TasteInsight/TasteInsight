@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getBrowseHistory } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -36,7 +37,7 @@ export function useHistory() {
         const response = await getBrowseHistory({ page, pageSize });
         if (!isCurrent()) return false;
         if (response.code !== 200 || !response.data) {
-          throw new Error(response.message || '获取浏览历史失败');
+          throw new Error(response.message || t('account.profile.unableToLoadBrowsingHistory'));
         }
         nextItems.push(...response.data.items);
         loadedPage = page;
@@ -50,7 +51,8 @@ export function useHistory() {
       return true;
     } catch (err) {
       if (!isCurrent()) return false;
-      error.value = err instanceof Error ? err.message : '获取浏览历史失败';
+      error.value =
+        err instanceof Error ? err.message : t('account.profile.unableToLoadBrowsingHistory');
       return false;
     } finally {
       if (isCurrent()) loading.value = false;

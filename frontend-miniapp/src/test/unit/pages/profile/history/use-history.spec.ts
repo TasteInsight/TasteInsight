@@ -1,5 +1,5 @@
-describe('pages/profile/history/composables/use-history.ts', () => {
-  const MODULE_PATH = '@/pages/profile/history/composables/use-history';
+describe('pages/profile/records/history/composables/use-history.ts', () => {
+  const MODULE_PATH = '@/pages/profile/records/history/composables/use-history';
 
   beforeEach(() => {
     jest.doMock('@/store/modules/use-user-store', () => ({

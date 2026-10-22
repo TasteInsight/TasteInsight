@@ -10,7 +10,9 @@
         class="canteen-result-image"
         @error="failedImages[imageSource] = true"
       />
-      <view v-else class="canteen-result-fallback"><text>暂无照片</text></view>
+      <view v-else class="canteen-result-fallback"
+        ><text>{{ t('food.noPhotosYet') }}</text></view
+      >
     </view>
     <view class="canteen-result-copy">
       <text class="canteen-result-name">{{ canteen.name }}</text>
@@ -18,13 +20,16 @@
         canteen.description
       }}</text>
       <text class="canteen-result-rating">{{
-        canteen.averageRating ? canteen.averageRating.toFixed(1) + '分' : '暂无评分'
+        canteen.averageRating
+          ? t('food.ratingValue', { rating: canteen.averageRating.toFixed(1) })
+          : t('food.noRatingsYet')
       }}</text>
     </view>
     <uni-icons type="right" size="18" color="#667085" aria-hidden="true" />
   </button>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import type { Canteen } from '@/types/api';
 const props = defineProps<{ canteen: Canteen }>();

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import config from '@/config';
 
 export function originalArticleUrl(value: unknown): string | null {
@@ -14,14 +15,14 @@ export function openNewsOriginal(value: unknown): void {
   if (!url) return;
   const copyLink = () =>
     uni.showModal({
-      title: '查看微信原文',
-      content: '当前环境暂时无法直接打开。复制原文链接后，可在微信中打开。',
-      confirmText: '复制链接',
+      title: t('common.news.original'),
+      content: t('common.news.copyHint'),
+      confirmText: t('common.news.copy'),
       success: result => {
         if (result.confirm)
           uni.setClipboardData({
             data: url,
-            fail: () => uni.showToast({ title: '复制失败，请重试', icon: 'none' }),
+            fail: () => uni.showToast({ title: t('common.news.copyFailed'), icon: 'none' }),
           });
       },
     });

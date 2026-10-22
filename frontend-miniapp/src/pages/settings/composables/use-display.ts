@@ -1,4 +1,5 @@
-import { reactive, onMounted } from 'vue';
+import { t } from '@/i18n';
+import { reactive, onMounted, computed } from 'vue';
 import { useSettingsProfile } from './use-settings-profile';
 import type { UserProfileUpdateRequest, UserSettings } from '@/types/api';
 
@@ -9,7 +10,13 @@ export interface DisplayForm {
 }
 
 // 排序选项
-export const SORT_OPTIONS = ['评分优先', '评价最多', '最新上架', '价格从低到高', '价格从高到低'];
+const SORT_OPTIONS = computed(() => [
+  t('account.settings.highestRated'),
+  t('account.settings.mostReviewed'),
+  t('account.settings.recentlyAdded'),
+  t('account.settings.priceLowToHigh'),
+  t('account.settings.priceHighToLow'),
+]);
 export const SORT_VALUES = ['rating', 'popularity', 'newest', 'price_low', 'price_high'] as const;
 
 export function useDisplay() {

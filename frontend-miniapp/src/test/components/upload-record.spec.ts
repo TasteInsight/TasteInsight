@@ -1,5 +1,5 @@
 import { shallowMount } from '@vue/test-utils';
-import UploadRecord from '@/pages/profile/my-uploads/components/UploadRecord.vue';
+import UploadRecord from '@/pages/profile/records/my-uploads/components/UploadRecord.vue';
 import UiIcon from '@/components/UiIcon.vue';
 import type { MyUploadItem } from '@/types/api';
 

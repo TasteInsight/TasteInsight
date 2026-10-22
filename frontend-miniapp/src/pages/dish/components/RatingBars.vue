@@ -3,9 +3,9 @@
   <view class="w-52">
     <view v-for="item in ratingBars" :key="item.stars" class="mb-1.5 last:mb-0">
       <view class="flex items-center gap-1.5">
-        <text class="text-[10px] text-gray-500 font-medium min-w-[20px] text-center"
-          >{{ item.stars }}星</text
-        >
+        <text class="text-[10px] text-gray-500 font-medium min-w-[20px] text-center">{{
+          t('food.starsCount', { count: item.stars })
+        }}</text>
         <view class="flex-1 h-1 bg-gray-100 rounded overflow-hidden">
           <view
             class="h-full rounded bg-gradient-to-r from-yellow-300 to-yellow-400 transition-[width] duration-300"
@@ -21,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, computed, watch, onMounted } from 'vue';
 import { getReviewsByDish } from '@/api/modules/review';
 

@@ -1,5 +1,5 @@
-describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
-  const MODULE_PATH = '@/pages/profile/my-favorites/composables/use-favorites';
+describe('pages/profile/records/my-favorites/composables/use-favorites.ts', () => {
+  const MODULE_PATH = '@/pages/profile/records/my-favorites/composables/use-favorites';
 
   beforeEach(() => {
     jest.doMock('@/store/modules/use-user-store', () => ({

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getCommentsByReview, createComment, deleteComment } from '@/api/modules/comment';
 import type { Comment, CommentCreateRequest } from '@/types/api';
@@ -69,7 +70,7 @@ export function useComment() {
       if (response.code === 200 || response.code === 201) {
         return response.data;
       } else {
-        throw new Error(response.message || '提交失败');
+        throw new Error(response.message || t('food.submissionFailed'));
       }
     } catch (err: any) {
       console.error('提交评论失败:', err);
@@ -92,7 +93,7 @@ export function useComment() {
         }
         return true;
       } else {
-        throw new Error(res.message || '删除失败');
+        throw new Error(res.message || t('food.couldNotDelete'));
       }
     } catch (err) {
       console.error('删除评论失败', err);
@@ -208,11 +209,11 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
         initialized.value = true;
         return true;
       }
-      throw new Error(response.message || '回复加载失败，请重试');
+      throw new Error(response.message || t('food.couldNotLoadRepliesTryAgain'));
     } catch (err) {
       if (isCurrent()) {
         failedPage = page;
-        error.value = '回复加载失败，请重试';
+        error.value = t('food.couldNotLoadRepliesTryAgain');
       }
       return false;
     } finally {
@@ -265,13 +266,13 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
     if (submitting.value || disposed) return false;
     if (!replyContent.value.trim()) {
       uni.showToast({
-        title: '请输入回复内容',
+        title: t('food.enterAReply'),
         icon: 'none',
       });
       return false;
     }
     if (!canReply.value) {
-      uni.showToast({ title: '暂时无法回复这条评价', icon: 'none' });
+      uni.showToast({ title: t('food.repliesAreCurrentlyUnavailableForThisReview'), icon: 'none' });
       return false;
     }
     const isCurrent = captureOperation();
@@ -311,7 +312,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
         return true;
       } else {
         uni.showToast({
-          title: response.message || '回复失败',
+          title: response.message || t('food.couldNotSendReply'),
           icon: 'none',
         });
       }
@@ -319,7 +320,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
       if (!isCurrent()) return false;
       console.error('提交回复失败:', err);
       uni.showToast({
-        title: err instanceof Error ? err.message : '回复失败，请稍后重试',
+        title: err instanceof Error ? err.message : t('food.couldNotSendReplyTryAgainLater'),
         icon: 'none',
       });
     } finally {
@@ -335,17 +336,17 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
     try {
       const response = await deleteComment(commentId);
       if (!isCurrent()) return false;
-      if (response.code !== 200) throw new Error(response.message || '删除失败');
+      if (response.code !== 200) throw new Error(response.message || t('food.couldNotDelete'));
       unpagedReplies.delete(commentId);
       comments.value = comments.value.filter(comment => comment.id !== commentId);
       onCommentAdded?.();
       await fetchPanelComments(true);
-      if (isCurrent()) uni.showToast({ title: '删除成功', icon: 'success' });
+      if (isCurrent()) uni.showToast({ title: t('food.deleted'), icon: 'success' });
       return true;
     } catch (error) {
       if (isCurrent())
         uni.showToast({
-          title: error instanceof Error ? error.message : '删除失败，请重试',
+          title: error instanceof Error ? error.message : t('food.couldNotDeleteTryAgain'),
           icon: 'none',
         });
       return false;

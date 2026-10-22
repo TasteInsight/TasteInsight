@@ -17,19 +17,19 @@
       class="review-sheet"
       role="dialog"
       aria-modal="true"
-      aria-label="全部回复"
+      :aria-label="t('food.allReplies')"
       @tap.stop
     >
       <view id="acp-header" class="sheet-header">
-        <text class="sheet-title">全部回复</text>
+        <text class="sheet-title">{{ t('food.allReplies') }}</text>
         <button
           class="sheet-button sheet-close"
-          aria-label="关闭回复"
+          :aria-label="t('food.closeReplies')"
           :class="{ 'is-disabled': submitting || closing }"
           :disabled="submitting || closing"
           @tap="handleClose"
         >
-          关闭
+          {{ t('food.close') }}
         </button>
       </view>
       <scroll-view
@@ -46,13 +46,13 @@
               hover-class="error-feedback__action--pressed"
               @tap="retryComments"
             >
-              重试
+              {{ t('food.retry2') }}
             </button>
           </view>
           <view
             v-else-if="initialized && !loading && !comments.length"
             class="comment-state sheet-hint"
-            >还没有回复</view
+            >{{ t('food.noRepliesYet') }}</view
           >
           <view
             v-for="comment in comments"
@@ -63,7 +63,7 @@
             <!-- #ifndef MP-WEIXIN -->
             <button
               class="comment-author-avatar"
-              :aria-label="'查看 ' + comment.userNickname + ' 的主页'"
+              :aria-label="t('food.viewProfile', { name: comment.userNickname })"
               @tap.stop="openAuthor(comment.userId)"
             >
               <UserAvatar :src="comment.userAvatar" :size="32" :label="comment.userNickname" />
@@ -87,7 +87,7 @@
                 <!-- #endif -->
                 <button
                   class="sheet-button discussion-action comment-more"
-                  :aria-label="'管理 ' + comment.userNickname + ' 的回复'"
+                  :aria-label="t('food.manageReply', { name: comment.userNickname })"
                   aria-haspopup="dialog"
                   role="button"
                   tabindex="0"
@@ -106,16 +106,23 @@
               <text
                 v-if="comment.parentComment && !comment.parentComment.deleted"
                 class="sheet-hint comment-reply-context"
-                >回复 @{{ comment.parentComment.userNickname }}</text
+                >{{
+                  t('food.replyToUser', { name: comment.parentComment.userNickname ?? '' })
+                }}</text
               >
               <text
                 v-else-if="comment.parentComment?.deleted"
                 class="sheet-hint comment-reply-context"
-                >回复的评论已删除</text
+                >{{ t('food.originalCommentDeleted') }}</text
               >
               <text class="discussion-body comment-content">{{ comment.content }}</text>
               <view class="discussion-meta comment-meta">
-                <text>{{ comment.floor ?? '--' }}楼 · {{ formatDate(comment.createdAt) }}</text>
+                <text>{{
+                  t('food.replyFloorAndDate', {
+                    floor: comment.floor ?? '--',
+                    date: formatDate(comment.createdAt),
+                  })
+                }}</text>
                 <view class="comment-actions">
                   <button
                     v-if="comment.status === 'approved' && canReply"
@@ -124,13 +131,13 @@
                       { 'comment-liked': isLiked(comment) },
                       { 'is-disabled': !!pending[comment.id] },
                     ]"
-                    :aria-label="isLiked(comment) ? '取消点赞' : '点赞回复'"
+                    :aria-label="isLiked(comment) ? t('food.unlike') : t('food.likeReply')"
                     :aria-pressed="isLiked(comment)"
                     :disabled="!!pending[comment.id]"
                     @tap.stop="toggleLike(comment)"
                   >
                     <text class="iconfont icon-heart-outline" aria-hidden="true" />{{
-                      likeCount(comment) || '赞'
+                      likeCount(comment) || t('food.like')
                     }}
                   </button>
                   <button
@@ -140,7 +147,7 @@
                     :disabled="submitting"
                     @tap="selectCommentForReply(comment)"
                   >
-                    回复
+                    {{ t('food.reply') }}
                   </button>
                 </view>
               </view>
@@ -157,38 +164,40 @@
                 hover-class="error-feedback__action--pressed"
                 @tap="retryComments"
               >
-                重试
+                {{ t('food.retry2') }}
               </button></template
             >
-            <text v-else-if="loading" class="sheet-hint">加载中…</text>
+            <text v-else-if="loading" class="sheet-hint">{{ t('food.loading') }}</text>
             <button v-else-if="hasMore" class="sheet-button" @tap="loadMoreComments">
-              加载更多回复
+              {{ t('food.loadMoreReplies') }}
             </button>
           </view>
         </view>
       </scroll-view>
       <view v-if="!initialized || canReply" id="acp-input" class="sheet-footer">
         <view v-if="replyingTo" class="reply-target">
-          <text class="sheet-hint">回复 @{{ replyingTo.userNickname }}</text>
+          <text class="sheet-hint">{{
+            t('food.replyToUser', { name: replyingTo.userNickname })
+          }}</text>
           <button
             class="sheet-button discussion-action"
             :class="{ 'is-disabled': submitting }"
             :disabled="submitting"
-            aria-label="取消回复对象"
+            :aria-label="t('food.cancelReplyRecipient')"
             @tap="cancelReply"
           >
-            取消回复
+            {{ t('food.cancelReply') }}
           </button>
         </view>
         <view class="reply-composer">
           <input
             v-model="replyContent"
             class="sheet-input reply-input"
-            aria-label="回复内容"
+            :aria-label="t('food.replyText')"
             :disabled="submitting"
             :adjust-position="false"
             maxlength="500"
-            placeholder="写下你的回复"
+            :placeholder="t('food.writeAReply')"
             placeholder-style="color: #667085"
             @confirm="submitReply"
           />
@@ -198,7 +207,7 @@
             :disabled="!canSendReply"
             @tap="submitReply"
           >
-            {{ submitting ? '发送中…' : '发送' }}
+            {{ submitting ? t('food.sending') : t('food.send') }}
           </button>
         </view>
       </view>
@@ -221,6 +230,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, watch, computed, onUnmounted } from 'vue';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
@@ -302,9 +312,9 @@ const confirmDelete = () => {
   const session = userStore.sessionVersion;
   const review = props.reviewId;
   uni.showModal({
-    title: '删除回复？',
-    content: '删除后无法恢复。',
-    confirmText: '删除',
+    title: t('food.deleteReply'),
+    content: t('food.thisReplyWillBePermanentlyDeleted'),
+    confirmText: t('food.delete'),
     success: result => {
       if (
         result.confirm &&
@@ -344,7 +354,9 @@ const handleClose = async () => {
   const review = props.reviewId;
   closing.value = true;
   try {
-    if (!(await confirmDiscardChanges(!!replyContent.value.trim(), '回复尚未发送，确定放弃吗？')))
+    if (
+      !(await confirmDiscardChanges(!!replyContent.value.trim(), t('food.discardThisUnsentReply')))
+    )
       return false;
     if (!active || session !== userStore.sessionVersion || review !== props.reviewId) return false;
     emit('close');

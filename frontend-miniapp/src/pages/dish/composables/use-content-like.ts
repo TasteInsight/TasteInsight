@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { getCurrentScope, onScopeDispose, shallowRef, watch } from 'vue';
 import type { ApiResponse } from '@/types/api';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -41,7 +42,8 @@ export function useContentLike<T extends Likeable>(
     try {
       const response = await setLike(item.id, !isLiked(item));
       if (!current() || !items().includes(item)) return;
-      if (response.code !== 200) throw new Error(response.message || '点赞失败，请重试');
+      if (response.code !== 200)
+        throw new Error(response.message || t('food.couldNotLikeTryAgain'));
       changes.value = {
         ...changes.value,
         [item.id]: { source: item, liked: response.data.liked, count: response.data.likeCount },
@@ -49,7 +51,7 @@ export function useContentLike<T extends Likeable>(
     } catch (error) {
       if (current())
         uni.showToast({
-          title: error instanceof Error ? error.message : '点赞失败，请重试',
+          title: error instanceof Error ? error.message : t('food.couldNotLikeTryAgain'),
           icon: 'none',
         });
     } finally {

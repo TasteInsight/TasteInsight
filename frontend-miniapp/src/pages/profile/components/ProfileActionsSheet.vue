@@ -5,7 +5,7 @@
       class="profile-actions-sheet"
       role="dialog"
       aria-modal="true"
-      aria-label="个人资料"
+      :aria-label="t('account.profile.profile')"
       @click.stop
     >
       <view class="profile-actions-group">
@@ -32,12 +32,13 @@
         @keyup="cancelButton.handleKeyup"
         @blur="cancelButton.clearPress"
       >
-        取消
+        {{ t('account.profile.cancel') }}
       </button>
     </view>
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useButtonActivation } from '@/composables/use-button-activation';
 const props = withDefaults(defineProps<{ items: string[]; canRestoreFocus?: () => boolean }>(), {

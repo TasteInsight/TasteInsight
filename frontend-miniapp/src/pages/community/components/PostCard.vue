@@ -5,7 +5,7 @@
         class="campus-button post-author"
         role="button"
         tabindex="0"
-        :aria-label="'查看 ' + post.userNickname + ' 的主页'"
+        :aria-label="t('social.profileLabel', { name: post.userNickname })"
         @click="profileButton.activate"
         @keydown="profileButton.handleKeydown"
         @keyup="profileButton.handleKeyup"
@@ -22,7 +22,7 @@
         class="campus-button post-menu"
         role="button"
         tabindex="0"
-        aria-label="管理动态"
+        :aria-label="t('social.managePost')"
         @click="manageButton.activate"
         @keydown="manageButton.handleKeydown"
         @keyup="manageButton.handleKeyup"
@@ -38,7 +38,7 @@
       hover-class="list-row-pressed"
       role="button"
       tabindex="0"
-      aria-label="查看动态详情"
+      :aria-label="t('social.viewPostDetails')"
       @click="detailButton.activate"
       @keydown="detailButton.handleKeydown"
       @keyup="detailButton.handleKeyup"
@@ -57,7 +57,7 @@
         class="post-image-button"
         role="button"
         tabindex="0"
-        :aria-label="'预览第 ' + (index + 1) + ' 张图片'"
+        :aria-label="t('social.previewPhoto', { number: index + 1 })"
         @click="imageButtons[index].activate"
         @keydown="imageButtons[index].handleKeydown"
         @keyup="imageButtons[index].handleKeyup"
@@ -73,7 +73,7 @@
         role="button"
         :tabindex="pending[post.id] ? -1 : 0"
         :class="{ 'post-liked': isLiked(post) }"
-        :aria-label="isLiked(post) ? '取消点赞' : '点赞动态'"
+        :aria-label="isLiked(post) ? t('social.unlike') : t('social.likePost')"
         :aria-pressed="isLiked(post)"
         :disabled="!!pending[post.id]"
         @click="likeButton.activate"
@@ -82,27 +82,28 @@
         @blur="likeButton.clearPress"
       >
         <text class="iconfont icon-heart-outline" aria-hidden="true" /><text>{{
-          likeCount(post) || '赞'
+          likeCount(post) || t('social.like')
         }}</text>
       </button>
       <button
         class="campus-button post-action"
         role="button"
         tabindex="0"
-        aria-label="查看动态回复"
+        :aria-label="t('social.viewPostReplies')"
         @click="replyButton.activate"
         @keydown="replyButton.handleKeydown"
         @keyup="replyButton.handleKeyup"
         @blur="replyButton.clearPress"
       >
         <text class="iconfont icon-comment-outline" aria-hidden="true" /><text>{{
-          post.commentCount || '回复'
+          post.commentCount || t('social.reply')
         }}</text>
       </button>
     </view>
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import dayjs from 'dayjs';
 import { computed } from 'vue';
 import UserAvatar from '@/components/UserAvatar.vue';
@@ -177,7 +178,7 @@ const imageButtons = computed(() =>
 .post-content {
   display: block;
   margin-top: 16px;
-  padding: 0;
+  padding-block: 0;
   color: #1f2937;
   font-size: 16px;
   font-weight: 400;

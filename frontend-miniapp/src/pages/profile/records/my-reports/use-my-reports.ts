@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getMyReports, getMyReport } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -55,7 +56,7 @@ export function useMyReports() {
         const response = await getMyReport(focusId.value);
         if (!isCurrent()) return;
         if (response.code !== 200 || !response.data)
-          throw new Error(response.message || '举报详情加载失败，请重试');
+          throw new Error(response.message || t('account.profile.unableToLoadReportDetails'));
         focusedReport.value = response.data;
       } catch (cause) {
         if (isCurrent()) focusError.value = toUserFriendlyErrorMessage(cause);
@@ -66,7 +67,7 @@ export function useMyReports() {
         const response = await getMyReports({ page: nextPage, pageSize: 10 });
         if (!isCurrent()) return;
         if (response.code !== 200 || !response.data)
-          throw new Error(response.message || '举报记录加载失败，请重试');
+          throw new Error(response.message || t('account.profile.unableToLoadReportsTry'));
         items.value = [
           ...new Map(
             [...(append ? items.value : []), ...response.data.items].map(item => [item.id, item])

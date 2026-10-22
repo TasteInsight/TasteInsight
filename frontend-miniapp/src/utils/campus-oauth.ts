@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import type { CampusOAuthStart, CampusOAuthPurpose } from '@/api/modules/auth';
 
 const STORAGE_KEY = 'campusOAuthPendingAttempt';
@@ -14,7 +15,8 @@ export function saveCampusOAuthPending(
   ownerId: string,
   start: CampusOAuthStart
 ): PendingCampusOAuth {
-  if (!ownerId || start.account.id !== ownerId) throw new Error('账号已变更，请重新发起认证');
+  if (!ownerId || start.account.id !== ownerId)
+    throw new Error(t('account.common.accountChangedStartVerificationAgain'));
   const pending = {
     ownerId,
     purpose: start.purpose ?? 'VERIFICATION',
@@ -51,9 +53,10 @@ export function readCampusOAuthPending(ownerId?: string): PendingCampusOAuth | n
 
 export function campusOAuthCompletion(ownerId: string | undefined, handoffCode: string) {
   const pending = readCampusOAuthPending(ownerId);
-  if (!pending) throw new Error('本次认证已过期或账号已变更，请重新发起认证');
+  if (!pending) throw new Error(t('account.common.verificationExpiredOrYourAccount'));
   const code = handoffCode.trim();
-  if (!/^[A-Za-z0-9_-]{43}$/.test(code)) throw new Error('请粘贴校方认证完成页面的完整确认码');
+  if (!/^[A-Za-z0-9_-]{43}$/.test(code))
+    throw new Error(t('account.common.pasteTheFullConfirmationCode2'));
   return { attemptId: pending.attemptId, handoffCode: code, purpose: pending.purpose };
 }
 

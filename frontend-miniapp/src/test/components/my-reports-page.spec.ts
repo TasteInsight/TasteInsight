@@ -1,8 +1,8 @@
 import { reactive } from 'vue';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app';
-import MyReportsPage from '@/pages/profile/my-reports/index.vue';
-import ReportRecord from '@/pages/profile/my-reports/ReportRecord.vue';
+import MyReportsPage from '@/pages/profile/records/my-reports/index.vue';
+import ReportRecord from '@/pages/profile/records/my-reports/ReportRecord.vue';
 import { getMyReports, getMyReport } from '@/api/modules/user';
 const mockUser = reactive({ sessionVersion: 1, isLoggedIn: true, userInfo: { id: 'A' } });
 jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => mockUser }));

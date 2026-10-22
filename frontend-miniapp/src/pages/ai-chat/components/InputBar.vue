@@ -6,8 +6,8 @@
       v-if="isH5"
       ref="textareaRef"
       class="chat-input"
-      aria-label="消息输入"
-      placeholder="聊聊口味，或问问今天吃什么"
+      :aria-label="t('social.messageInput')"
+      :placeholder="t('social.messagePlaceholder')"
       :value="modelValue"
       :maxlength="2000"
       rows="1"
@@ -33,8 +33,8 @@
       v-if="!isH5"
       class="chat-input chat-input-native"
       placeholder-style="color: #667085; font-size: 16px; font-weight: 400; line-height: 22px; font-family: inherit;"
-      aria-label="消息输入"
-      placeholder="聊聊口味，或问问今天吃什么"
+      :aria-label="t('social.messageInput')"
+      :placeholder="t('social.messagePlaceholder')"
       :value="modelValue"
       :maxlength="2000"
       :auto-height="false"
@@ -59,7 +59,9 @@
       ]"
       role="button"
       tabindex="0"
-      :aria-label="loading ? '停止回复' : busy ? '正在连接' : '发送消息'"
+      :aria-label="
+        loading ? t('social.stopReply') : busy ? t('social.connecting') : t('social.sendMessage')
+      "
       :aria-busy="busy"
       :disabled="!loading && (busy || !modelValue.trim())"
       @click="loading ? emit('stop') : handleSend()"
@@ -76,6 +78,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, watch, nextTick, onMounted } from 'vue';
 const props = withDefaults(
   defineProps<{ modelValue: string; loading: boolean; busy?: boolean }>(),

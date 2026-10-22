@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import type { ImageUploadData } from '@/types/api';
 import config from '@/config';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -16,7 +17,7 @@ export const uploadImage = async (
   const user = useUserStore();
   const sessionVersion = user.sessionVersion;
   const assertSession = () => {
-    if (user.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
+    if (user.sessionVersion !== sessionVersion) throw new Error(t('common.errors.session'));
   };
   if (USE_MOCK) {
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -67,14 +68,15 @@ export const uploadImage = async (
     body = response.data ? JSON.parse(response.data) : null;
   } catch {
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      throw new Error('解析服务器响应失败');
+      throw new Error(t('common.errors.uploadParse'));
     }
   }
   if (response.statusCode < 200 || response.statusCode >= 300) {
     if (response.statusCode === 401) expireSession(sessionVersion);
     throw createHttpError(response.statusCode, body);
   }
-  if (!body) throw new Error('服务器未返回数据');
-  if (body.code !== 200 && body.code !== 201) throw new Error(body.message || '上传失败');
+  if (!body) throw new Error(t('common.errors.emptyResponse'));
+  if (body.code !== 200 && body.code !== 201)
+    throw new Error(body.message || t('common.stores.uploadFailed'));
   return body.data;
 };

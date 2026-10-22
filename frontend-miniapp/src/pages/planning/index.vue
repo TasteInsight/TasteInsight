@@ -4,7 +4,7 @@
     :class="{ 'planning-page--state': !userStore.isLoggedIn }"
     :aria-busy="loading"
   >
-    <LoginGate title="登录后查看饮食规划" icon="calendar">
+    <LoginGate :title="t('social.plansLogin')" icon="calendar">
       <!-- #ifdef MP-WEIXIN -->
       <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
       <!-- 详情弹窗 -->
@@ -42,7 +42,7 @@
 
       <!-- #endif -->
 
-      <view class="planning-tabs" role="tablist" aria-label="规划视图">
+      <view class="planning-tabs" role="tablist" :aria-label="t('social.planViews')">
         <button
           v-for="option in viewOptions"
           :key="option.value"
@@ -70,11 +70,14 @@
             mode="selector"
             :range="listCategoryLabels"
             :value="activeTab === 'current' ? 0 : 1"
-            aria-label="规划分类"
+            :aria-label="t('social.planCategories')"
             @change="changeListCategory"
-            ><button class="planning-button planning-filter" aria-label="选择列表范围">
+            ><button
+              class="planning-button planning-filter"
+              :aria-label="t('social.selectListScope')"
+            >
               <text
-                >{{ activeTab === 'current' ? '当前规划' : '历史规划'
+                >{{ activeTab === 'current' ? t('social.currentPlans') : t('social.pastPlans')
                 }}{{ initialized ? ' (' + displayPlans.length + ')' : '' }}</text
               >
               <uni-icons type="down" size="14" color="#667085" aria-hidden="true" /></button
@@ -83,9 +86,9 @@
 
         <view v-if="viewMode === 'month' || viewMode === 'week'" class="planning-agenda-heading">
           <text class="planning-agenda-title">{{ selectedDateLabel }}</text>
-          <text v-if="initialized && displayPlans.length" class="planning-agenda-count"
-            >{{ displayPlans.length }} 个计划</text
-          >
+          <text v-if="initialized && displayPlans.length" class="planning-agenda-count">{{
+            t('social.planCount', { count: displayPlans.length })
+          }}</text>
         </view>
       </template>
 
@@ -94,18 +97,18 @@
         :initialized="initialized"
         :has-content="!!displayPlans.length"
         :error="error"
-        loading-title="正在加载规划…"
+        :loading-title="t('social.loadingPlans')"
         :empty-title="
           viewMode === 'day'
             ? ''
             : viewMode === 'list'
               ? activeTab === 'current'
-                ? '暂无当前规划'
-                : '暂无历史规划'
-              : '这天还没有安排'
+                ? t('social.noCurrentPlans')
+                : t('social.noPastPlans')
+              : t('social.noPlansForDate')
         "
         empty-icon="calendar"
-        retry-text="重试"
+        :retry-text="t('social.retry')"
         @retry="refreshPlans"
       />
 
@@ -116,7 +119,9 @@
       >
         <view v-for="group in planGroups" :key="group.key" class="planning-meal-group">
           <text v-if="viewMode === 'day'" class="planning-meal-title">{{ group.label }}</text>
-          <text v-if="!group.plans.length" class="planning-meal-empty">尚未安排</text>
+          <text v-if="!group.plans.length" class="planning-meal-empty">{{
+            t('social.notPlanned')
+          }}</text>
           <PlanCard
             v-for="plan in group.plans"
             :key="plan.id"
@@ -183,7 +188,7 @@
           !showEditDialog &&
           !showDetailDialog
         "
-        label="新建规划"
+        :label="t('social.createPlan')"
         icon="plus"
         @click="createNewPlan"
       />
@@ -192,6 +197,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { ref, computed, watch, isRef, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { onHide, onShow, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning, type PlanningViewMode } from './composables/use-menu-planning';
@@ -211,13 +217,13 @@ import { usePlanStore } from '@/store/modules/use-plan-store';
 // #endif
 
 const userStore = useUserStore();
-const viewOptions: { value: PlanningViewMode; label: string }[] = [
-  { value: 'month', label: '月' },
-  { value: 'week', label: '周' },
-  { value: 'day', label: '日' },
-  { value: 'list', label: '列表' },
-];
-const listCategoryLabels = ['当前规划', '历史规划'];
+const viewOptions = computed<{ value: PlanningViewMode; label: string }[]>(() => [
+  { value: 'month', label: t('social.month') },
+  { value: 'week', label: t('social.week') },
+  { value: 'day', label: t('social.day') },
+  { value: 'list', label: t('social.list') },
+]);
+const listCategoryLabels = computed(() => [t('social.currentPlans'), t('social.pastPlans')]);
 const canContribute = computed(() => userStore.userInfo?.capabilities?.canContribute === true);
 // #ifndef MP-WEIXIN
 const planStore = usePlanStore();
@@ -245,13 +251,13 @@ async function togglePublicPlan(plan: EnrichedMealPlan) {
   const makePublic = !plan.isPublic;
   const confirmed = await new Promise<boolean>(resolve =>
     uni.showModal({
-      title: makePublic ? '公开这份计划' : '设为私密',
+      title: makePublic ? t('social.makePlanPublic') : t('social.makePrivate'),
       content: !makePublic
-        ? '这份计划将不再出现在个人主页。'
+        ? t('social.privatePlanDescription')
         : userStore.userInfo?.settings?.showMealPlans
-          ? '其他人可以看到这份计划的日期、餐次和菜品。'
-          : '其他人可看到日期、餐次和菜品。还需在个人空间的计划页开启展示。',
-      confirmText: makePublic ? '公开' : '设为私密',
+          ? t('social.publicPlanDescription')
+          : t('social.publicPlanSpaceDescription'),
+      confirmText: makePublic ? t('social.makePublic') : t('social.makePrivate'),
       success: result => resolve(!!result.confirm),
       fail: () => resolve(false),
     })
@@ -262,15 +268,18 @@ async function togglePublicPlan(plan: EnrichedMealPlan) {
     if (isCurrent())
       uni.showToast({
         title: !makePublic
-          ? '已设为私密'
+          ? t('social.planPrivate')
           : userStore.userInfo?.settings?.showMealPlans
-            ? '已设为公开'
-            : '请在个人空间开启计划展示',
+            ? t('social.planPublic')
+            : t('social.enablePlanSharing'),
         icon: 'none',
       });
   } catch (cause) {
     if (isCurrent())
-      uni.showToast({ title: cause instanceof Error ? cause.message : '保存失败', icon: 'none' });
+      uni.showToast({
+        title: cause instanceof Error ? cause.message : t('social.saveFailed'),
+        icon: 'none',
+      });
   }
 }
 // #endif
@@ -314,17 +323,24 @@ const {
   setViewMode,
 } = useMenuPlanning();
 
-const selectedDateLabel = computed(
-  () =>
-    `${selectedDate.value.slice(0, 4) !== today.value.slice(0, 4) ? selectedDate.value.slice(0, 4) + ' 年 ' : ''}${Number(selectedDate.value.slice(5, 7))} 月 ${Number(selectedDate.value.slice(-2))} 日${selectedDate.value === today.value ? ' · 今天' : ''}`
+const selectedDateLabel = computed(() =>
+  t('social.selectedDateTitle', {
+    p0:
+      selectedDate.value.slice(0, 4) !== today.value.slice(0, 4)
+        ? selectedDate.value.slice(0, 4) + t('social.yearSeparator')
+        : '',
+    p1: Number(selectedDate.value.slice(5, 7)),
+    p2: Number(selectedDate.value.slice(-2)),
+    p3: selectedDate.value === today.value ? t('social.todaySuffix') : '',
+  })
 );
 const planGroups = computed(() =>
   viewMode.value === 'day'
     ? [
-        { key: 'breakfast', label: '早餐' },
-        { key: 'lunch', label: '午餐' },
-        { key: 'dinner', label: '晚餐' },
-        { key: 'nightsnack', label: '夜宵' },
+        { key: 'breakfast', label: t('social.breakfast') },
+        { key: 'lunch', label: t('social.lunch') },
+        { key: 'dinner', label: t('social.dinner') },
+        { key: 'nightsnack', label: t('social.lateNight') },
       ].map(group => ({
         ...group,
         plans: displayPlans.value.filter(plan => plan.mealTime === group.key),

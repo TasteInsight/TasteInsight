@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import PrivacyPage from '@/pages/settings/privacy.vue';
 
-jest.mock('@dcloudio/uni-app', () => ({ onLoad: jest.fn() }));
+jest.mock('@dcloudio/uni-app', () => ({ onLoad: jest.fn(), onShow: jest.fn(), onHide: jest.fn() }));
 
 beforeEach(() => {
   jest.clearAllMocks();

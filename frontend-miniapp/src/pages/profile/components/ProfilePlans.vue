@@ -3,13 +3,15 @@
     <!-- #ifndef MP-WEIXIN -->
     <view class="profile-plan-visibility">
       <view class="profile-plan-visibility-copy"
-        ><text class="profile-plan-label">在个人主页展示</text
-        ><text class="profile-plan-hint">仅展示设为公开的计划</text></view
+        ><text class="profile-plan-label">{{ t('account.profile.showOnProfile') }}</text
+        ><text class="profile-plan-hint">{{
+          t('account.profile.onlyPlansMarkedPublicWill')
+        }}</text></view
       >
       <switch
         :checked="privacyDraft"
         :disabled="privacySaving || !user.userInfo || (!canContribute && !privacyDraft)"
-        aria-label="在个人主页展示"
+        :aria-label="t('account.profile.showOnProfile')"
         color="#660874"
         @change="changeVisibility"
       />
@@ -25,17 +27,17 @@
         role="button"
         tabindex="0"
       >
-        管理计划<UiIcon name="chevron-right" :size="15" /></button
+        {{ t('account.profile.managePlans') }}<UiIcon name="chevron-right" :size="15" /></button
     ></view>
     <AsyncState
       :loading="planStore.loading"
       :initialized="planStore.initialized"
       :has-content="!!plans.length"
       :error="planStore.error"
-      loading-title="正在加载计划…"
-      empty-title="还没有饮食计划"
+      :loading-title="t('account.profile.loadingPlans')"
+      :empty-title="t('account.profile.noMealPlansYet')"
       empty-icon="calendar"
-      empty-action-text="安排一餐"
+      :empty-action-text="t('account.profile.planAMeal')"
       @retry="refresh"
       @action="openPlanning"
     />
@@ -43,14 +45,19 @@
       <view class="profile-plan-heading"
         ><text class="profile-plan-date"
           >{{ dateText(plan.startDate, plan.endDate) }} · {{ mealNames[plan.mealTime] }}</text
-        ><text v-if="plan.isExpired" class="profile-plan-hint">已结束</text></view
+        ><text v-if="plan.isExpired" class="profile-plan-hint">{{
+          t('account.profile.ended')
+        }}</text></view
       >
       <DishSummaryCard v-for="dish in plan.dishes" :key="dish.id" :dish="dish" @select="openDish" />
-      <text v-if="!plan.dishesReady" class="profile-plan-hint">菜品资料尚未完整载入</text>
+      <text v-if="!plan.dishesReady" class="profile-plan-hint">{{
+        t('account.profile.dishDetailsHaveNotFinished')
+      }}</text>
     </view>
   </view>
 </template>
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import DishSummaryCard from '@/components/DishSummaryCard.vue';
@@ -66,10 +73,15 @@ const plans = computed(() => [
   ...planStore.currentPlans,
   ...planStore.historyPlans.slice().reverse(),
 ]);
-const mealNames = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', nightsnack: '夜宵' };
+const mealNames = computed(() => ({
+  breakfast: t('account.profile.breakfast'),
+  lunch: t('account.profile.lunch'),
+  dinner: t('account.profile.dinner'),
+  nightsnack: t('account.profile.lateNightSnack'),
+}));
 const dateText = (start: string, end: string) =>
-  dayjs(start).format('MM月DD日') +
-  (dayjs(start).isSame(end, 'day') ? '' : ' — ' + dayjs(end).format('MM月DD日'));
+  dayjs(start).format(t('account.profile.mmmD')) +
+  (dayjs(start).isSame(end, 'day') ? '' : ' — ' + dayjs(end).format(t('account.profile.mmmD')));
 async function refresh() {
   if (!user.isLoggedIn) return;
   try {
@@ -127,7 +139,7 @@ async function changeVisibility(event: Event | { detail: { value: boolean } }) {
   } catch (cause) {
     if (current() && props.active)
       uni.showToast({
-        title: cause instanceof Error ? cause.message : '设置保存失败',
+        title: cause instanceof Error ? cause.message : t('account.profile.unableToSaveSettings'),
         icon: 'none',
       });
   } finally {
