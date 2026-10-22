@@ -201,9 +201,7 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
     const { field, order = 'asc' } = params.sort;
 
     dishes.sort((a, b) => {
-      // @ts-ignore
       let valA = a[field];
-      // @ts-ignore
       let valB = b[field];
 
       // 处理日期字段
@@ -362,10 +360,8 @@ function applySmartRecommendation(dishes: Dish[], user: any): Dish[] {
 
   // 6. 智能排序：结合推荐分数、评分、热度
   recommendedDishes.sort((a, b) => {
-    // @ts-ignore
     const scoreA =
       (a.recommendationScore || 0) + (a.averageRating || 0) * 2 + (a.reviewCount || 0) * 0.01;
-    // @ts-ignore
     const scoreB =
       (b.recommendationScore || 0) + (b.averageRating || 0) * 2 + (b.reviewCount || 0) * 0.01;
     return scoreB - scoreA;

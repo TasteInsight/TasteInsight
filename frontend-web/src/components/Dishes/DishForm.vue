@@ -182,7 +182,7 @@
           </div>
         </div>
 
-        <NutritionFields :values="formData" />
+        <NutritionFields :values="formData" @update:values="Object.assign(formData, $event)" />
         <p v-if="errors.nutrition" class="text-red-500 text-sm admin-field-error">{{ errors.nutrition }}</p>
 
         <!-- 供应时间 -->

@@ -51,7 +51,7 @@ export function useAllergens() {
    * 切换过敏原选中状态
    */
   function toggleAllergen(allergen: string) {
-    let allergenList = form.allergens
+    const allergenList = form.allergens
       .split(/[,，]/)
       .map(a => a.trim())
       .filter(a => a);

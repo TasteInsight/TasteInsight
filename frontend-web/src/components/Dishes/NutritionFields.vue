@@ -6,7 +6,8 @@
       <label v-for="field in nutritionFields" :key="field.key" class="block text-sm text-gray-600">
         {{ field.label }}
         <input
-          v-model.number="values[field.key]"
+          :value="values[field.key]"
+          @input="updateValue(field.key, $event)"
           :name="field.key"
           type="number"
           min="0"
@@ -19,5 +20,14 @@
 </template>
 <script setup lang="ts">
 import { nutritionFields } from '@/utils/nutrition'
-defineProps<{ values: Record<string, any> }>()
+const props = defineProps<{ values: Record<string, unknown> }>()
+const emit = defineEmits<{ 'update:values': [values: Record<string, unknown>] }>()
+
+function updateValue(key: string, event: Event) {
+  const input = event.target as HTMLInputElement
+  emit('update:values', {
+    ...props.values,
+    [key]: input.value === '' ? '' : input.valueAsNumber,
+  })
+}
 </script>

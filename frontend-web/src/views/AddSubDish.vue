@@ -465,7 +465,7 @@
               </div>
             </div>
 
-            <NutritionFields :values="formData" />
+            <NutritionFields :values="formData" @update:values="Object.assign(formData, $event)" />
 
             <!-- 过敏原 -->
             <div class="mb-6">

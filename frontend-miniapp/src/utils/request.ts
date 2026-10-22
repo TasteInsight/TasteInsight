@@ -69,7 +69,6 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     // --- 阶段二: 发起 uniapp 网络请求 ---
     // 仅记录方法和 URL，避免密码、授权码等请求数据进入控制台。
     const fullUrl = config.baseUrl + options.url;
-    // eslint-disable-next-line no-console
     console.log('[request] ->', options.method || 'GET', fullUrl);
 
     uni.request({
@@ -94,7 +93,6 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
         const responseData = res.data as ApiResponse<T>;
 
         // 不打印响应体，避免 access/refresh token 等敏感数据泄露。
-        // eslint-disable-next-line no-console
         console.log('[response] <-', statusCode, fullUrl);
 
         // 2.1 HTTP 状态码判断

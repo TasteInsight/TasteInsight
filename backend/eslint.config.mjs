@@ -1,6 +1,6 @@
 // @ts-check
 import eslint from '@eslint/js';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -10,7 +10,7 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
+  eslintConfigPrettier,
   {
     languageOptions: {
       globals: {
@@ -38,7 +38,6 @@ export default tseslint.config(
       'no-useless-catch': 'warn',
       '@typescript-eslint/no-unused-expressions': 'warn',
       '@typescript-eslint/unbound-method': 'off',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
 );

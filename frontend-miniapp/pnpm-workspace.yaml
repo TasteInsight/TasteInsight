@@ -1,6 +1,12 @@
 packages:
   - '.'
 
+packageExtensions:
+  # 微信官方扫描器的 Babel parser 使用 ESLint 8，源码检查使用 ESLint 10。
+  miniprogram-ci@2.1.31:
+    dependencies:
+      eslint: 8.57.1
+
 overrides:
   vue: 3.4.21
   '@vue/server-renderer': 3.4.21
