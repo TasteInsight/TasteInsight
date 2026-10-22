@@ -10,9 +10,15 @@ const isH5 = process.env.UNI_PLATFORM === 'h5';
 const isApp = process.env.UNI_PLATFORM === 'app';
 const WeappTailwindcssDisabled = isH5 || isApp; // H5/App 平台不需要启用
 const nodeRequire = createRequire(import.meta.url);
-const markdownDependencyAliases = Object.fromEntries(
-  ['markdown-it', 'markdown-it-cjk-friendly'].flatMap(packageName => {
-    const ownerRequire = createRequire(nodeRequire.resolve(`${packageName}/package.json`));
+const i18nRequire = createRequire(nodeRequire.resolve('vue-i18n/package.json'));
+const dependencyAliases = Object.fromEntries(
+  [
+    nodeRequire.resolve('markdown-it/package.json'),
+    nodeRequire.resolve('markdown-it-cjk-friendly/package.json'),
+    nodeRequire.resolve('vue-i18n/package.json'),
+    i18nRequire.resolve('@intlify/core-base/package.json'),
+  ].flatMap(packagePath => {
+    const ownerRequire = createRequire(packagePath);
     const { dependencies = {} } = ownerRequire('./package.json');
     return Object.keys(dependencies).map(dependency => [
       dependency,
@@ -34,14 +40,16 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: {
+      // JIT 通过 AST 解释文案，适配微信等禁止动态生成函数的运行环境。
+      __INTLIFY_JIT_COMPILATION__: true,
       'process.env.VITE_API_BASE_URL': JSON.stringify(apiBaseUrl),
       'process.env.VITE_BUILD_MODE': JSON.stringify(mode),
       'process.env.VITE_ENABLE_TEST_LOGIN': JSON.stringify(String(testLoginEnabled)),
       'process.env.UNI_PLATFORM': JSON.stringify(process.env.UNI_PLATFORM || 'unknown'),
     },
     resolve: {
-      // Resolve parser dependencies from their owning packages for UniApp's pnpm resolver.
-      alias: markdownDependencyAliases,
+      // Resolve library dependencies from their owners for UniApp's pnpm resolver.
+      alias: dependencyAliases,
     },
     build: {
       // 解决 terserOptions 警告：显式使用 terser 以匹配插件配置
@@ -56,6 +64,20 @@ export default defineConfig(({ mode }) => {
           // 可以在这里传递选项，例如配置 rpx 转换的基准值
           // (插件会自动处理反斜杠和 rpx 转换)
         }),
+      {
+        name: 'project-vue-i18n',
+        enforce: 'post',
+        // 平台插件会覆盖普通 alias，入口在其配置之后绑定到项目版本。
+        config() {
+          return {
+            resolve: {
+              alias: {
+                'vue-i18n': nodeRequire.resolve('vue-i18n/dist/vue-i18n.esm-bundler.js'),
+              },
+            },
+          };
+        },
+      },
     ].filter(Boolean), // 过滤掉禁用的插件
   };
 });

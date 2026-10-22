@@ -256,13 +256,16 @@ pnpm build:h5
 # 微信小程序构建
 pnpm build:mp-weixin
 
+# 验证已有产物的 i18n 初始化与语言切换
+pnpm check:mp-runtime
+
 # 重新扫描已有的小程序构建产物
 pnpm check:mp-weixin
 ```
 
 微信小程序正式版要求合法 HTTPS 请求域名。部署时可启用网关 TLS 或由外部反向代理终止 TLS，并在微信平台配置合法请求域名。详见 [环境配置与部署](../docs/环境配置与部署.md)。
 
-`build:mp-weixin` 在编译后调用微信官方 `miniprogram-ci` 进行代码质量扫描，检查未通过时返回非零退出码。报告保存到 `dist/quality/mp-weixin.json`；此检查仅分析本地产物，无需上传密钥。JS、WXML、WXSS 压缩和组件按需注入由 `src/manifest.json` 统一配置。
+`build:mp-weixin` 在编译后执行产物的 i18n 初始化、文案格式化与语言切换检查，再调用微信官方 `miniprogram-ci` 进行代码质量扫描，检查未通过时返回非零退出码。运行时检查使用基础微信接口替身，并禁止从字符串动态生成代码。质量报告保存到 `dist/quality/mp-weixin.json`；此检查仅分析本地产物，无需上传密钥。JS、WXML、WXSS 压缩和组件按需注入由 `src/manifest.json` 统一配置。
 
 `src/static` 存放需原样复制到运行包的资源。字体及其演示文件放在 `src/assets/iconfont`，通过 CSS 引入实际使用的字体；Tailwind 样式放在 `src/styles`。新增资源应按运行时引用方式选择目录，避免将演示页、原始素材或构建输入直接复制到小程序包中。
 

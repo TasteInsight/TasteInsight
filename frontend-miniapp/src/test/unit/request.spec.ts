@@ -5,6 +5,7 @@ import config from '@/config';
 import { setActivePinia, createPinia } from 'pinia';
 import { updateMyUpload } from '@/api/modules/user';
 import { updateMealPlan, decideDiningApplication } from '@/api/modules/meal-plan';
+import { locale } from '@/i18n';
 
 // Mock dependencies
 jest.mock('@/store/modules/use-user-store');
@@ -32,6 +33,7 @@ describe('request utils', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     jest.clearAllMocks();
+    locale.value = 'zh-Hans';
 
     // Setup User Store Mock
     mockUserStore = {
@@ -164,9 +166,29 @@ describe('request utils', () => {
         url: `http://api.test${path}`,
         method: 'PUT',
         data: body,
-        header: { 'Content-Type': 'application/json', Authorization: 'Bearer student-token' },
+        header: {
+          'Content-Type': 'application/json',
+          'Accept-Language': 'zh-Hans',
+          Authorization: 'Bearer student-token',
+        },
       })
     );
+  });
+
+  it('sends the selected language for anonymous login requests', async () => {
+    locale.value = 'en';
+    mockRequest.mockImplementation(options =>
+      options.success({ statusCode: 200, data: { code: 200, data: {} } })
+    );
+    await request({
+      url: '/auth/wechat/login',
+      method: 'POST',
+      auth: 'none',
+      data: { code: 'provider-code' },
+    });
+    expect(mockRequest.mock.calls[0][0].header).toMatchObject({ 'Accept-Language': 'en' });
+    expect(mockRequest.mock.calls[0][0].header.Authorization).toBeUndefined();
+    locale.value = 'zh-Hans';
   });
 
   it('does not print request or response payloads containing credentials', async () => {
