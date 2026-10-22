@@ -359,6 +359,11 @@ jobs:
     concurrency:
       group: deploy-production
       cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.PROD_HOST }}
+      DEPLOY_USER: ${{ secrets.PROD_USER }}
+      DEPLOY_ROOT: ${{ secrets.PROD_DEPLOY_PATH || '/srv/tasteinsight' }}
+      RELEASE_ID: deploy-${{ github.event.workflow_run.head_sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout code
@@ -374,56 +379,28 @@ jobs:
       - name: Add host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
-      - name: Create and copy deployment files
-        env:
-          DEPLOY_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
-        run: |
-          # 创建临时目录存放部署文件
-          DEPLOY_TMP=$(mktemp -d)
-          trap "rm -rf $DEPLOY_TMP" EXIT
-
-          # 复制 docker-compose.yml
-          cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
-          cp backend/docker-compose.local.yml "$DEPLOY_TMP/docker-compose.local.yml"
-          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf nginx.werss.conf gateway-render.sh; do
-            cp "backend/$file" "$DEPLOY_TMP/$file"
-          done
-          printf '%s\n' "$DEPLOY_ENV_FILE" > "$DEPLOY_TMP/.env.production"
-          chmod 600 "$DEPLOY_TMP/.env.production"
-
-          scp .github/scripts/deploy-release.sh "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/deploy-release.sh"
-          ssh "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}" "cd '${{ secrets.PROD_DEPLOY_PATH }}' && sh deploy-release.sh --check-legacy"
-          
-          # 复制文件到服务器
-          scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.yml"
-          scp "$DEPLOY_TMP/docker-compose.local.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.local.yml"
-          scp "$DEPLOY_TMP/.env.production" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env.production"
-          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf nginx.werss.conf gateway-render.sh; do
-            scp "$DEPLOY_TMP/$file" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/$file"
-          done
+      - name: Upload production release
         shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_TMP=$(mktemp -d)
+          trap 'rm -rf "$DEPLOY_TMP"' EXIT
+          git archive --format=tar.gz --output="$DEPLOY_TMP/release.tar.gz" HEAD backend frontend-web .github/scripts
+          printf -v prepare_command 'mkdir -p %q' "$DEPLOY_ROOT/staging"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "$prepare_command"
+          scp "$DEPLOY_TMP/release.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_ROOT/staging/$RELEASE_ID.tar.gz"
+          scp .github/scripts/deploy-production.sh "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_ROOT/staging/$RELEASE_ID.sh"
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.PROD_HOST }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.PROD_DEPLOY_PATH }}
-
-            # 生产环境同样登录阿里云
-            echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
-
-            export TAG="${{ env.DEPLOY_IMAGE_TAG }}"
-            
-            # 生产环境同样指定阿里云源
-            export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
-            
-            echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
-            
-            sh deploy-release.sh
-            echo "✅ Production deployment completed at $(date)"
+        shell: bash
+        env:
+          REGISTRY_USERNAME: ${{ secrets.ALIYUN_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf -v login_command 'docker login %q --username %q --password-stdin' "$ALIYUN_REGISTRY" "$REGISTRY_USERNAME"
+          printf '%s' "$REGISTRY_PASSWORD" | ssh "$DEPLOY_USER@$DEPLOY_HOST" "$login_command"
+          printf -v deploy_command 'sh %q %q %q %q %q' "$DEPLOY_ROOT/staging/$RELEASE_ID.sh" "$DEPLOY_ROOT" "$RELEASE_ID" "$ALIYUN_REGISTRY/$ALIYUN_NAMESPACE" "$DEPLOY_IMAGE_TAG"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "$deploy_command"

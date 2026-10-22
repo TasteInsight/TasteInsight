@@ -14,18 +14,16 @@ const gatewayFiles = [
   'nginx.public.conf', 'nginx.admin.conf', 'nginx.werss.conf', 'gateway-render.sh',
 ];
 
-for (const environment of ['dev', 'prod']) {
-  test(`${environment} checks the legacy cutover before replacing configuration and deploys every gateway file`, () => {
-    const job = cd.match(new RegExp(`  deploy-${environment}:([\\s\\S]*?)(?=\\n  deploy-|$)`))[1];
-    assert.match(job, /sh deploy-release\.sh --check-legacy/);
-    assert.match(job, /sh deploy-release\.sh\n/);
-    const configurationCopy = job.indexOf('scp "$DEPLOY_TMP/docker-compose.yml"');
-    assert.ok(configurationCopy > job.indexOf('sh deploy-release.sh --check-legacy'));
-    for (const file of [...gatewayFiles, 'docker-compose.local.yml']) assert.ok(job.includes(file), file);
-    assert.ok(job.indexOf('deployment completed') > job.lastIndexOf('sh deploy-release.sh'));
-    assert.doesNotMatch(job, /--remove-orphans|image prune|down\s+-v/);
-  });
-}
+test('development checks the legacy cutover before replacing configuration and deploys every gateway file', () => {
+  const job = cd.match(/  deploy-dev:([\s\S]*?)(?=\n  deploy-|$)/)[1];
+  assert.match(job, /sh deploy-release\.sh --check-legacy/);
+  assert.match(job, /sh deploy-release\.sh\n/);
+  const configurationCopy = job.indexOf('scp "$DEPLOY_TMP/docker-compose.yml"');
+  assert.ok(configurationCopy > job.indexOf('sh deploy-release.sh --check-legacy'));
+  for (const file of [...gatewayFiles, 'docker-compose.local.yml']) assert.ok(job.includes(file), file);
+  assert.ok(job.indexOf('deployment completed') > job.lastIndexOf('sh deploy-release.sh'));
+  assert.doesNotMatch(job, /--remove-orphans|image prune|down\s+-v/);
+});
 
 test('deployment validates the gateway and gates roles on migration before exposing traffic', () => {
   const starts = [...deploy.matchAll(/^compose up ([^\n]+)/gm)];
