@@ -83,7 +83,7 @@ export function markdownToRichTextHtml(markdown: string): string {
     const lines = text.split('\n');
     let inFence = false;
     const out: string[] = [];
-    for (let l of lines) {
+    for (const l of lines) {
       if (/^\s*```/.test(l)) {
         inFence = !inFence;
         out.push(l);

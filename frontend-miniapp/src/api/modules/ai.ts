@@ -105,7 +105,7 @@ function parseSSEEventString(evtString: string, callbacks: AIStreamCallbacks) {
   // 简单起见，这里假设 evtString 是一个或多个以 \n 分隔的行
 
   let eventName: string | undefined;
-  let dataLines: string[] = [];
+  const dataLines: string[] = [];
   const lines = evtString.split(/\r?\n/);
 
   for (const line of lines) {

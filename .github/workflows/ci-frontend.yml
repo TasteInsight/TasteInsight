@@ -29,13 +29,47 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-          cache-dependency-path: 'frontend-web/pnpm-lock.yaml'
+          cache-dependency-path: |
+            frontend-web/pnpm-lock.yaml
+            frontend-miniapp/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check TypeScript
+        run: pnpm type-check
+
+      - name: Run ESLint
+        run: pnpm lint
 
       - name: Build
         run: pnpm build
 
       - name: Run unit tests
         run: pnpm test:unit
+
+      - name: Install miniapp dependencies
+        working-directory: ./frontend-miniapp
+        run: pnpm install --frozen-lockfile
+
+      - name: Check miniapp TypeScript
+        working-directory: ./frontend-miniapp
+        run: pnpm type-check
+
+      - name: Run miniapp ESLint
+        working-directory: ./frontend-miniapp
+        run: pnpm lint
+
+      - name: Run miniapp unit tests
+        working-directory: ./frontend-miniapp
+        run: pnpm test --runInBand --watchman=false
+
+      - name: Build miniapp targets
+        working-directory: ./frontend-miniapp
+        env:
+          VITE_API_BASE_URL: https://api.example.test
+          VITE_ENABLE_TEST_LOGIN: 'false'
+        run: |
+          pnpm build:mp-weixin
+          pnpm build:h5
+          pnpm build:app

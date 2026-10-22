@@ -55,6 +55,7 @@ test('path filtering applies to the release as a whole, not individual required 
   const ci = workflow('ci.yml');
   assert.match(ci, /'backend\/\*\*'/);
   assert.match(ci, /'frontend-web\/\*\*'/);
+  assert.match(ci, /'frontend-miniapp\/\*\*'/);
   assert.match(ci, /'\.github\/workflows\/\*\*'/);
   assert.match(ci, /'\.github\/scripts\/\*\*'/);
   assert.doesNotMatch(ci, /\n    if:/);

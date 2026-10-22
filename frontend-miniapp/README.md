@@ -357,6 +357,14 @@ pnpm type-check
 
 ## 代码规范
 
+使用 ESLint 检查 Vue、TypeScript、构建脚本和测试：
+
+```bash
+pnpm lint
+```
+
+`CI - Frontend` 在同一个 job 中执行管理端与小程序检查。小程序依次运行类型检查、ESLint、Jest 和微信小程序、H5、App 资源构建；构建使用公开的 API 示例地址。
+
 使用 Prettier 进行代码格式化：
 
 ```bash

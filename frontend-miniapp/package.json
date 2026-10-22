@@ -47,7 +47,8 @@
     "type-check": "vue-tsc --noEmit",
     "postinstall": "weapp-tw patch",
     "test:perf:mock": "playwright test -c playwright.perf.config.ts --workers=1",
-    "test:perf:remote": "node ../perf/frontend.mjs"
+    "test:perf:remote": "node ../perf/frontend.mjs",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5020620260917001",
@@ -90,6 +91,8 @@
     "@types/jest": "27.5.2",
     "@types/node": "^20.17.14",
     "@vue/compiler-sfc": "3.4.21",
+    "@vue/eslint-config-prettier": "10.2.0",
+    "@vue/eslint-config-typescript": "14.9.0",
     "@vue/runtime-core": "3.4.21",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.1.3",
@@ -97,6 +100,9 @@
     "autoprefixer": "^10.4.21",
     "babel-jest": "27.5.1",
     "cross-env": "^10.1.0",
+    "eslint": "10.12.0",
+    "eslint-plugin-vue": "10.11.1",
+    "globals": "16.5.0",
     "jest": "27.5.1",
     "jest-environment-jsdom": "27.5.1",
     "jsdom": "^27.3.0",
