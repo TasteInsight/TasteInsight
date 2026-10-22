@@ -15,7 +15,7 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 - **单元测试**: Jest 29.7 + @vue/test-utils + @vue/vue3-jest 29.2.6
 - **E2E 测试**: Playwright
 - **负载测试**: k6（统一 API 压测）
-- **语言**: TypeScript 7.0.2；Vue SFC 检查使用官方 TypeScript 6 兼容 API
+- **语言**: TypeScript 7.0.2；Vue SFC 检查使用官方 TypeScript 6.0.2 兼容 API
 - **包管理器**: pnpm 11.21.0（由 `packageManager` 固定）
 
 ## 发布构建与依赖维护
@@ -25,6 +25,10 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 `@vue/vue3-jest@29.2.6` 的模板转换误将编译参数包在 `tsconfig` 字段中，导致 TypeScript 6 忽略 CommonJS 配置。`patches/` 中的 pnpm 补丁将已解析的参数直接传给 `transpileModule`。升级转换器时复核上游修复并移除对应补丁。
 
 SSE 事件由 `eventsource-parser` 处理分块边界。AI Markdown 在 `markdown-it` 上注册 `markdown-it-cjk-friendly`，支持中文标点紧邻加粗、斜体分隔符的内容，例如 `**推荐菜品：**根据口味选择`。`jest.config.js` 通过 Babel 转换这些 ESM 依赖；`vite.config.ts` 从 Markdown 依赖所属包解析路径，以支持 pnpm 的依赖布局。升级解析器时同步验证 SSE 分块、停止后重发、中文 Markdown 和三端构建。
+
+Vue I18n 的入口及其依赖由 `vite.config.ts` 从所属包解析，`project-vue-i18n` 在 UniApp 插件之后绑定项目版本，保持各平台使用相同的运行时。`__INTLIFY_JIT_COMPILATION__` 使用 AST 解释文案，适配微信运行环境。升级相关依赖后执行 `pnpm check:mp-runtime` 与三端构建；出现 `handleFlatJson is not a function` 等导出不一致错误时，检查项目与平台插件的实际解析路径及锁文件版本。
+
+`scripts/uni-h5-picker-compat.ts` 适配当前 UniApp 的 H5 picker：重开时恢复已确认值，并按实例取消上一轮关闭延迟；组件卸载时清除定时器。适配设有编译器版本检查。升级 DCloud 依赖时复核该适配和 `uni-h5-picker-compat.spec.ts`，再验证打开、关闭及快速重开的行为。
 
 本地 Mock 路由和夹具仅在 `mock` 模式加载，首个请求等待路由注册完成。H5、小程序和 App 的正式构建使用真实 API，构建器会移除 Mock 路由及其数据依赖。
 
@@ -102,11 +106,22 @@ frontend-miniapp/
 | 周推荐 | `/pages/notifications/weekly` | 已保存的本周热门菜品集合 |
 | AI 聊天 | `/pages/ai-chat/index` | AI 对话、流式响应、规划卡片应用、历史会话 |
 | 个人空间 | `/pages/profile/index` | 简介、自己的动态/评价/计划、收藏与浏览记录、消息与设置入口 |
-| 设置 | `/pages/settings/index` | 个人信息、偏好/过敏原、显示/通知设置 |
+| 设置 | `/pages/settings/index` | 个人信息、语言、偏好/过敏原、显示/通知设置 |
+| 语言 | `/pages/settings/language` | 跟随系统、简体中文、英语 |
 | 添加菜品 | `/pages/add-dish/index` | 用户上传菜品（待审核） |
 | 彩蛋 | `/pages/easter-egg/index` | 隐藏彩蛋页面 |
 
 ### 核心功能
+
+#### 语言切换与内容显示
+
+微信小程序、App 和 H5 共用简体中文与英语。入口为「设置 → 语言」，页面路径为 `/pages/settings/language`，可选跟随系统、简体中文和 English。默认跟随系统：中文系统使用简体中文，其他系统语言使用英语。切换后更新界面、导航和后续请求语言。
+
+选择保存在当前设备的 `tasteinsight.language`，各设备分别设置。请求通过 `Accept-Language` 传递当前语言；AI 的欢迎语、开场建议、追问和后续回答使用请求语言，已有对话保留原文。
+
+菜品名称与描述分别读取 `nameEn`、`descriptionEn`；英语字段为空时，该字段显示中文原文。过敏原按共享词表显示中英文；词表外的自定义输入保留用户文本。语言切换改变显示文字，菜品 ID、过敏原标识和已保存业务数据保持原值。
+
+界面文案位于 `src/i18n/messages/`，导航资源位于 `src/locale/`；新增界面文案同时维护两种语言。菜品显示复用 `src/utils/dish-localization.ts`，过敏原显示与输入复用 `src/utils/allergen-catalog.ts`。内容维护和匹配规则分别见[管理端内容维护](../frontend-web/README.md#中英文内容维护)与[过敏原匹配规则](../backend/README.md#过敏原匹配与存储)。
 
 #### 首页筛选系统
 - 口味筛选：辣度、咸度、甜度、油腻度（支持范围选择）
@@ -116,6 +131,20 @@ frontend-miniapp/
 - 荤素筛选：纯素、纯荤、荤素搭配、海鲜（多选）
 - 标签筛选：常用标签 + 自定义标签
 - 忌口筛选：常见过敏原 + 自定义忌口
+
+#### 营养显示与资料补全
+
+菜品详情、列表及规划卡片按每份显示热量（kcal）和营养素（g）。「设置 → 显示设置」分别控制热量与营养素显示。后台已有数值时才显示对应项；`0` 是有效值，缺失值保持空白。
+
+从菜品详情提交资料补全，可选择需要修改的字段并填写营养、译文等内容，保存后进入审核。新菜品与补全记录统一在「我的上传」查看。待审核或未通过记录可继续修改并重新提交，也可撤回；存在关联子记录时先处理子记录。
+
+本地草稿与未确认提交按账号和目标隔离。网络失败后保留原提交内容与请求标识，重试沿用同一请求；记录版本已变化时先刷新再编辑。审核通过后显示正式菜品的新内容，接口规则见[营养信息与资料贡献](../backend/README.md#营养信息与资料贡献)。
+
+#### 举报与反馈
+
+「设置 → 反馈与举报」提供项目反馈和「我的举报」入口；举报列表与详情分别位于 `/pages/profile/records/my-reports/index`、`/pages/profile/records/my-reports/detail`。举报记录只对提交者开放，处理后可查看结果与时间，并从站内结果通知跳转到对应记录。
+
+原内容被删除后仍保留举报处理记录；内容详情是否可访问取决于其当前状态。举报与公开贡献要求当前学生资格，已提交举报的读取继续按账号归属验证。
 
 #### 评价系统
 - 星级评分（1-5 星）
@@ -135,6 +164,10 @@ frontend-miniapp/
 
 正文通过 SSE `text_chunk` / `new_block` 流式返回；`message_received` 表示用户消息已入库，`reply_complete` 表示回答已保存且输入框可以继续发送。后续可选的 `suggestions` 事件返回最多三条上下文追问，生成失败不改变已完成回答。追问随对应消息保存在本机对话历史中，点击后沿用当前会话。
 
+主动停止标记为 `stopped`；流正常结束时缺少 `reply_complete`，标记为 `interrupted`；网络异常或模型错误标记为 `failed`。已接收内容保留，重新发送会发起新的请求。HTTP 401 在尚未收到业务事件时可刷新凭据后重试一次；流内模型服务错误显示生成失败。
+
+菜品搜索默认查询在售菜品；明确询问下架内容、查看本人收藏或浏览历史时可展示下架卡片并保留状态标记。AI 的普通推荐继续使用当前在售与个人饮食限制筛选结果。
+
 ### 开发测试登录
 
 测试登录默认关闭。开发或 E2E 构建可显式设置 `VITE_ENABLE_TEST_LOGIN=true`，同时开发后端需设置 `NODE_ENV=development` 和 `ENABLE_MOCK_AUTH=true`。登录页显示“开发环境”和“开发测试登录”，使用当前设备的独立测试身份，仍通过真实后端签发 JWT；不跳过业务鉴权。
@@ -145,7 +178,6 @@ VITE_ENABLE_TEST_LOGIN=true pnpm build:h5 --mode e2e
 ```
 
 生产或其他发布模式误开该开关会使构建失败。生产后端独立拒绝测试身份，前端开关不授予服务器权限，也不自动授予学生资格。该入口与 `dev:mock` 的本地模拟数据模式分开。H5 使用手机号登录，不调用小程序授权 API；App 使用移动应用微信 code 交换，失败不会回退为测试身份。
-- 菜品/食堂卡片渲染
 
 ### 平台构建与认证
 
@@ -179,12 +211,27 @@ App/H5 主导航为首页、校园、规划、问 AI、我的；校园页内部�
 
 整块列表的成功空结果使用 `EmptyState`，保留必要的下一步操作；行内缺省信息和分页末尾提示不增加图标。首次读取、请求失败与成功空结果分别处理。确认框和普通操作菜单使用 UniApp 原生接口，统一默认配色；H5 反馈样式集中在 `styles/feedback.css`。H5 的资料菜单使用同族底部面板，支持键盘选择、焦点圈定、Escape 关闭及焦点归还；App／小程序的资料菜单保留原生接口。
 
+设置子页复用 `pages/settings/components/SettingsPage.vue` 与 `settings-page.css`，统一标题、字体、行距、输入框和按钮。保存栏由 `SettingsPage` 的 `sticky` 布局负责，底部留白包含安全区，内容区与保存栏一起参与页面布局。
+
+可操作列表复用 `styles/list-interaction.css` 的 `list-row-action`；选中态使用 `list-row-selected`，小程序按压态使用 `list-row-pressed`。文字和高亮共享整行容器与内边距。H5 使用原生 `:active`，小程序保留 `hover-class`；键盘操作复用 `useButtonActivation`。页面调整行距或分组时复用公共 CSS 变量。
+
+通知和显示设置保留原生 `switch`，复用 `settings-switch-control`、`settings-switch` 的尺寸与缩放；H5 外观约 36×20px，整行维持可点击范围。选项的勾选图标使用 `UiIcon` 的 `check`，同时保留原生选择语义与 `aria-checked`。确认、取消等原生弹窗动作复用 `common.modal`，中英文按钮均使用微信支持的四字符以内文案。
+
+`pages/settings` 与 `pages/profile/records` 按各自分包配置；上传、举报、收藏、浏览记录共用 `pages/profile/records` 分包。新增入口以 `pages.json` 路径为准，样式或文案复用通过组件、CSS 和语言资源完成。
+
 #### 菜单规划
 - 默认安排单日，可展开日期范围安排多日
 - 从菜品详情加入这一餐，自动带入当前菜品
 - 建议餐次可修改
 - 按窗口/搜索选择菜品
 - 按日期标记或撤销已吃，完成状态保存到服务器并跨端同步
+
+
+点击 AI 卡片的确认按钮后，客户端先读取最新菜品，再提交保存。保存成功后更新卡片预览，展示价格、计价单位、上下架及供应变化。读取资料失败时保留原预览并显示提示，最终以保存响应为准。普通规划编辑展示当前菜品与供餐状态；提交成功后刷新详情失败时保留保存结果，重试读取详情即可。
+
+已删除的菜品、无效日期和权限不足会使保存失败。创建规划或修改菜品、日期、餐次时，服务端会针对今天及未来日期校验最新过敏原与忌口，冲突时返回 `DIETARY_CONFLICT`。同食堂与预算约束用于生成建议；确认保存后的变化提示包含预算超限。完整保存规则见[规划生成与确认保存](../backend/README.md#规划生成与确认保存)。
+
+计划日期使用校园时区 `Asia/Shanghai`。更改日期范围会清理范围外的完成记录；有尚未开始的约饭邀请时先取消，再修改日期或餐次。价格比较按分处理，展示时保留原计价单位及变更前后的价格。
 
 ### 状态管理模块
 
@@ -195,6 +242,8 @@ App/H5 主导航为首页、校园、规划、问 AI、我的；校园页内部�
 | `use-dishes-store` | 菜品数据、收藏管理 |
 | `use-chat-store` | AI 聊天消息、会话管理 |
 | `use-plan-store` | 菜单规划数据 |
+
+记录摘要和完整菜品详情分别读取。收藏、浏览及投稿摘要保留价格、计价单位、供应状态和可用营养字段；需要更多资料时请求详情接口，完整详情缓存只接收完整详情响应。
 
 ### 登录会话与本地聊天历史
 

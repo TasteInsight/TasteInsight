@@ -6,14 +6,14 @@
   <img src="https://img.shields.io/badge/NestJS-11-red" alt="NestJS">
   <img src="https://img.shields.io/badge/PostgreSQL-15-blue" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-7-red" alt="Redis">
-  <img src="https://img.shields.io/badge/TypeScript-3178C6" alt="TypeScript">
+  <img src="https://img.shields.io/badge/TypeScript-7.0.2-3178C6" alt="小程序核心模块：TypeScript 7.0.2">
 </p>
 
 **食鉴（TasteInsight）** 是一个校园食堂菜品点评与智能推荐平台，帮助学生发现美食、分享评价、获取个性化推荐。
 
 ## ✨ 功能特性
 
-### 🍜 用户端（微信小程序）
+### 🍜 用户端（微信小程序、App、H5）
 - **菜品浏览** - 按食堂/窗口浏览菜品，支持多维筛选（口味、价格、评分、时段、荤素、标签、忌口）
 - **智能搜索** - 搜索食堂或菜品，快速定位美食
 - **评价系统** - 发布评价（星级 + 文字 + 图片 + 口味评分）、评论回复、举报
@@ -21,32 +21,34 @@
 - **菜单规划** - 创建每日/每周用餐计划，跟踪执行
 - **AI 聊天** - 智能对话助手，提供菜品推荐、餐单规划建议（流式响应）
 - **个性化推荐** - 基于用户偏好和行为的智能推荐
-- **用户上传** - 上传新菜品，审核后展示
+- **资料贡献** - 上传新菜品或补全菜品资料，审核后展示
+- **营养信息** - 按每份展示热量及营养素，支持显示偏好
+- **语言切换** - 简体中文与英语，跟随系统或手动选择
 
 ### 🖥️ 管理端（Web）
-- **菜品管理** - 单个添加、批量导入、编辑、删除菜品
+- **菜品管理** - 单个添加、批量导入、编辑、删除，维护营养与中英文资料
 - **食堂管理** - 管理食堂、楼层、窗口信息
 - **审核系统** - 审核用户上传菜品、评价、评论
 - **举报处理** - 处理用户举报内容
 - **新闻公告** - 发布食堂公告、活动通知
 - **用户管理** - 管理员账号与权限管理
-- **系统配置** - 推荐策略、AI 参数等配置
+- **系统配置** - 审核策略、独立翻译服务与系统维护
 - **操作日志** - 管理员操作记录追踪
 
 ## 🛠️ 技术栈
 
 | 层级 | 技术 |
 |------|------|
-| **小程序前端** | UniApp 编译器 5.26 + Vue 3.4.21 + Pinia + TailwindCSS |
-| **管理端前端** | Vue 3.5 + Vite 5 + Pinia + TailwindCSS + WangEditor |
-| **后端服务** | NestJS 11 + Prisma ORM + JWT + Swagger |
+| **小程序前端** | UniApp 编译器 5.26 + Vue 3.4.21 + TypeScript 7.0.2 + Pinia + TailwindCSS |
+| **管理端前端** | Vue 3.5 + TypeScript 5.9.3 + Vite 7 + Pinia + TailwindCSS + WangEditor |
+| **后端服务** | NestJS 11 + TypeScript 5.9.3 + Prisma ORM + JWT + Swagger |
 | **数据库** | PostgreSQL 15 + Redis 7 |
 | **任务队列** | BullMQ |
 | **AI 服务** | OpenAI API + Python 嵌入服务 |
 | **对象存储** | 本地文件与通用 S3 多实例存储（AWS、腾讯云 COS、阿里云 OSS） |
 | **容器化** | Docker + Docker Compose |
 
-小程序使用 TypeScript 7 检查核心模块，Vue 模板和 Jest 使用官方 TypeScript 6 兼容 API；完整版本与升级约定见[小程序依赖维护](frontend-miniapp/README.md#发布构建与依赖维护)。
+小程序的 Vue 模板和 Jest 使用官方 TypeScript 6.0.2 兼容 API；完整版本与升级约定见[小程序依赖维护](frontend-miniapp/README.md#发布构建与依赖维护)。
 
 ## 📁 项目结构
 
@@ -221,6 +223,7 @@ API 压测的负载方案、测试数据和结果判定见 [统一压测说明](
 - [前端开发规范](./docs/前端开发规范文档.md)
 - [数据库开发规范](./docs/数据库开发规范文档.md)
 - [环境配置与部署](./docs/环境配置与部署.md)
+- [环境变量参考](./docs/环境变量参考.md)
 - [历史测试报告归档](./docs/archive/test-reports/README.md)
 
 
