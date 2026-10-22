@@ -17,7 +17,8 @@
 </template>
 
 <script setup lang="ts">
-import UiIcon, { type UiIconName } from './UiIcon.vue';
+import UiIcon from './UiIcon.vue';
+import type { UiIconName } from '@/types/ui-icon';
 import { useButtonActivation } from '@/composables/use-button-activation';
 
 const props = withDefaults(defineProps<{ label: string; icon: UiIconName; disabled?: boolean }>(), {

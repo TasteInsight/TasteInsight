@@ -32,7 +32,9 @@ beforeEach(() => {
 });
 
 it('shows visible validation and focuses the first field instead of silently disabling submit', async () => {
-  const wrapper = shallowMount(AddDishPage);
+  const wrapper = shallowMount(AddDishPage, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
   await flushPromises();
   expect(wrapper.get('.submit-button').attributes('disabled')).toBeUndefined();
   await wrapper.get('.submit-button').trigger('tap');
@@ -45,7 +47,9 @@ it('shows visible validation and focuses the first field instead of silently dis
 
 it('offers a location retry and no unsupported free-text window input', async () => {
   (getCanteenList as jest.Mock).mockRejectedValueOnce(new Error('offline'));
-  const wrapper = shallowMount(AddDishPage);
+  const wrapper = shallowMount(AddDishPage, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
   await flushPromises();
   expect(wrapper.text()).toContain('重新加载');
   (wrapper.vm as any).formData.name = 'Draft';
@@ -61,7 +65,9 @@ it('offers a location retry and no unsupported free-text window input', async ()
 });
 
 it('does not confirm a pristine form and preserves a cancelled dirty return', async () => {
-  const wrapper = shallowMount(AddDishPage);
+  const wrapper = shallowMount(AddDishPage, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
   await flushPromises();
   const back = (onBackPress as jest.Mock).mock.calls[0][0];
   expect(back()).toBe(false);
@@ -96,7 +102,9 @@ it('keeps conflict recovery enabled and only discards input after explicit confi
   (uploadDish as jest.Mock).mockRejectedValueOnce(
     Object.assign(new Error('菜品资料已更新'), { statusCode: 409 })
   );
-  const wrapper = shallowMount(AddDishPage);
+  const wrapper = shallowMount(AddDishPage, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
   await flushPromises();
   (wrapper.vm as any).formData.price = 15;
   await wrapper.get('.submit-button').trigger('tap');
@@ -118,7 +126,9 @@ it('keeps conflict recovery enabled and only discards input after explicit confi
 });
 
 it('keeps essential fields in the main flow and reveals the optional description on demand', async () => {
-  const wrapper = shallowMount(AddDishPage);
+  const wrapper = shallowMount(AddDishPage, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
   await flushPromises();
   expect(wrapper.find('.form-intro').exists()).toBe(false);
   expect(wrapper.find('#dish-name').exists()).toBe(true);
@@ -152,7 +162,9 @@ it.each([
       },
     });
     (uploadDish as jest.Mock).mockResolvedValue({ code: 201, data: { id: 'upload' } });
-    const wrapper = shallowMount(AddDishPage);
+    const wrapper = shallowMount(AddDishPage, {
+      global: { stubs: { AsyncState: false, EmptyState: false } },
+    });
     await flushPromises();
     expect(uniMock.setNavigationBarTitle).toHaveBeenLastCalledWith({ title });
     expect(wrapper.get('.submit-button').text()).toBe(action);
@@ -175,7 +187,9 @@ it.each([
 );
 
 it('keeps tag and allergen input, selection, icon removal and disabled behavior intact', async () => {
-  const wrapper = shallowMount(AddDishPage);
+  const wrapper = shallowMount(AddDishPage, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
   await flushPromises();
   await wrapper.get('.optional-toggle').trigger('tap');
   const spicy = wrapper.findAll('.badge-choice').find(choice => choice.text() === '辣')!;
@@ -213,11 +227,36 @@ it('keeps tag and allergen input, selection, icon removal and disabled behavior 
 it('shows optional per-serving nutrition controls and opens them for validation errors', async () => {
   const wrapper = shallowMount(AddDishPage);
   await flushPromises();
-  Object.assign((wrapper.vm as any).formData, { name: '豆腐', price: 8, canteenName: '食堂', availableMealTime: ['lunch'], calories: -1 });
+  Object.assign((wrapper.vm as any).formData, {
+    name: '豆腐',
+    price: 8,
+    canteenName: '食堂',
+    availableMealTime: ['lunch'],
+    calories: -1,
+  });
   await wrapper.get('.submit-button').trigger('tap');
   await flushPromises();
   expect(wrapper.get('#field-calories').text()).toContain('应为 0 或正数');
   expect(wrapper.get('#dish-protein').attributes('placeholder')).toBe('未提供');
   expect(uniMock.pageScrollTo).toHaveBeenCalledWith({ selector: '#field-calories', duration: 200 });
+  wrapper.unmount();
+});
+
+it('shows shared initial loading before the editable form is ready', async () => {
+  let resolve!: (value: any) => void;
+  (getCanteenList as jest.Mock).mockReturnValueOnce(
+    new Promise(done => {
+      resolve = done;
+    })
+  );
+  const wrapper = shallowMount(AddDishPage, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
+  await flushPromises();
+  expect(wrapper.text()).toContain('正在加载菜品资料…');
+  expect(wrapper.find('.submit-button').exists()).toBe(false);
+  resolve({ code: 200, data: { items: [] } });
+  await flushPromises();
+  expect(wrapper.find('.submit-button').exists()).toBe(true);
   wrapper.unmount();
 });

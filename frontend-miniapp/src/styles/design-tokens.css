@@ -9,6 +9,7 @@ page,
   --page-title-font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --page-title-color: #111827;
   --page-navigation-height: 44px;
+  --page-content-width: 760px;
   --field-min-height: 48px;
   --field-padding: 12px;
   --field-border-color: #d0d5dd;

@@ -1,42 +1,18 @@
 <template>
   <view class="weekly-page page-state-layout page-content" :aria-busy="loading">
-    <EmptyState
-      v-if="!user.isLoggedIn"
-      class="page-state-region"
-      title="登录后查看本周推荐"
-      icon="star"
-      action-text="登录"
-      @action="openLogin"
-    />
-    <template v-else>
+    <LoginGate title="登录后查看本周推荐" icon="star">
       <view v-if="week" class="weekly-heading"
         ><text class="weekly-hint">{{ week }} 起</text></view
       >
-      <EmptyState
-        v-if="loading && !items.length"
-        class="page-state-region"
-        title="正在加载推荐…"
-        loading
-      />
-      <view
-        v-if="error"
-        class="weekly-error error-feedback"
-        :class="{ 'page-state-region': !items.length }"
-        role="alert"
-        ><text class="error-feedback__message">{{ error }}</text
-        ><button
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          @click="load"
-        >
-          重新加载
-        </button></view
-      >
-      <EmptyState
-        class="page-state-region"
-        v-else-if="initialized && !items.length"
-        title="本期暂无可查看的菜品"
-        icon="star"
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="!!items.length"
+        :error="error"
+        loading-title="正在加载推荐…"
+        empty-title="本期暂无可查看的菜品"
+        empty-icon="star"
+        @retry="load"
       />
       <DishSummaryCard
         v-for="dish in items"
@@ -45,7 +21,7 @@
         :dish="dish"
         @select="openDish"
       />
-    </template>
+    </LoginGate>
   </view>
 </template>
 <script setup lang="ts">
@@ -54,8 +30,8 @@ import { onLoad, onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import type { Dish } from '@/types/api';
 import { getWeeklyNotificationCollection } from '@/api/modules/notifications';
 import { useUserStore } from '@/store/modules/use-user-store';
-import EmptyState from '@/components/EmptyState.vue';
-import { openLogin } from '@/utils/login-navigation';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import DishSummaryCard from '@/components/DishSummaryCard.vue';
 const user = useUserStore();
 const week = ref('');
@@ -134,8 +110,6 @@ onPullDownRefresh(async () => {
 <style scoped>
 .weekly-page {
   box-sizing: border-box;
-  max-width: 720px;
-  margin: 0 auto;
   padding: 16px 20px calc(32px + env(safe-area-inset-bottom));
   color: #1f2937;
   background: #fff;

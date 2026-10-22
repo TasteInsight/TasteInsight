@@ -18,7 +18,8 @@
 </template>
 
 <script setup lang="ts">
-import UiIcon, { type UiIconName, type UiIconTone } from './UiIcon.vue';
+import UiIcon from './UiIcon.vue';
+import type { UiIconName, UiIconTone } from '@/types/ui-icon';
 import { useButtonActivation } from '@/composables/use-button-activation';
 
 const props = withDefaults(

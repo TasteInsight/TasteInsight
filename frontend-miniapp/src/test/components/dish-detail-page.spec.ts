@@ -6,6 +6,7 @@ import TasteProfile from '@/pages/dish/components/TasteProfile.vue';
 
 // Mock uni-app lifecycle hooks
 jest.mock('@dcloudio/uni-app', () => ({
+  onShow: jest.fn(),
   onLoad: jest.fn((callback: Function) => callback({ id: 'test-dish-id' })),
   onBackPress: jest.fn(),
   onHide: jest.fn(),
@@ -131,7 +132,7 @@ describe('DishDetailPage', () => {
 
     expect(wrapper.findComponent({ name: 'DishDetailSkeleton' }).exists()).toBe(false);
     expect(wrapper.find('.dish-content').exists()).toBe(false);
-    expect(wrapper.text()).toBe('');
+    expect(wrapper.text()).toBe('正在加载菜品…');
   });
 
   it('keeps rating prominent and reveals taste and ingredients only when dish information is expanded', async () => {

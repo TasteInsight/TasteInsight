@@ -17,6 +17,8 @@ peerDependencyRules:
     vue: 3.4.21
     '@dcloudio/types': 3.4.31
 allowBuilds:
+  '@swc/core': false
+  less: false
   '@parcel/watcher': true
   '@playwright/browser-chromium': true
   core-js: true
@@ -28,3 +30,4 @@ allowBuilds:
   weapp-tailwindcss: true
 patchedDependencies:
   '@dcloudio/uni-ui@1.5.12': patches/@dcloudio__uni-ui@1.5.12.patch
+  '@vue/vue3-jest@29.2.6': patches/@vue__vue3-jest@29.2.6.patch

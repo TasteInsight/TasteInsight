@@ -75,6 +75,8 @@ let user: any;
 const wrappers: any[] = [];
 beforeEach(() => {
   jest.clearAllMocks();
+  (getPost as jest.Mock).mockReset();
+  (getPostComments as jest.Mock).mockReset();
   user = reactive({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'A' } });
   (useUserStore as unknown as jest.Mock).mockReturnValue(user);
   (requireStudent as jest.Mock).mockReturnValue(true);
@@ -91,7 +93,9 @@ beforeEach(() => {
 });
 afterEach(() => wrappers.splice(0).forEach(wrapper => wrapper.unmount()));
 async function page() {
-  const wrapper = shallowMount(Page);
+  const wrapper = shallowMount(Page, {
+    global: { stubs: { AsyncState: false, EmptyState: false } },
+  });
   wrappers.push(wrapper);
   (onLoad as jest.Mock).mock.calls.slice(-1)[0][0]({ id: 'P' });
   (onShow as jest.Mock).mock.calls.slice(-1)[0][0]();
@@ -213,4 +217,41 @@ test('approved reply likes use the common server-authoritative state', async () 
   await flushPromises();
   expect(setPostCommentLike).toHaveBeenCalledWith('C', true);
   expect(wrapper.get('[aria-label="取消点赞"]').text()).toContain('4');
+});
+
+test('post and reply reads expose independent loading states within the page layout', async () => {
+  const postRequest = deferred();
+  const replyRequest = deferred();
+  (getPost as jest.Mock).mockReturnValueOnce(postRequest.promise);
+  (getPostComments as jest.Mock).mockReturnValueOnce(replyRequest.promise);
+  const wrapper = await page();
+  expect(wrapper.classes()).toEqual(expect.arrayContaining(['page-content', 'page-state-layout']));
+  expect(wrapper.text()).toContain('正在加载动态');
+  expect(wrapper.find('.campus-skeleton').exists()).toBe(false);
+  postRequest.resolve({ code: 200, data: { ...post } });
+  await flushPromises();
+  expect(wrapper.findComponent(PostCard).exists()).toBe(true);
+  expect(wrapper.attributes('aria-busy')).toBe('false');
+  expect(wrapper.text()).toContain('正在加载回复');
+  expect(wrapper.text()).not.toContain('还没有回复');
+  replyRequest.resolve(comments());
+  await flushPromises();
+  expect(wrapper.text()).toContain('还没有回复');
+});
+
+test('refreshing empty replies replaces empty feedback with loading and retains the composer draft', async () => {
+  const wrapper = await page();
+  const pending = deferred();
+  (getPostComments as jest.Mock).mockReturnValueOnce(pending.promise);
+  const vm = wrapper.vm as any;
+  vm.content = '未发送的回复';
+  const request = vm.loadComments();
+  await flushPromises();
+  expect(wrapper.text()).toContain('正在加载回复');
+  expect(wrapper.text()).not.toContain('还没有回复');
+  expect(vm.content).toBe('未发送的回复');
+  pending.resolve(comments());
+  await request;
+  await flushPromises();
+  expect(wrapper.text()).toContain('还没有回复');
 });

@@ -8,6 +8,7 @@ import DishPage from '@/pages/dish/index.vue';
 import { onBackPress } from '@dcloudio/uni-app';
 
 jest.mock('@dcloudio/uni-app', () => ({
+  onShow: jest.fn(),
   onLoad: jest.fn(),
   onBackPress: jest.fn(),
   onPullDownRefresh: jest.fn(),
@@ -22,7 +23,10 @@ const saves: any[] = [];
 const wrappers: any[] = [];
 const scopes: ReturnType<typeof effectScope>[] = [];
 const profile = (id: string) => ({
-  id, openId: `${id}-openid`, nickname: id, capabilities: { canContribute: true },
+  id,
+  openId: `${id}-openid`,
+  nickname: id,
+  capabilities: { canContribute: true },
 });
 const success = (data: any) => ({ statusCode: 200, data: { code: 200, data } });
 const reviewRequests = () => requests.filter(item => new URL(item.url).pathname === '/reviews');

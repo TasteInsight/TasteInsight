@@ -330,7 +330,7 @@ describe('planning loading lifecycle', () => {
     const read = deferred();
     (getMealPlans as jest.Mock).mockReturnValueOnce(read.promise);
     const retry = wrapper.findAll('button').find(button => button.text() === '重试')!;
-    await retry.trigger('tap');
+    await retry.trigger('click');
     expectBlankPlans(wrapper);
     read.resolve(ok({ items: [plan()] }));
     await flushPromises();
@@ -464,7 +464,7 @@ describe('planning loading lifecycle', () => {
     expect(wrapper.text()).not.toContain('暂无当前规划');
     const retried = outcome === 'deleted dish' ? { ...complete, dishes: ['first'] } : complete;
     (getMealPlans as jest.Mock).mockResolvedValueOnce(ok({ items: [retried] }));
-    await wrapper.findAll('button').find(button => button.text() === '重试')!.trigger('tap');
+    await wrapper.findAll('button').find(button => button.text() === '重试')!.trigger('click');
     await flushPromises();
     expect(usePlanStore().initialized).toBe(true);
     expect(usePlanStore().currentPlans[0].dishes.map(item => item.id)).toEqual(retried.dishes);
@@ -570,7 +570,7 @@ describe('planning loading lifecycle', () => {
     expect(store.selectedPlan?.dishes.map(item => item.id) || []).toEqual(selectedIds);
     expect(wrapper.text()).toContain('重试');
     (getMealPlans as jest.Mock).mockResolvedValueOnce(ok({ items: [written] }));
-    await wrapper.findAll('button').find(button => button.text() === '重试')!.trigger('tap');
+    await wrapper.findAll('button').find(button => button.text() === '重试')!.trigger('click');
     await flushPromises();
     expect(store.currentPlans[0].dishesReady).toBe(true);
     expect(wrapper.text()).toContain('单价合计 ¥8.00');

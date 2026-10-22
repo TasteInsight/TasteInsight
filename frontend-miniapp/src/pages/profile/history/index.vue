@@ -1,90 +1,54 @@
 <template>
   <view class="page-content dish-list-page page-state-layout">
-    <EmptyState
-      v-if="!isLoggedIn"
-      class="page-state-region"
-      title="登录后查看个人记录"
-      icon="user"
-      action-text="登录"
-      @action="openLogin"
-    />
-    <view v-else class="dish-list-content page-state-content">
-      <view
-        v-if="error && historyItems.length === 0"
-        class="error-feedback page-state-region"
-        role="alert"
-      >
-        <text class="error-feedback__message">{{ error }}</text
-        ><button
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          @click="retry"
-        >
-          重新加载
-        </button>
-      </view>
-      <EmptyState
-        class="page-state-region"
-        v-else-if="initialized && !historyItems.length"
-        title="暂无浏览历史"
-        icon="history"
-      />
-      <EmptyState
-        v-else-if="loading && !initialized"
-        class="page-state-region"
-        title="正在加载…"
-        loading
-      />
-      <template v-else-if="historyItems.length">
-        <DishCard
-          v-for="item in historyItems"
-          :key="item.dishId"
-          :dish="{
-            id: item.dishId,
-            name: item.dishName,
-            images: item.dishImages,
-            price: item.dishPrice,
-            priceUnit: item.priceUnit,
-            status: item.status,
-            calories: item.calories,
-            protein: item.protein,
-            carbohydrate: item.carbohydrate,
-            fat: item.fat,
-
-            canteenName: item.canteenName,
-            windowName: item.windowName,
-            tags: item.tags,
-            averageRating: item.averageRating,
-          }"
-          @click="goToDishDetail(item.dishId)"
+    <LoginGate title="登录后查看个人记录" icon="user">
+      <view class="dish-list-content page-state-content">
+        <AsyncState
+          :loading="loading"
+          :initialized="initialized"
+          :has-content="!!historyItems.length"
+          :error="error"
+          empty-title="暂无浏览历史"
+          empty-icon="history"
+          @retry="retry"
         />
-        <view v-if="error" class="error-feedback" role="alert">
-          <text class="error-feedback__message">{{ error }}</text
-          ><button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            :disabled="loading"
-            @click="retry"
-          >
-            重试
-          </button>
-        </view>
-        <view v-else class="dish-list-footer">
-          <text v-if="loading">加载中…</text>
-          <button v-else-if="hasMore" class="dish-list-action" @click="loadMore">加载更多</button>
-          <text v-else>没有更多了</text>
-        </view>
-      </template>
-    </view>
+        <template v-if="historyItems.length">
+          <DishCard
+            v-for="item in historyItems"
+            :key="item.dishId"
+            :dish="{
+              id: item.dishId,
+              name: item.dishName,
+              images: item.dishImages,
+              price: item.dishPrice,
+              priceUnit: item.priceUnit,
+              status: item.status,
+              calories: item.calories,
+              protein: item.protein,
+              carbohydrate: item.carbohydrate,
+              fat: item.fat,
+              canteenName: item.canteenName,
+              windowName: item.windowName,
+              tags: item.tags,
+              averageRating: item.averageRating,
+            }"
+            @click="goToDishDetail(item.dishId)"
+          />
+          <view v-if="!loading && !error" class="dish-list-footer">
+            <button v-if="hasMore" class="dish-list-action" @click="loadMore">加载更多</button>
+            <text v-else>没有更多了</text>
+          </view>
+        </template>
+      </view>
+    </LoginGate>
   </view>
 </template>
 <script setup lang="ts">
-import { openLogin } from '@/utils/login-navigation';
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import { useHistory } from './composables/use-history';
-const { isLoggedIn, historyItems, loading, initialized, error, hasMore, loadMore, refresh, retry } =
+const { historyItems, loading, initialized, error, hasMore, loadMore, refresh, retry } =
   useHistory();
 onShow(() => {
   void refresh();

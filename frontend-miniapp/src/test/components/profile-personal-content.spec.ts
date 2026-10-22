@@ -30,7 +30,10 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 const mountPage = (component: any, options = {}) => {
-  const wrapper = shallowMount(component, options);
+  const wrapper = shallowMount(component, {
+    global: { stubs: { AsyncState: false, LoginGate: false, EmptyState: false } },
+    ...options,
+  });
   wrappers.push(wrapper);
   return wrapper;
 };
@@ -352,4 +355,15 @@ test('saved current and historical plans retain offline status, cents, units and
   await flushPromises();
   expect(wrapper.findAll('.dish-card__price')[0].text()).toBe('¥0.00');
   expect(wrapper.findAll('.tag-badge--neutral')).toHaveLength(1);
+});
+
+test('plans show their first loading state while keeping the visibility control available', async () => {
+  plans.loading = true;
+  const wrapper = mountPage(ProfilePlans);
+  expect(wrapper.text()).toContain('正在加载计划…');
+  expect(wrapper.find('switch').exists()).toBe(true);
+  expect(wrapper.text()).not.toContain('还没有饮食计划');
+  plans.initialized = true;
+  await flushPromises();
+  expect(wrapper.text()).not.toContain('还没有饮食计划');
 });

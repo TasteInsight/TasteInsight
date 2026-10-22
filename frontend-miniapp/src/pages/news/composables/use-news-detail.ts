@@ -113,13 +113,13 @@ export function useNewsDetail() {
         return true;
       } else {
         notFound.value = res.code === 404;
-        error.value = notFound.value ? '公告不存在或已下架' : '公告加载失败，请重试';
+        error.value = notFound.value ? '新闻不存在或已下架' : '新闻加载失败，请重试';
       }
     } catch (cause) {
       if (!ownsRequest()) return false;
       console.error('获取新闻详情失败:', cause);
       notFound.value = (cause as { statusCode?: number })?.statusCode === 404;
-      error.value = notFound.value ? '公告不存在或已下架' : '公告加载失败，请重试';
+      error.value = notFound.value ? '新闻不存在或已下架' : '新闻加载失败，请重试';
     } finally {
       if (ownsRequest()) loading.value = false;
     }

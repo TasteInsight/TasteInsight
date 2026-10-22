@@ -5,8 +5,10 @@ import ChatPage from '@/pages/ai-chat/index.vue';
 import InputBar from '@/pages/ai-chat/components/InputBar.vue';
 import SuggestionChips from '@/pages/ai-chat/components/SuggestionChips.vue';
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
+import { useUserStore } from '@/store/modules/use-user-store';
 
 jest.mock('@/pages/ai-chat/composables/use-chat', () => ({ useChat: jest.fn() }));
+jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: jest.fn() }));
 let chat: any;
 let wrapper: any;
 const button = (name: string) =>
@@ -45,6 +47,11 @@ beforeEach(() => {
     stopStreaming: jest.fn(),
   };
   (useChat as jest.Mock).mockReturnValue(chat);
+  (useUserStore as unknown as jest.Mock).mockReturnValue({
+    get isLoggedIn() {
+      return chat.isLoggedIn.value;
+    },
+  });
   (global as any).uni.getSystemInfoSync = () => ({ safeAreaInsets: { top: 0, bottom: 0 } });
   (global as any).uni.showModal = jest.fn();
 });
@@ -542,4 +549,19 @@ test('an empty failed answer shows a status without an empty answer bubble', () 
   render();
   expect(wrapper.find('.chat-bubble').exists()).toBe(false);
   expect(wrapper.get('.chat-message-status').text()).toBe('回复失败，请稍后重试');
+});
+
+test('the signed-in toolbar contains conversation actions while the platform owns the page title', async () => {
+  render();
+  expect(wrapper.find('.ai-chat-title, .page-navigation-title').exists()).toBe(false);
+  const toolbar = wrapper.get('.ai-chat-toolbar');
+  expect(toolbar.findAll('button')).toHaveLength(2);
+  expect(toolbar.findAll('button').map((item: any) => item.attributes('aria-label'))).toEqual([
+    '新对话',
+    '历史对话',
+  ]);
+  chat.isLoggedIn.value = false;
+  await nextTick();
+  expect(wrapper.find('.ai-chat-toolbar').exists()).toBe(false);
+  expect(wrapper.text()).toContain('登录后使用 AI 助手');
 });

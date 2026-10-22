@@ -4,6 +4,7 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import type { Dish } from '@/types/api';
 import { useReview } from './use-review';
 import { useComment } from './use-comment';
+import { requireLogin } from '@/utils/login-navigation';
 
 /**
  * 菜品详情页面逻辑
@@ -242,10 +243,7 @@ export function useDishDetail() {
    */
   const toggleFavorite = async () => {
     if (!dish.value?.id) return;
-    if (!userStore.isLoggedIn) {
-      uni.showToast({ title: '请先登录', icon: 'none' });
-      return;
-    }
+    if (!requireLogin()) return;
     if (favoriteLoading.value) return;
 
     favoriteLoading.value = true;

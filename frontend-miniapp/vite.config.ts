@@ -10,10 +10,15 @@ const isH5 = process.env.UNI_PLATFORM === 'h5';
 const isApp = process.env.UNI_PLATFORM === 'app';
 const WeappTailwindcssDisabled = isH5 || isApp; // H5/App 平台不需要启用
 const nodeRequire = createRequire(import.meta.url);
-const markdownRequire = createRequire(nodeRequire.resolve('markdown-it'));
-const markdownDependencies = ['entities', 'linkify-it', 'mdurl', 'punycode.js', 'uc.micro'];
 const markdownDependencyAliases = Object.fromEntries(
-  markdownDependencies.map(dependency => [dependency, markdownRequire.resolve(dependency)])
+  ['markdown-it', 'markdown-it-cjk-friendly'].flatMap(packageName => {
+    const ownerRequire = createRequire(nodeRequire.resolve(`${packageName}/package.json`));
+    const { dependencies = {} } = ownerRequire('./package.json');
+    return Object.keys(dependencies).map(dependency => [
+      dependency,
+      ownerRequire.resolve(dependency),
+    ]);
+  })
 );
 
 export default defineConfig(({ mode }) => {
@@ -35,9 +40,7 @@ export default defineConfig(({ mode }) => {
       'process.env.UNI_PLATFORM': JSON.stringify(process.env.UNI_PLATFORM || 'unknown'),
     },
     resolve: {
-      // UniApp resolves markdown-it through pnpm's symlinked package path but
-      // misses its transitive imports. Resolve those imports from markdown-it's
-      // own dependency graph without adding duplicate direct dependencies.
+      // Resolve parser dependencies from their owning packages for UniApp's pnpm resolver.
       alias: markdownDependencyAliases,
     },
     build: {

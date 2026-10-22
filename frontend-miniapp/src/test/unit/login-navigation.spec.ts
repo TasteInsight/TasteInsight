@@ -1,4 +1,7 @@
-import { openLogin, returnFromLogin } from '@/utils/login-navigation';
+import { openLogin, returnFromLogin, requireLogin } from '@/utils/login-navigation';
+import { useUserStore } from '@/store/modules/use-user-store';
+
+jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: jest.fn() }));
 
 let pages: any[];
 beforeEach(() => {
@@ -20,6 +23,17 @@ test('opens login once and keeps the source page in the native stack', () => {
   pages.push({ route: 'pages/login/index' });
   openLogin();
   expect(uni.navigateTo).toHaveBeenCalledTimes(1);
+});
+test('protected actions share the login entry while logged-in users can continue', () => {
+  (useUserStore as unknown as jest.Mock).mockReturnValue({ isLoggedIn: false });
+  expect(requireLogin()).toBe(false);
+  expect(uni.navigateTo).toHaveBeenCalledWith(
+    expect.objectContaining({ url: '/pages/login/index' })
+  );
+  (uni.navigateTo as jest.Mock).mockClear();
+  (useUserStore as unknown as jest.Mock).mockReturnValue({ isLoggedIn: true });
+  expect(requireLogin()).toBe(true);
+  expect(uni.navigateTo).not.toHaveBeenCalled();
 });
 test('coalesces taps while navigation is pending', () => {
   (uni.navigateTo as jest.Mock).mockImplementation(() => {});

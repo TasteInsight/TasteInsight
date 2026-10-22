@@ -8,6 +8,7 @@ import { usePlanStore } from '@/store/modules/use-plan-store';
 import { onBackPress, onHide } from '@dcloudio/uni-app';
 
 jest.mock('@dcloudio/uni-app', () => ({
+  onShow: jest.fn(),
   onLoad: jest.fn((callback: Function) => callback({ id: 'dish' })),
   onBackPress: jest.fn(),
   onHide: jest.fn(),

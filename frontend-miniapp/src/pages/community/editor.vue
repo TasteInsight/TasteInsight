@@ -1,5 +1,5 @@
 <template>
-  <view class="campus-page page-content" :aria-busy="loading || submitting">
+  <view class="campus-page page-content page-state-layout" :aria-busy="loading || submitting">
     <view class="campus-heading"
       ><button class="campus-button" :disabled="submitting || loading || closing" @click="leave">
         取消</button
@@ -54,21 +54,16 @@
         </view>
       </template>
     </view>
-    <view v-if="error" class="campus-error error-feedback" role="alert"
-      ><text class="error-feedback__message">{{ error }}</text
-      ><button
-        v-if="!ready"
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        @click="initialize"
-      >
-        重新加载
-      </button></view
+    <AsyncState
+      v-if="!ready"
+      :loading="loading"
+      :error="error"
+      loading-title="正在加载动态…"
+      @retry="initialize"
+    />
+    <view v-else-if="error" class="campus-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ error }}</text></view
     >
-    <view v-if="loading && !ready" class="campus-skeleton" aria-hidden="true"
-      ><view class="campus-skeleton-line" /><view class="campus-skeleton-line" /><view
-        class="campus-skeleton-line"
-    /></view>
     <template v-if="ready">
       <textarea
         v-model="content"
@@ -119,6 +114,7 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import { requireStudent } from '@/utils/student-access';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import { openCampus } from '@/utils/campus-navigation';
+import AsyncState from '@/components/AsyncState.vue';
 
 interface EditorImage {
   path: string;

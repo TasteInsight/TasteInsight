@@ -23,6 +23,7 @@ import type {
   UserProfileUpdateRequest,
 } from '@/types/api';
 import type { AIScene } from '@/types/api';
+import type { TextStreamTransport } from '@/utils/text-stream';
 
 export type MealPlanCard = ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' };
 export type PreferenceDraftCard = ComponentPreferenceDraft & {
@@ -217,6 +218,7 @@ export const useChatStore = defineStore('ai-chat', () => {
   function abortChat(userRequested = true) {
     const stream = activeStream;
     activeStream = null;
+    pendingSend = null;
     if (stream) {
       if (stream.userMessage.deliveryStatus === 'sending') {
         stream.userMessage.deliveryStatus = 'unconfirmed';
@@ -614,7 +616,7 @@ export const useChatStore = defineStore('ai-chat', () => {
   /**
    * 发送聊天消息并处理流式响应
    */
-  async function sendChatMessage(text: string): Promise<boolean> {
+  async function sendChatMessage(text: string, transport?: TextStreamTransport): Promise<boolean> {
     if (!text.trim() || aiLoading.value || pendingSend) return false;
     const version = conversationVersion;
     const ownerSession = userStore.sessionVersion;
@@ -622,7 +624,11 @@ export const useChatStore = defineStore('ai-chat', () => {
     pendingSend = submission;
     try {
       if (!sessionId.value && !(await initSession())) return false;
-      if (version !== conversationVersion || ownerSession !== userStore.sessionVersion)
+      if (
+        pendingSend !== submission ||
+        version !== conversationVersion ||
+        ownerSession !== userStore.sessionVersion
+      )
         return false;
     } finally {
       if (pendingSend === submission) pendingSend = null;
@@ -818,7 +824,7 @@ export const useChatStore = defineStore('ai-chat', () => {
               if (aiMessage.isStreaming) aiMessage.replyStatus = 'interrupted';
               finishStream();
             },
-          });
+          }, transport);
     } catch (error) {
       failStream(error);
       return false;

@@ -27,32 +27,16 @@
       >
         管理计划<UiIcon name="chevron-right" :size="15" /></button
     ></view>
-    <view
-      v-if="planStore.error"
-      class="profile-plan-error error-feedback"
-      :class="{ 'page-state-region': !plans.length }"
-      role="alert"
-      ><text class="error-feedback__message">{{ planStore.error }}</text
-      ><button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        :disabled="planStore.loading"
-        @click="retryButton.activate"
-        @keydown="retryButton.handleKeydown"
-        @keyup="retryButton.handleKeyup"
-        @blur="retryButton.clearPress"
-        role="button"
-        :tabindex="planStore.loading ? -1 : 0"
-      >
-        重试
-      </button></view
-    >
-    <EmptyState
-      class="page-state-region"
-      v-if="planStore.initialized && !plans.length && !planStore.error"
-      title="还没有饮食计划"
-      icon="calendar"
-      action-text="安排一餐"
+    <AsyncState
+      :loading="planStore.loading"
+      :initialized="planStore.initialized"
+      :has-content="!!plans.length"
+      :error="planStore.error"
+      loading-title="正在加载计划…"
+      empty-title="还没有饮食计划"
+      empty-icon="calendar"
+      empty-action-text="安排一餐"
+      @retry="refresh"
       @action="openPlanning"
     />
     <view v-for="plan in plans" :key="plan.id" class="profile-plan">
@@ -71,7 +55,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import DishSummaryCard from '@/components/DishSummaryCard.vue';
 import UiIcon from '@/components/UiIcon.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import { usePlanStore } from '@/store/modules/use-plan-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { useButtonActivation } from '@/composables/use-button-activation';
@@ -98,12 +82,6 @@ const openPlanning = () => uni.switchTab({ url: '/pages/planning/index' });
 const openDish = (id: string) =>
   uni.navigateTo({ url: '/pages/dish/index?id=' + encodeURIComponent(id) });
 const manageButton = useButtonActivation(openPlanning);
-const retryButton = useButtonActivation(
-  () => {
-    void refresh();
-  },
-  () => planStore.loading
-);
 defineExpose({ refresh });
 // #ifndef MP-WEIXIN
 const privacyDraft = ref(false);

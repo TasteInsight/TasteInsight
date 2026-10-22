@@ -1,5 +1,5 @@
 describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
-  const MODULE_PATH = '@/pages/profile/my-reviews/composables/use-my-reviews';
+  const MODULE_PATH = '@/pages/profile/composables/use-my-reviews';
 
   beforeEach(() => {
     jest.doMock('@/store/modules/use-user-store', () => ({

@@ -4,31 +4,17 @@
     :class="{ 'uploads-page--state': !user.isLoggedIn }"
     :aria-busy="loading"
   >
-    <EmptyState
-      class="page-state-region"
-      v-if="!user.isLoggedIn"
-      title="登录后查看上传记录"
-      icon="edit"
-      action-text="登录"
-      @action="login"
-    />
-    <template v-else>
-      <ReviewListSkeleton v-if="loading && !initialized" />
-      <view
-        v-if="error"
-        class="error-feedback"
-        :class="{ 'page-state-region': !items.length && !detachedUpload }"
-        role="alert"
-        ><text class="error-feedback__message">{{ error }}</text
-        ><button
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          :disabled="loading"
-          @click="retry"
-        >
-          重新加载
-        </button></view
-      >
+    <LoginGate title="登录后查看上传记录" icon="edit">
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="!!items.length || !!detachedUpload"
+        :error="error"
+        loading-title="正在加载上传记录…"
+        empty-title="暂无上传记录"
+        empty-icon="edit"
+        @retry="retry"
+      />
       <text v-if="actionError" class="upload-error" role="alert">{{ actionError }}</text>
       <view v-if="focusError" class="error-feedback" role="alert">
         <text class="error-feedback__message">{{ focusError }}</text>
@@ -42,12 +28,6 @@
           重试
         </button>
       </view>
-      <EmptyState
-        class="page-state-region"
-        v-if="initialized && !items.length && !detachedUpload && !error"
-        title="暂无上传记录"
-        icon="edit"
-      />
       <view class="uploads-list">
         <view v-for="item in items" :id="'upload-' + item.id" :key="item.id">
           <UploadRecord
@@ -61,16 +41,11 @@
           />
         </view>
       </view>
-      <view v-if="items.length" class="uploads-footer">
-        <button
-          v-if="hasMore && !error"
-          class="upload-action"
-          :disabled="loading"
-          @click="loadMore"
-        >
-          {{ loading ? '加载中…' : '加载更多' }}
+      <view v-if="items.length && !error" class="uploads-footer">
+        <button v-if="hasMore" class="upload-action" :disabled="loading" @click="loadMore">
+          加载更多
         </button>
-        <text v-else-if="!error">没有更多了</text>
+        <text v-else-if="!loading">没有更多了</text>
       </view>
       <view v-if="detachedUpload" id="upload-notification-detail" class="notification-detail">
         <text class="notification-detail-title">消息对应记录</text>
@@ -84,7 +59,7 @@
           @open-dish="openDish"
         />
       </view>
-    </template>
+    </LoginGate>
     <FloatingActionButton
       v-if="user.isLoggedIn"
       label="申请新增菜品"
@@ -94,13 +69,11 @@
   </view>
 </template>
 <script setup lang="ts">
-import { openLogin } from '@/utils/login-navigation';
-
 import { computed, nextTick, ref, watch, onScopeDispose } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import FloatingActionButton from '@/components/FloatingActionButton.vue';
-import ReviewListSkeleton from '@/components/skeleton/ReviewListSkeleton.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { requireStudent } from '@/utils/student-access';
 import { useMyUploads } from './composables/use-my-uploads';
@@ -209,7 +182,6 @@ onPullDownRefresh(async () => {
     uni.stopPullDownRefresh();
   }
 });
-const login = () => openLogin();
 const createContribution = () => {
   if (requireStudent()) uni.navigateTo({ url: '/pages/add-dish/index' });
 };

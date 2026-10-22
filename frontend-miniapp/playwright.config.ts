@@ -19,7 +19,7 @@ export default defineConfig({
   },
   webServer: {
     command: process.env.E2E_WEB_SERVER_COMMAND || 'pnpm dev:h5 --mode e2e',
-    env: { VITE_API_BASE_URL: 'http://127.0.0.1:4523' },
+    env: { VITE_API_BASE_URL: 'http://127.0.0.1:4523', VITE_ENABLE_TEST_LOGIN: 'true' },
     url: baseURL,
     reuseExistingServer: !!process.env.E2E_BASE_URL && !process.env.CI,
     timeout: 120_000,

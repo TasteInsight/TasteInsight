@@ -1,6 +1,6 @@
 import { useNewsList } from '@/pages/news/composables/use-news-list';
 import { getNewsList } from '@/api/modules/news';
-import { ref } from 'vue';
+import { effectScope, nextTick, ref } from 'vue';
 
 // Mock API
 jest.mock('@/api/modules/news');
@@ -166,22 +166,31 @@ describe('useNewsList', () => {
   });
 
   it('preserves loaded content and retries the same page after an append failure', async () => {
-    (getNewsList as jest.Mock).mockResolvedValueOnce({code:200,data:{items:mockNewsItems,meta:{page:1,pageSize:10,total:20,totalPages:2}}});
-    const news=useNewsList();
+    (getNewsList as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { items: mockNewsItems, meta: { page: 1, pageSize: 10, total: 20, totalPages: 2 } },
+    });
+    const news = useNewsList();
     await new Promise(process.nextTick);
     (getNewsList as jest.Mock).mockRejectedValueOnce(new Error('offline'));
     expect(await news.loadMore()).toBe(false);
     expect(news.list.value).toEqual(mockNewsItems);
     expect(news.meta.page).toBe(2);
     expect(news.finished.value).toBe(false);
-    (getNewsList as jest.Mock).mockResolvedValueOnce({code:200,data:{items:[],meta:{page:2,pageSize:10,total:20,totalPages:2}}});
+    (getNewsList as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { items: [], meta: { page: 2, pageSize: 10, total: 20, totalPages: 2 } },
+    });
     expect(await news.retry()).toBe(true);
-    expect(getNewsList).toHaveBeenLastCalledWith({page:2,pageSize:10});
+    expect(getNewsList).toHaveBeenLastCalledWith({ page: 2, pageSize: 10 });
   });
 
   it('retains existing content and pagination on a failed refresh', async () => {
-    (getNewsList as jest.Mock).mockResolvedValueOnce({code:200,data:{items:mockNewsItems,meta:{page:1,pageSize:10,total:2,totalPages:1}}});
-    const news=useNewsList();
+    (getNewsList as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { items: mockNewsItems, meta: { page: 1, pageSize: 10, total: 2, totalPages: 1 } },
+    });
+    const news = useNewsList();
     await new Promise(process.nextTick);
     (getNewsList as jest.Mock).mockRejectedValueOnce(new Error('offline'));
     expect(await news.refresh()).toBe(false);
@@ -189,4 +198,55 @@ describe('useNewsList', () => {
     expect(news.finished.value).toBe(true);
     expect(news.meta.page).toBe(2);
   });
+});
+
+test('news waits for activation once, preserves hidden reads, and does not refresh on return', async () => {
+  const active = ref(false);
+  const scope = effectScope();
+  let resolve!: (value: any) => void;
+  (getNewsList as jest.Mock).mockReset().mockReturnValueOnce(
+    new Promise(done => {
+      resolve = done;
+    })
+  );
+  const news = scope.run(() => useNewsList({}, () => active.value))!;
+  expect(getNewsList).not.toHaveBeenCalled();
+  active.value = true;
+  await nextTick();
+  expect(getNewsList).toHaveBeenCalledTimes(1);
+  active.value = false;
+  await nextTick();
+  resolve({ code: 200, data: { items: [{ id: 'cached' }], meta: { page: 1, totalPages: 1 } } });
+  await nextTick();
+  expect(news.list.value).toEqual([{ id: 'cached' }]);
+  active.value = true;
+  await nextTick();
+  expect(getNewsList).toHaveBeenCalledTimes(1);
+  scope.stop();
+});
+
+test('failed news activation waits for explicit retry and ignores results after disposal', async () => {
+  const active = ref(true);
+  const scope = effectScope();
+  (getNewsList as jest.Mock).mockReset().mockRejectedValueOnce(new Error('offline'));
+  const news = scope.run(() => useNewsList({}, () => active.value))!;
+  await nextTick();
+  await new Promise(process.nextTick);
+  expect(news.error.value).toBeTruthy();
+  active.value = false;
+  await nextTick();
+  active.value = true;
+  await nextTick();
+  expect(getNewsList).toHaveBeenCalledTimes(1);
+  let resolve!: (value: any) => void;
+  (getNewsList as jest.Mock).mockReturnValueOnce(
+    new Promise(done => {
+      resolve = done;
+    })
+  );
+  const request = news.retry();
+  scope.stop();
+  resolve({ code: 200, data: { items: [{ id: 'late' }], meta: { page: 1, totalPages: 1 } } });
+  await request;
+  expect(news.list.value).toEqual([]);
 });

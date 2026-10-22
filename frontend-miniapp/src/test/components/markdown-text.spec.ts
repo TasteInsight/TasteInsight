@@ -77,6 +77,35 @@ test('keeps inline classes and escapes raw HTML and code', () => {
   expect(root.querySelector('script, [onerror]')).toBeNull();
 });
 
+test.each([
+  ['**推荐菜品：**根据口味推荐', '推荐菜品：'],
+  ['中文**（清淡）**搭配', '（清淡）'],
+  ['**适合晚餐。**也可以调整分量', '适合晚餐。'],
+])('renders CJK emphasis adjacent to punctuation: %s', (content, emphasis) => {
+  const root = render(content);
+  expect(root.querySelector('strong.md-strong')?.textContent).toBe(emphasis);
+  expect(root.textContent).not.toContain('**');
+});
+
+test('keeps literal emphasis markers in escaped text and code', () => {
+  const root = render(
+    '`**推荐菜品：**`\n\n\\*\\*推荐菜品：\\*\\*\n\n```text\n**软嫩口感：**留意描述\n```'
+  );
+  expect(root.querySelector('strong')).toBeNull();
+  expect(root.querySelector('code.md-code-inline')?.textContent).toBe('**推荐菜品：**');
+  expect(root.querySelector('pre code')?.textContent).toContain('**软嫩口感：**留意描述');
+});
+
+test('renders emphasis when a streamed closing delimiter arrives', async () => {
+  const wrapper = mount(MarkdownText, { props: { content: '**推荐菜品：' } });
+  expect(wrapper.findComponent({ name: 'rich-text' }).attributes('nodes')).not.toContain('<strong');
+  await wrapper.setProps({ content: '**推荐菜品：**根据口味推荐' });
+  expect(wrapper.findComponent({ name: 'rich-text' }).attributes('nodes')).toContain(
+    '<strong class="md-strong">推荐菜品：</strong>根据口味推荐'
+  );
+  wrapper.unmount();
+});
+
 test('preserves image text and rejects unsafe image URLs', () => {
   const root = render(
     '![**示意**](https://example.invalid/image.png "图片")\n\n![错误](javascript:alert(1))'

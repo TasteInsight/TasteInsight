@@ -122,7 +122,7 @@ import { ref } from 'vue';
 import UiIcon from '@/components/UiIcon.vue';
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app';
 import { useButtonActivation } from '@/composables/use-button-activation';
-import { copyProjectFeedbackLink } from '@/utils/project-feedback';
+import { copyProjectFeedbackLink } from './utils/project-feedback';
 
 const showFeatures = ref(false);
 const showTechnicalDetails = ref(false);

@@ -33,7 +33,15 @@ const item = (id: string) => ({
 });
 const mountPage = () =>
   shallowMount(MyUploadsPage, {
-    global: { stubs: { UploadRecord: false, FloatingActionButton: false } },
+    global: {
+      stubs: {
+        UploadRecord: false,
+        FloatingActionButton: false,
+        LoginGate: false,
+        AsyncState: false,
+        EmptyState: false,
+      },
+    },
   });
 let measuredRect: { top: number; bottom: number };
 let pendingMeasurements: Array<() => void>;

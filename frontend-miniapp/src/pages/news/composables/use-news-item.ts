@@ -43,7 +43,7 @@ export function useNewsItem() {
    * @param news 新闻对象
    */
   const getNewsTagText = (news: News): string => {
-    return news.canteenName || '全校公告';
+    return news.canteenName || '校园新闻';
   };
 
   /**

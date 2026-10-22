@@ -1,6 +1,6 @@
 import { effectScope, reactive, ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
+import { onLoad, onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import HomePage from '@/pages/index/index.vue';
 import CanteenPage from '@/pages/canteen/index.vue';
 import WindowPage from '@/pages/window/index.vue';
@@ -134,7 +134,10 @@ const mountPage = (component: any, props?: any) => {
       stubs: {
         SearchBar: true,
         FilterBar: true,
-        CanteenFilterBar: true,
+        CanteenFilterBar: {
+          template: '<canteen-filter-bar-stub />',
+          methods: { closePanel: jest.fn() },
+        },
         RecommendItem: {
           props: ['dish'],
           template: '<div class="result-dish">{{ dish.name }}</div>',
@@ -189,6 +192,7 @@ beforeEach(() => {
     getCommentsByReview,
   ].forEach(mock => (mock as jest.Mock).mockReset());
   mockUser.sessionVersion++;
+  mockUser.isLoggedIn = true;
   mockUser.userInfo.settings.displaySettings.sortBy = 'rating';
   mockUser.fetchProfileAction.mockReset().mockResolvedValue(undefined);
   mockCanteens.canteenList = [];
@@ -224,6 +228,135 @@ afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
   scopes.splice(0).forEach(scope => scope.stop());
 });
+test.each([
+  ['dish', DishPage, getDishById, '菜品 dish'],
+  ['canteen', CanteenPage, getCanteenDetail, '食堂'],
+  ['window', WindowPage, getWindowDetail, '窗口'],
+] as const)(
+  '%s restores its retained route after a hidden session change',
+  async (id, Page, api, title) => {
+    const wrapper = mountPage(Page);
+    await loadRoute({ id });
+    (onShow as jest.Mock).mock.calls.forEach(([callback]) => callback());
+    await flushPromises();
+    expect(wrapper.text()).toContain(title);
+    (onHide as jest.Mock).mock.calls.forEach(([callback]) => callback());
+    mockUser.sessionVersion++;
+    await flushPromises();
+    expect(api).toHaveBeenCalledTimes(1);
+    (onShow as jest.Mock).mock.calls.forEach(([callback]) => callback());
+    await flushPromises();
+    expect(api).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toContain(title);
+  }
+);
+
+test.each([
+  ['rating', { field: 'averageRating', order: 'desc' }],
+  ['price_low', { field: 'price', order: 'asc' }],
+] as const)(
+  'tag results restore the retained query after login with %s sort once',
+  async (sortBy, sort) => {
+    mockUser.isLoggedIn = false;
+    (getDishes as jest.Mock)
+      .mockResolvedValueOnce(itemsResponse([dish('guest')]))
+      .mockResolvedValueOnce(itemsResponse([dish('account')]));
+    const wrapper = mountPage(TagPage);
+    await loadRoute({ tag: encodeURIComponent('家常菜'), canteenId: 'canteen' });
+    (onShow as jest.Mock).mock.calls.forEach(([callback]) => callback());
+    await flushPromises();
+    expect(wrapper.text()).toContain('菜品 guest');
+    (onHide as jest.Mock).mock.calls.forEach(([callback]) => callback());
+    mockUser.sessionVersion++;
+    mockUser.isLoggedIn = true;
+    mockUser.userInfo.settings.displaySettings.sortBy = sortBy;
+    await flushPromises();
+    expect(getDishes).toHaveBeenCalledTimes(1);
+    expect(wrapper.findAll('.result-dish')).toHaveLength(0);
+    (onShow as jest.Mock).mock.calls.forEach(([callback]) => callback());
+    await flushPromises();
+    expect(getDishes).toHaveBeenCalledTimes(2);
+    expect(getDishes).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filter: { tag: ['家常菜'], canteenId: ['canteen'], includeOffline: false },
+        pagination: { page: 1, pageSize: 10 },
+        sort,
+      })
+    );
+    expect(wrapper.text()).toContain('菜品 account');
+  }
+);
+
+describe.each([
+  ['canteen', CanteenPage, { id: 'canteen' }],
+  ['window', WindowPage, { id: 'window' }],
+  ['tag', TagPage, { tag: encodeURIComponent('家常菜'), canteenId: 'canteen' }],
+] as const)('%s list feedback placement', (_name, Page, route) => {
+  test('keeps pagination loading and retry after the existing cards and retries the same page', async () => {
+    const append = deferred();
+    (getDishes as jest.Mock)
+      .mockResolvedValueOnce(itemsResponse([dish('first')], 1, 2))
+      .mockReturnValueOnce(append.promise)
+      .mockResolvedValueOnce(itemsResponse([dish('second')], 2, 2));
+    const wrapper = mountPage(Page);
+    await loadRoute(route);
+    await flushPromises();
+    await wrapper.get('.dish-list-action').trigger('click');
+    const content = wrapper.get('.dish-list-content');
+    const expectTrailingFeedback = () => {
+      const state = content.get('.async-state');
+      expect(content.findAll('.async-state')).toHaveLength(1);
+      expect(
+        content.get('.result-dish').element.compareDocumentPosition(state.element) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(content.text()).toContain('菜品 first');
+      return state;
+    };
+    expect(expectTrailingFeedback().text()).toContain('正在加载更多');
+    append.resolve({ code: 503, message: '下一页加载失败' });
+    await flushPromises();
+    expect(expectTrailingFeedback().text()).toContain('下一页加载失败');
+    await content.get('.error-feedback__action').trigger('click');
+    await flushPromises();
+    expect(content.findAll('.result-dish').map(card => card.text())).toEqual([
+      '菜品 first',
+      '菜品 second',
+    ]);
+    expect((getDishes as jest.Mock).mock.calls.map(([query]) => query.pagination.page)).toEqual([
+      1, 2, 2,
+    ]);
+    expect(content.find('.async-state').exists()).toBe(false);
+  });
+
+  test('keeps a failed refresh before the cached cards', async () => {
+    const refresh = deferred();
+    (getDishes as jest.Mock)
+      .mockResolvedValueOnce(itemsResponse([dish('first')], 1, 2))
+      .mockReturnValueOnce(refresh.promise);
+    const wrapper = mountPage(Page);
+    await loadRoute(route);
+    await flushPromises();
+    const vm = wrapper.vm as any;
+    if (_name === 'canteen') void vm.fetchDishes('canteen');
+    else if (_name === 'window') void vm.onRefresh();
+    else void vm.loadDishes(true);
+    await flushPromises();
+    const content = wrapper.get('.dish-list-content');
+    expect(content.text()).toContain('菜品 first');
+    expect(content.get('.async-state').text()).toContain('正在更新');
+    refresh.resolve({ code: 503, message: '刷新失败' });
+    await flushPromises();
+    const state = content.get('.async-state');
+    expect(content.findAll('.async-state')).toHaveLength(1);
+    expect(state.text()).toContain('刷新失败');
+    expect(
+      state.element.compareDocumentPosition(content.get('.result-dish').element) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+});
+
 describe('discovery initial loading', () => {
   test('a failed home preparation has one error and retries the complete loading chain', async () => {
     mockCanteens.fetchCanteenList
@@ -394,7 +527,7 @@ describe('discovery initial loading', () => {
     expect(wrapper.find('.dish-list-heading').exists()).toBe(false);
     expect(wrapper.find('canteen-filter-bar-stub').exists()).toBe(false);
     expect(wrapper.find('search-bar-stub').exists()).toBe(true);
-    await wrapper.get('button').trigger('tap');
+    await wrapper.get('button').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('暂无菜品信息');
   });
@@ -516,7 +649,7 @@ describe('search outcomes', () => {
     expect(wrapper.find('search-bar-stub').exists()).toBe(true);
     expect(wrapper.find('.search-results').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('未找到');
-    await wrapper.get('.error-feedback__action').trigger('tap');
+    await wrapper.get('.error-feedback__action').trigger('click');
     await flushPromises();
     expect(wrapper.find('.error-feedback').exists()).toBe(false);
     expect(getDishes).toHaveBeenCalledTimes(2);
@@ -549,7 +682,7 @@ describe('search outcomes', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('连接中断');
     expect(wrapper.text()).not.toContain('未找到');
-    await wrapper.get('button').trigger('tap');
+    await wrapper.get('button').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('未找到“豆腐”');
   });

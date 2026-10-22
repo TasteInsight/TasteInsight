@@ -7,11 +7,13 @@ import {
   Query,
   UseGuards,
   Req,
+  Res,
   Sse,
   MessageEvent,
   Delete,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { fromEvent, Observable, takeUntil } from 'rxjs';
+import type { Response } from 'express';
 import { AuthGuard } from '@/auth/guards/auth.guard';
 import { AIChatService } from './ai-chat.service';
 import { CreateSessionDto } from './dto/session.dto';
@@ -56,9 +58,13 @@ export class AIChatController {
     @Req() req: any,
     @Param('sessionId') sessionId: string,
     @Body() dto: ChatRequestDto,
+    @Res({ passthrough: true }) response: Response,
   ): Observable<MessageEvent> {
     const userId = req.user.sub;
-    return this.aiChatService.streamChat(userId, sessionId, dto);
+    // POST 请求体已读完后，以响应连接关闭事件释放模型订阅。
+    return this.aiChatService
+      .streamChat(userId, sessionId, dto)
+      .pipe(takeUntil(fromEvent(response, 'close')));
   }
 
   /**

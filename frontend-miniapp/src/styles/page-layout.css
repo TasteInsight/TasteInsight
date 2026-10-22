@@ -11,6 +11,8 @@ page {
 .page-viewport {
   box-sizing: border-box;
   width: 100%;
+  max-width: var(--page-content-width);
+  margin: 0 auto;
   background: #fff;
   color: #1f2937;
 }
