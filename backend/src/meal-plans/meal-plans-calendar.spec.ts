@@ -33,6 +33,7 @@ function fixture() {
       create: jest.fn().mockResolvedValue(saved()),
       delete: jest.fn(),
     },
+    mealPlanDish: { findMany: jest.fn().mockResolvedValue([]) },
     mealPlanCompletion: { upsert: jest.fn(), deleteMany: jest.fn() },
     diningInvite: { count: jest.fn().mockResolvedValue(0) },
     studentVerification: { findUnique: jest.fn().mockResolvedValue(null) },

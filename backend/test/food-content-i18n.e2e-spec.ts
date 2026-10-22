@@ -267,8 +267,8 @@ describe('food content localization (PostgreSQL)', () => {
         tool.execute(
           {
             dishIds: [prefix + suffix],
-            startDate: '2026-11-01',
-            endDate: '2026-11-01',
+            startDate: '2099-11-01',
+            endDate: '2099-11-01',
             mealTime: 'lunch',
           },
           { userId: prefix + '-user', sessionId: 'test' },
@@ -296,8 +296,8 @@ describe('food content localization (PostgreSQL)', () => {
     const draft = await tool.execute(
       {
         dishIds: [prefix + '-peanut'],
-        startDate: '2026-11-01',
-        endDate: '2026-11-01',
+        startDate: '2099-11-01',
+        endDate: '2099-11-01',
         mealTime: 'lunch',
       },
       { userId, sessionId: 'test' },

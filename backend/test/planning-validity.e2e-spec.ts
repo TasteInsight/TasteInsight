@@ -10,7 +10,7 @@ import { ToolRegistryService } from '@/ai-chat/tools/tool-registry.service';
 import { RecommendationService } from '@/recommendation/recommendation.service';
 import { RecommendationCacheService } from '@/recommendation/services/cache.service';
 import { CACHE_CONFIG } from '@/recommendation/constants/recommendation.constants';
-import { campusDate } from '@/common/utils/campus-date';
+import { campusDate, storedMealDate } from '@/common/utils/campus-date';
 const range = (startDate: string, endDate = startDate) => ({
   startDate,
   endDate,
@@ -141,68 +141,75 @@ describe('Supply dates and AI meal-plan confirmation (e2e)', () => {
     await post(plan.confirmAction.body).expect(201);
   });
 
-  it.each([
-    'offline',
-    'meal-time',
-    'supply-dates',
-    'price',
-    'price-decrease',
-    'allergens',
-    'avoid-ingredients',
-  ])('saves the same dish ID after %s changes', async (change) => {
-    const plan = await draft();
-    const count = await prisma.mealPlan.count({ where: { userId } });
-    if (change === 'offline')
-      await prisma.dish.update({
-        where: { id: dishId },
-        data: { status: 'offline' },
+  it.each(['offline', 'meal-time', 'supply-dates', 'price', 'price-decrease'])(
+    'saves the same dish ID after %s changes',
+    async (change) => {
+      const plan = await draft();
+      const count = await prisma.mealPlan.count({ where: { userId } });
+      if (change === 'offline')
+        await prisma.dish.update({
+          where: { id: dishId },
+          data: { status: 'offline' },
+        });
+      if (change === 'meal-time')
+        await prisma.dish.update({
+          where: { id: dishId },
+          data: { availableMealTime: ['dinner'] },
+        });
+      if (change === 'supply-dates')
+        await prisma.dish.update({
+          where: { id: dishId },
+          data: { availableDates: [range('2099-10-05')] },
+        });
+      if (change === 'price')
+        await prisma.dish.update({
+          where: { id: dishId },
+          data: { price: 10.01 },
+        });
+      if (change === 'price-decrease')
+        await prisma.dish.update({ where: { id: dishId }, data: { price: 9 } });
+      const response = await post(plan.confirmAction.body).expect(201);
+      expect(response.body.data.dishes).toEqual([dishId]);
+      expect(await prisma.mealPlan.count({ where: { userId } })).toBe(
+        count + 1,
+      );
+      const current = await request(app.getHttpServer())
+        .post('/dishes/by-ids')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ ids: [dishId] })
+        .expect(200);
+      expect(current.body.data.items).toHaveLength(1);
+      expect(current.body.data.items[0]).toMatchObject({
+        id: dishId,
+        ...(change === 'offline' ? { status: 'offline' } : {}),
+        ...(change === 'price' ? { price: 10.01 } : {}),
+        ...(change === 'price-decrease' ? { price: 9 } : {}),
       });
-    if (change === 'meal-time')
-      await prisma.dish.update({
-        where: { id: dishId },
-        data: { availableMealTime: ['dinner'] },
-      });
-    if (change === 'supply-dates')
-      await prisma.dish.update({
-        where: { id: dishId },
-        data: { availableDates: [range('2099-10-05')] },
-      });
-    if (change === 'price')
-      await prisma.dish.update({
-        where: { id: dishId },
-        data: { price: 10.01 },
-      });
-    if (change === 'price-decrease')
-      await prisma.dish.update({ where: { id: dishId }, data: { price: 9 } });
-    if (change === 'allergens' || change === 'avoid-ingredients') {
+      if (change !== 'price-decrease')
+        await expect(draft()).rejects.toThrow(/供应|预算|忌口/);
+    },
+  );
+
+  it.each(['allergens', 'avoid-ingredients'])(
+    'rejects a pending plan after current %s changes without saving it',
+    async (change) => {
+      const plan = await draft();
+      const count = await prisma.mealPlan.count({ where: { userId } });
       await request(app.getHttpServer())
         .put('/user/profile')
         .set('Authorization', `Bearer ${token}`)
         .send(
           change === 'allergens'
-            ? { allergens: ['花生'] }
+            ? { allergens: ['Peanuts'] }
             : { preferences: { avoidIngredients: ['鸡肉'] } },
         )
         .expect(200);
-    }
-    const response = await post(plan.confirmAction.body).expect(201);
-    expect(response.body.data.dishes).toEqual([dishId]);
-    expect(await prisma.mealPlan.count({ where: { userId } })).toBe(count + 1);
-    const current = await request(app.getHttpServer())
-      .post('/dishes/by-ids')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ ids: [dishId] })
-      .expect(200);
-    expect(current.body.data.items).toHaveLength(1);
-    expect(current.body.data.items[0]).toMatchObject({
-      id: dishId,
-      ...(change === 'offline' ? { status: 'offline' } : {}),
-      ...(change === 'price' ? { price: 10.01 } : {}),
-      ...(change === 'price-decrease' ? { price: 9 } : {}),
-    });
-    if (change !== 'price-decrease')
-      await expect(draft()).rejects.toThrow(/供应|预算|忌口/);
-  });
+      const response = await post(plan.confirmAction.body).expect(400);
+      expect(response.body.code).toBe('DIETARY_CONFLICT');
+      expect(await prisma.mealPlan.count({ where: { userId } })).toBe(count);
+      await expect(draft()).rejects.toThrow('忌口');
+    },
+  );
 
   it('checks same-canteen intent and allows an explicit cross-canteen draft', async () => {
     await expect(
@@ -290,6 +297,63 @@ describe('Supply dates and AI meal-plan confirmation (e2e)', () => {
       .expect(200);
     await post({ ...manual, source: 'ai' }).expect(400);
   });
+
+  it('rechecks current exclusions when moving a historical plan into the future without changing dish IDs', async () => {
+    const created = await post({
+      startDate: '2024-01-01',
+      endDate: '2024-01-01',
+      mealTime: 'lunch',
+      dishes: [dishId],
+    }).expect(201);
+    const completion = await prisma.mealPlanCompletion.create({
+      data: {
+        mealPlanId: created.body.data.id,
+        date: storedMealDate('2024-01-01'),
+      },
+    });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { allergens: ['Peanuts'] },
+    });
+    const response = await request(app.getHttpServer())
+      .patch(`/meal-plans/${created.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send(dates)
+      .expect(400);
+    expect(response.body.code).toBe('DIETARY_CONFLICT');
+    const stored = await prisma.mealPlan.findUniqueOrThrow({
+      where: { id: created.body.data.id },
+    });
+    expect(campusDate(stored.endDate)).toBe('2024-01-01');
+    expect(
+      (
+        await prisma.mealPlanDish.findMany({ where: { mealPlanId: stored.id } })
+      ).map((row) => row.dishId),
+    ).toEqual([dishId]);
+    expect(
+      await prisma.mealPlanCompletion.findUnique({
+        where: { id: completion.id },
+      }),
+    ).toEqual(completion);
+  });
+
+  it.each(['today', 'past-to-today'])(
+    'applies current exclusions to a %s plan',
+    async (range) => {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { allergens: ['Peanuts'] },
+      });
+      const today = campusDate();
+      const response = await post({
+        startDate: range === 'today' ? today : '2024-01-01',
+        endDate: today,
+        mealTime: 'lunch',
+        dishes: [dishId],
+      }).expect(400);
+      expect(response.body.code).toBe('DIETARY_CONFLICT');
+    },
+  );
 
   it.each([null, [], [{ startDate: '2099-10-05', endDate: '2099-10-07' }]])(
     'accepts valid supply configuration %p',

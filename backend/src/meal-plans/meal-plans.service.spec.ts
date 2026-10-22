@@ -16,6 +16,7 @@ const mockPrismaService = {
   user: { findUnique: jest.fn() },
   userPreference: { findUnique: jest.fn() },
   diningInvite: { count: jest.fn().mockResolvedValue(0) },
+  mealPlanDish: { findMany: jest.fn().mockResolvedValue([]) },
   mealPlanCompletion: { deleteMany: jest.fn(), upsert: jest.fn() },
   mealPlan: {
     findMany: jest.fn(),

@@ -104,8 +104,8 @@ describe('MealPlansController (e2e)', () => {
         .post('/meal-plans')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
-          startDate: '2026-11-01',
-          endDate: '2026-11-01',
+          startDate: '2099-11-01',
+          endDate: '2099-11-01',
           mealTime: 'lunch',
           dishes: [dish.id],
         });

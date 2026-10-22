@@ -40,8 +40,9 @@ export class MealPlansService {
     tx: Prisma.TransactionClient,
     userId: string,
     dishIds: string[],
+    endDate: string,
   ) {
-    if (!dishIds.length) return;
+    if (endDate < campusDate() || !dishIds.length) return;
     const user = await tx.user.findUnique({
       where: { id: userId },
       select: {
@@ -212,7 +213,12 @@ export class MealPlansService {
     try {
       mealPlan = await this.prisma.$transaction(async (tx) => {
         if (dto.isPublic) await this.assertStudent(tx, userId);
-        await this.assertCurrentDietaryExclusions(tx, userId, dishIds);
+        await this.assertCurrentDietaryExclusions(
+          tx,
+          userId,
+          dishIds,
+          mealDate(dto.endDate),
+        );
         return tx.mealPlan.create({
           data: {
             startDate: storedMealDate(dto.startDate),
@@ -305,10 +311,22 @@ export class MealPlansService {
           },
         });
       }
-      if (dto.dishes !== undefined)
-        await this.assertCurrentDietaryExclusions(tx, userId, [
-          ...new Set(dto.dishes),
-        ]);
+      if (dto.dishes !== undefined || scheduleChanged) {
+        const selected =
+          dto.dishes ??
+          (
+            await tx.mealPlanDish.findMany({
+              where: { mealPlanId: id },
+              select: { dishId: true },
+            })
+          ).map((row) => row.dishId);
+        await this.assertCurrentDietaryExclusions(
+          tx,
+          userId,
+          [...new Set(selected)],
+          endDate,
+        );
+      }
       return tx.mealPlan.update({
         where: { id },
         data: {
