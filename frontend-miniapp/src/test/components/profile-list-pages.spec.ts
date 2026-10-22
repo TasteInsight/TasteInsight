@@ -5,7 +5,7 @@ import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import ReviewsPage from '@/pages/profile/my-reviews/index.vue';
 import FavoritesPage from '@/pages/profile/my-favorites/index.vue';
 import HistoryPage from '@/pages/profile/history/index.vue';
-import { useMyReviews } from '@/pages/profile/my-reviews/composables/use-my-reviews';
+import { useMyReviews } from '@/pages/profile/composables/use-my-reviews';
 import { useFavorites } from '@/pages/profile/my-favorites/composables/use-favorites';
 import { useHistory } from '@/pages/profile/history/composables/use-history';
 
@@ -15,7 +15,7 @@ jest.mock('@dcloudio/uni-app', () => ({
   onPullDownRefresh: jest.fn(),
   onReachBottom: jest.fn(),
 }));
-jest.mock('@/pages/profile/my-reviews/composables/use-my-reviews', () => ({
+jest.mock('@/pages/profile/composables/use-my-reviews', () => ({
   useMyReviews: jest.fn(),
 }));
 jest.mock('@/pages/profile/my-favorites/composables/use-favorites', () => ({

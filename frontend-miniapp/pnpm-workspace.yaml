@@ -17,6 +17,8 @@ peerDependencyRules:
     vue: 3.4.21
     '@dcloudio/types': 3.4.31
 allowBuilds:
+  '@swc/core': false
+  less: false
   '@parcel/watcher': true
   '@playwright/browser-chromium': true
   core-js: true

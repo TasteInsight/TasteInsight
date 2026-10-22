@@ -7,7 +7,7 @@ import ProfileBioEditor from '@/pages/profile/components/ProfileBioEditor.vue';
 import ProfileActionsSheet from '@/pages/profile/components/ProfileActionsSheet.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ProfilePostCard from '@/pages/profile/components/ProfilePostCard.vue';
-import ReviewCard from '@/pages/profile/my-reviews/components/ReviewCard.vue';
+import ReviewCard from '@/pages/profile/components/ReviewCard.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getMyReviews } from '@/api/modules/user';
 import { getPosts } from '@/api/modules/social';

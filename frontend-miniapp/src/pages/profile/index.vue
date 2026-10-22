@@ -233,9 +233,9 @@ import ProfilePlans from './components/ProfilePlans.vue';
 // #ifdef H5
 import ProfileActionsSheet from './components/ProfileActionsSheet.vue';
 // #endif
-import ReviewCard from './my-reviews/components/ReviewCard.vue';
+import ReviewCard from './components/ReviewCard.vue';
 import { useProfile } from './composables/use-profile';
-import { useMyReviews } from './my-reviews/composables/use-my-reviews';
+import { useMyReviews } from './composables/use-my-reviews';
 import { getUnreadNotificationCount } from '@/api/modules/notifications';
 import { useUserStore } from '@/store/modules/use-user-store';
 // #ifndef MP-WEIXIN

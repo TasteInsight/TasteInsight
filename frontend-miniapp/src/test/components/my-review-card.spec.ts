@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import ReviewCard from '@/pages/profile/my-reviews/components/ReviewCard.vue';
+import ReviewCard from '@/pages/profile/components/ReviewCard.vue';
 const review = {
   id: 'r',
   dishId: 'd',

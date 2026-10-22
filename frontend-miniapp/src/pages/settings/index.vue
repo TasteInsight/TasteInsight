@@ -54,7 +54,7 @@
 import { computed } from 'vue';
 import UiIcon from '@/components/UiIcon.vue';
 import type { UiIconName } from '@/types/ui-icon';
-import { copyProjectFeedbackLink } from '@/utils/project-feedback';
+import { copyProjectFeedbackLink } from './utils/project-feedback';
 import { openLogin } from '@/utils/login-navigation';
 import { useProfile } from '@/pages/profile/composables/use-profile';
 import { useButtonActivation } from '@/composables/use-button-activation';

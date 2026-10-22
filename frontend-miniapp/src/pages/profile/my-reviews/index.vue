@@ -29,10 +29,10 @@
 </template>
 <script setup lang="ts">
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
-import ReviewCard from './components/ReviewCard.vue';
+import ReviewCard from '../components/ReviewCard.vue';
 import AsyncState from '@/components/AsyncState.vue';
 import LoginGate from '@/components/LoginGate.vue';
-import { useMyReviews } from './composables/use-my-reviews';
+import { useMyReviews } from '../composables/use-my-reviews';
 const { reviews, loading, initialized, error, hasMore, loadMore, refresh, retry } = useMyReviews();
 onShow(() => {
   void refresh();
