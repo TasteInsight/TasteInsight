@@ -130,8 +130,9 @@
                         </span>
                         <span v-else class="text-gray-400">-</span>
                       </td>
-                      <td class="py-3 px-4 text-sm max-w-xs truncate" :title="item.description || ''">
-                        {{ item.description || '-' }}
+                      <td class="py-3 px-4 text-sm max-w-xs whitespace-pre-wrap break-words">
+                        <p>{{ item.description || '-' }}</p>
+                        <p v-if="item.descriptionEn" class="mt-1 text-gray-600" lang="en">{{ item.descriptionEn }}</p>
                       </td>
                       <td class="py-3 px-4 text-sm">
                         <div v-if="item.tags && item.tags.length > 0" class="flex flex-wrap gap-1">
