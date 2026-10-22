@@ -14,6 +14,7 @@
       >
         <view
           class="settings-row settings-choice-row list-row-action"
+          :class="{ 'list-row-selected': languagePreference === option.value }"
           hover-class="list-row-pressed"
           :hover-stay-time="80"
         >

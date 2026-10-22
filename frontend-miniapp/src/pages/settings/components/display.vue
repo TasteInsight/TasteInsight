@@ -15,13 +15,23 @@
               t('account.settings.showAvailableCaloriesPerServing')
             }}</text></view
           >
-          <switch
-            :checked="form.showCalories"
-            :disabled="!canEdit"
-            color="#660874"
-            :aria-label="t('account.settings.showCalories')"
-            @change="onShowCaloriesChange"
-          />
+          <view class="settings-switch-control">
+            <switch
+              class="settings-switch"
+              :checked="form.showCalories"
+              role="switch"
+              :aria-checked="form.showCalories"
+              :aria-disabled="!canEdit"
+              :tabindex="canEdit ? 0 : -1"
+              @keydown="caloriesSwitch.handleKeydown"
+              @keyup="caloriesSwitch.handleKeyup"
+              @blur="caloriesSwitch.clearPress"
+              :disabled="!canEdit"
+              color="#660874"
+              :aria-label="t('account.settings.showCalories')"
+              @change="onShowCaloriesChange"
+            />
+          </view>
         </view>
       </label>
       <label class="settings-choice-label">
@@ -37,13 +47,23 @@
               t('account.settings.showAvailableProteinCarbohydratesAnd')
             }}</text></view
           >
-          <switch
-            :checked="form.showNutrition"
-            :disabled="!canEdit"
-            color="#660874"
-            :aria-label="t('account.settings.showNutrition')"
-            @change="onShowNutritionChange"
-          />
+          <view class="settings-switch-control">
+            <switch
+              class="settings-switch"
+              :checked="form.showNutrition"
+              role="switch"
+              :aria-checked="form.showNutrition"
+              :aria-disabled="!canEdit"
+              :tabindex="canEdit ? 0 : -1"
+              @keydown="nutritionSwitch.handleKeydown"
+              @keyup="nutritionSwitch.handleKeyup"
+              @blur="nutritionSwitch.clearPress"
+              :disabled="!canEdit"
+              color="#660874"
+              :aria-label="t('account.settings.showNutrition')"
+              @change="onShowNutritionChange"
+            />
+          </view>
         </view>
       </label>
     </view>
@@ -70,6 +90,7 @@
 <script setup lang="ts">
 import { t } from '@/i18n';
 import { computed } from 'vue';
+import { useButtonActivation } from '@/composables/use-button-activation';
 import UiPicker from '@/components/UiPicker.vue';
 import UiIcon from '@/components/UiIcon.vue';
 import { onBackPress } from '@dcloudio/uni-app';
@@ -88,6 +109,14 @@ const {
   handleSave,
   handleBackPress,
 } = state;
+const caloriesSwitch = useButtonActivation(
+  () => onShowCaloriesChange(!form.showCalories),
+  () => !canEdit.value
+);
+const nutritionSwitch = useButtonActivation(
+  () => onShowNutritionChange(!form.showNutrition),
+  () => !canEdit.value
+);
 const pageState = computed(() => ({
   loading: state.loading.value,
   initialized: state.initialized.value,

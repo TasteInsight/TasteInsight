@@ -294,7 +294,7 @@ async function handleConfirm() {
   flex-shrink: 0;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+  padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
   background: #fff;
 }
 .crop-actions .settings-button {

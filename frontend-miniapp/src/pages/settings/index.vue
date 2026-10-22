@@ -19,7 +19,7 @@
       </button>
     </view>
     <view v-for="group in visibleGroups" :key="group.title" class="settings-section">
-      <text class="settings-hint group-title">{{ group.title }}</text>
+      <text class="settings-group-title">{{ group.title }}</text>
       <button
         v-for="item in group.items"
         :key="item.label"
@@ -205,27 +205,10 @@ function navigateTo(path: string) {
 }
 </script>
 <style scoped>
-.group-title {
-  margin-bottom: 4px;
-  color: #475467;
-  font-size: 13px;
-  font-weight: 600;
-}
-.settings-menu-label {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.settings-menu-detail {
-  flex-shrink: 0;
-  color: #667085;
-  font-size: 13px;
-}
 .settings-logout {
   width: 100%;
   min-height: 48px;
   gap: 8px;
   color: #b42318;
-  font-size: 15px;
 }
 </style>

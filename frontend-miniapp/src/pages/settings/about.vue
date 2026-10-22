@@ -22,8 +22,8 @@
       }}</text>
     </view>
 
-    <view class="about-section">
-      <text class="about-section-title">{{ t('account.settings.termsAndSupport') }}</text>
+    <view class="settings-section">
+      <text class="settings-group-title">{{ t('account.settings.termsAndSupport') }}</text>
       <button
         class="settings-button settings-menu about-menu list-row-action"
         hover-class="list-row-pressed"
@@ -36,7 +36,7 @@
         @blur="agreementButton.clearPress"
       >
         <UiIcon name="bookmark" :size="19" />
-        <text class="about-menu-label">{{ t('account.settings.termsOfService') }}</text
+        <text class="settings-menu-label">{{ t('account.settings.termsOfService') }}</text
         ><UiIcon name="chevron-right" :size="16" />
       </button>
       <button
@@ -51,7 +51,7 @@
         @blur="privacyButton.clearPress"
       >
         <UiIcon name="shield" :size="19" />
-        <text class="about-menu-label">{{ t('account.settings.privacyPolicy') }}</text
+        <text class="settings-menu-label">{{ t('account.settings.privacyPolicy') }}</text
         ><UiIcon name="chevron-right" :size="16" />
       </button>
       <button
@@ -66,14 +66,14 @@
         @blur="feedbackButton.clearPress"
       >
         <UiIcon name="chat" :size="19" />
-        <view class="about-menu-label"
+        <view class="settings-menu-label"
           ><text class="about-contact-label">{{ t('account.settings.projectFeedback') }}</text
           ><text class="settings-hint">GitHub Issues</text></view
-        ><text class="about-action-label">{{ t('account.settings.copyLink') }}</text>
+        ><text class="settings-menu-detail">{{ t('account.settings.copyLink') }}</text>
       </button>
     </view>
 
-    <view class="about-section">
+    <view class="settings-section">
       <button
         class="settings-button settings-menu about-menu list-row-action"
         hover-class="list-row-pressed"
@@ -86,7 +86,7 @@
         @keyup="featuresButton.handleKeyup"
         @blur="featuresButton.clearPress"
       >
-        <text class="about-menu-label">{{ t('account.settings.features') }}</text>
+        <text class="settings-menu-label">{{ t('account.settings.features') }}</text>
         <UiIcon :name="showFeatures ? 'chevron-down' : 'chevron-right'" :size="16" />
       </button>
       <view v-if="showFeatures" class="about-features">
@@ -104,7 +104,7 @@
         @keyup="technicalButton.handleKeyup"
         @blur="technicalButton.clearPress"
       >
-        <text class="about-menu-label">{{ t('account.settings.technologyAndOpenSource') }}</text>
+        <text class="settings-menu-label">{{ t('account.settings.technologyAndOpenSource') }}</text>
         <UiIcon :name="showTechnicalDetails ? 'chevron-down' : 'chevron-right'" :size="16" />
       </button>
       <view v-if="showTechnicalDetails" class="about-technical">
@@ -119,7 +119,7 @@
     </view>
 
     <view class="about-disclaimer">
-      <text class="about-section-title">{{ t('account.settings.disclaimer') }}</text>
+      <text class="settings-group-title">{{ t('account.settings.disclaimer') }}</text>
       <text class="about-description">{{ t('account.settings.dishReviewsAreForReference') }}</text>
     </view>
   </view>
@@ -236,7 +236,7 @@ function openPrivacy() {
   display: block;
   color: #111827;
   font-size: 20px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.5;
 }
 .about-version {
@@ -255,31 +255,10 @@ function openPrivacy() {
   max-width: 480px;
   margin-top: 16px;
 }
-.about-section {
-  margin-bottom: 24px;
-}
-.about-section-title {
-  display: block;
-  margin-bottom: 4px;
-  color: #475467;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.6;
-}
-.about-menu-label {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 .about-contact-label {
   display: block;
   font-size: 16px;
   line-height: 1.5;
-}
-.about-action-label {
-  flex-shrink: 0;
-  color: #667085;
-  font-size: 13px;
 }
 .about-features,
 .about-technical {

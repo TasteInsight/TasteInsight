@@ -2,15 +2,13 @@
   <view class="page-content settings-page privacy-page">
     <view v-if="isUserAgreement" class="space-y-6">
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.settings.termsOfService')
-        }}</text>
+        <text class="settings-title">{{ t('account.settings.termsOfService') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.tasteinsightIsOperatedByThe')
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
+        <text class="settings-title">{{
           t('account.legal.section1AccountAndCampusIdentity')
         }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
@@ -21,7 +19,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
+        <text class="settings-title">{{
           t('account.legal.section2PublishingContentAndYour')
         }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
@@ -32,7 +30,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
+        <text class="settings-title">{{
           t('account.legal.section3DishAndNutritionInformation')
         }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
@@ -43,7 +41,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
+        <text class="settings-title">{{
           t('account.legal.section4AiAndPersonalizedServices')
         }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
@@ -54,7 +52,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
+        <text class="settings-title">{{
           t('account.legal.section5CommunityConductAndReports')
         }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
@@ -65,7 +63,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
+        <text class="settings-title">{{
           t('account.legal.section6ServiceAndResponsibility')
         }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
@@ -76,9 +74,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section7UpdatesAndContact')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section7UpdatesAndContact') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.updatedTermsAndTheirVersion')
         }}</text>
@@ -86,9 +82,7 @@
     </view>
     <view v-else class="space-y-6">
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.settings.privacyPolicy')
-        }}</text>
+        <text class="settings-title">{{ t('account.settings.privacyPolicy') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.theTasteinsightTeamWeExplains')
         }}</text>
@@ -97,9 +91,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section1SignInAndIdentity')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section1SignInAndIdentity') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.phoneSignInOrLinking')
         }}</text>
@@ -111,9 +103,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section2ProfileContentAndFood')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section2ProfileContentAndFood') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.profileWeProcessTheNickname')
         }}</text>
@@ -131,9 +121,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section3AiChatAndPersonalized')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section3AiChatAndPersonalized') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.whenYouUseAiChat')
         }}</text>
@@ -145,7 +133,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
+        <text class="settings-title">{{
           t('account.legal.section4ExternalServicesAndPublic')
         }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
@@ -159,9 +147,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section5StorageAndProtection')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section5StorageAndProtection') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.profilesAccountAndVerificationRecords')
         }}</text>
@@ -173,9 +159,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section6ManagingYourProfileAnd')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section6ManagingYourProfileAnd') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.manageYourNicknamePhotoBio')
         }}</text>
@@ -184,9 +168,7 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section7YourRightsAndHow')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section7YourRightsAndHow') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.underApplicableLawYouHave')
         }}</text>
@@ -198,17 +180,13 @@
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section8InformationAboutMinors')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section8InformationAboutMinors') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.minorsShouldReadThisPolicy')
         }}</text>
       </view>
       <view>
-        <text class="font-semibold text-gray-800 mb-3 block text-lg">{{
-          t('account.legal.section9UpdatesAndContact')
-        }}</text>
+        <text class="settings-title">{{ t('account.legal.section9UpdatesAndContact') }}</text>
         <text class="text-gray-600 text-sm leading-relaxed block">{{
           t('account.legal.updatesAndTheirVersionDate')
         }}</text>
@@ -284,10 +262,6 @@ function copyPrivacyEmail() {
 .privacy-page .text-sm {
   font-size: 16px;
   line-height: 1.75;
-}
-.privacy-page .text-lg {
-  font-size: 17px;
-  line-height: 1.5;
 }
 .privacy-contact {
   margin-top: 24px;

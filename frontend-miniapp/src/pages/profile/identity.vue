@@ -1,5 +1,5 @@
 <template>
-  <view class="identity-page page-content page-state-layout">
+  <view class="identity-page page-content settings-page page-state-layout">
     <EmptyState
       v-if="!userStore.isLoggedIn"
       class="page-state-region"
@@ -53,11 +53,19 @@
           v-if="!verification.canContribute && campusMethods.campusOAuth"
           class="identity-section"
         >
-          <text class="identity-section-title">{{ t('account.profile.campusSingleSignOn') }}</text>
+          <text class="settings-title identity-section-title">{{
+            t('account.profile.campusSingleSignOn')
+          }}</text>
           <text class="identity-hint">{{
             t('account.profile.afterAuthorizingWithYourSchool')
           }}</text>
-          <button class="identity-primary" :disabled="busy" @click="authorize('VERIFICATION')">
+          <button
+            class="settings-button settings-button--primary"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
+            :disabled="busy"
+            @click="authorize('VERIFICATION')"
+          >
             {{ t('account.profile.startVerification') }}
           </button>
         </view>
@@ -65,13 +73,13 @@
           v-if="!verification.canContribute && campusMethods.campusEmail"
           class="identity-section"
         >
-          <text class="identity-section-title">{{
+          <text class="settings-title identity-section-title">{{
             t('account.profile.campusEmailVerification')
           }}</text>
           <text class="identity-hint">{{ t('account.profile.verifyYourEmailToApply') }}</text>
           <input
             v-model="email"
-            class="identity-input"
+            class="settings-field identity-input"
             type="text"
             maxlength="254"
             :placeholder="t('account.profile.campusEmail')"
@@ -81,7 +89,7 @@
           <view class="identity-code-row">
             <input
               v-model="emailCode"
-              class="identity-input"
+              class="settings-field identity-input"
               type="number"
               maxlength="6"
               :placeholder="t('account.login.section6DigitVerificationCode')"
@@ -89,7 +97,9 @@
               :disabled="busy"
             />
             <button
-              class="identity-link"
+              class="settings-button identity-link"
+              hover-class="settings-button--pressed"
+              :hover-stay-time="80"
               :disabled="!email.trim() || emailSending || emailRemaining > 0 || busy"
               @click="sendEmail"
             >
@@ -103,43 +113,59 @@
             </button>
           </view>
           <text v-if="emailError" class="identity-error" role="alert">{{ emailError }}</text>
-          <button class="identity-primary" :disabled="!emailCanVerify || busy" @click="submitEmail">
+          <button
+            class="settings-button settings-button--primary"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
+            :disabled="!emailCanVerify || busy"
+            @click="submitEmail"
+          >
             {{ t('account.profile.verifyAndSubmitApplication') }}
           </button>
         </view>
         <view v-if="hasAccountMethods" class="identity-section">
-          <text class="identity-section-title">{{ t('account.profile.signInMethods') }}</text>
-          <view v-if="configuredLogins.phone || identities?.phone" class="identity-account-row"
-            ><text>{{ t('account.login.phoneNumber') }}</text
-            ><text>{{ identities?.phone || t('account.profile.unlinked') }}</text></view
-          >
-          <view
-            v-if="
-              configuredLogins.wechatMiniapp ||
-              configuredLogins.wechatApp ||
-              identities?.wechat.miniapp ||
-              identities?.wechat.app
-            "
-            class="identity-account-row"
-            ><text>{{ t('account.profile.wechat') }}</text
-            ><text>{{
-              identities?.wechat.miniapp || identities?.wechat.app
-                ? t('account.profile.linked')
-                : t('account.profile.unlinked')
-            }}</text></view
-          >
-          <view
-            v-if="configuredLogins.campusOAuth || identities?.campusOAuth"
-            class="identity-account-row"
-          >
-            <text>{{ t('account.profile.campusAccount') }}</text
-            ><text>{{
-              identities?.campusOAuth ? t('account.profile.linked') : t('account.profile.unlinked')
-            }}</text>
+          <text class="settings-title identity-section-title">{{
+            t('account.profile.signInMethods')
+          }}</text>
+          <view class="identity-account-list">
+            <view
+              v-if="configuredLogins.phone || identities?.phone"
+              class="settings-row identity-account-row"
+              ><text>{{ t('account.login.phoneNumber') }}</text
+              ><text>{{ identities?.phone || t('account.profile.unlinked') }}</text></view
+            >
+            <view
+              v-if="
+                configuredLogins.wechatMiniapp ||
+                configuredLogins.wechatApp ||
+                identities?.wechat.miniapp ||
+                identities?.wechat.app
+              "
+              class="settings-row identity-account-row"
+              ><text>{{ t('account.profile.wechat') }}</text
+              ><text>{{
+                identities?.wechat.miniapp || identities?.wechat.app
+                  ? t('account.profile.linked')
+                  : t('account.profile.unlinked')
+              }}</text></view
+            >
+            <view
+              v-if="configuredLogins.campusOAuth || identities?.campusOAuth"
+              class="settings-row identity-account-row"
+            >
+              <text>{{ t('account.profile.campusAccount') }}</text
+              ><text>{{
+                identities?.campusOAuth
+                  ? t('account.profile.linked')
+                  : t('account.profile.unlinked')
+              }}</text>
+            </view>
           </view>
           <button
             v-if="configuredLogins.campusOAuth && !identities?.campusOAuth"
-            class="identity-link"
+            class="settings-button identity-link"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
             :disabled="busy"
             @click="authorize('LOGIN_BIND')"
           >
@@ -147,7 +173,9 @@
           </button>
           <button
             v-if="configuredLogins.phone && !identities?.phone"
-            class="identity-link"
+            class="settings-button identity-link"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
             @click="showPhoneForm = !showPhoneForm"
           >
             {{
@@ -157,7 +185,7 @@
           <view v-if="showPhoneForm && configuredLogins.phone" class="identity-binding">
             <input
               v-model="phone"
-              class="identity-input"
+              class="settings-field identity-input"
               type="tel"
               maxlength="20"
               :placeholder="t('account.profile.phoneNumberIncludingCountryCode')"
@@ -167,7 +195,7 @@
             <view class="identity-code-row">
               <input
                 v-model="phoneCode"
-                class="identity-input"
+                class="settings-field identity-input"
                 type="number"
                 maxlength="6"
                 :placeholder="t('account.login.section6DigitVerificationCode')"
@@ -175,7 +203,9 @@
                 :disabled="busy"
               />
               <button
-                class="identity-link"
+                class="settings-button identity-link"
+                hover-class="settings-button--pressed"
+                :hover-stay-time="80"
                 :disabled="!phone.trim() || phoneSending || phoneRemaining > 0 || busy"
                 @click="sendPhone"
               >
@@ -190,19 +220,28 @@
             </view>
             <text v-if="phoneError" class="identity-error" role="alert">{{ phoneError }}</text>
             <button
-              class="identity-primary"
+              class="settings-button settings-button--primary"
+              hover-class="settings-button--pressed"
+              :hover-stay-time="80"
               :disabled="!phoneCanVerify || busy"
               @click="submitPhone"
             >
               {{ t('account.profile.confirmLinking') }}
             </button>
           </view>
-          <button v-if="canBindWechat" class="identity-link" :disabled="busy" @click="submitWechat">
+          <button
+            v-if="canBindWechat"
+            class="settings-button identity-link"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
+            :disabled="busy"
+            @click="submitWechat"
+          >
             {{ t('account.profile.linkCurrentWechatAccount') }}
           </button>
         </view>
         <view v-if="pendingOAuth" class="identity-section identity-binding">
-          <text class="identity-section-title">{{
+          <text class="settings-title identity-section-title">{{
             pendingOAuth.purpose === 'LOGIN_BIND'
               ? t('account.profile.linkCampusSignInMethod')
               : t('account.profile.confirmCampusIdentity')
@@ -219,7 +258,7 @@
           <text class="identity-hint">{{ t('account.profile.copyTheConfirmationCodeFrom') }}</text>
           <input
             v-model="handoffCode"
-            class="identity-input"
+            class="settings-field identity-input"
             type="text"
             maxlength="43"
             :placeholder="t('account.profile.pasteOneTimeConfirmationCode')"
@@ -231,13 +270,21 @@
             :disabled="busy"
           />
           <button
-            class="identity-primary"
+            class="settings-button settings-button--primary"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
             :disabled="busy || !validHandoffCode"
             @click="submitOAuth"
           >
             {{ t('account.profile.confirmLinkingToThisAccount') }}
           </button>
-          <button class="identity-link" :disabled="busy" @click="cancelOAuth">
+          <button
+            class="settings-button identity-link"
+            hover-class="settings-button--pressed"
+            :hover-stay-time="80"
+            :disabled="busy"
+            @click="cancelOAuth"
+          >
             {{
               pendingOAuth.purpose === 'LOGIN_BIND'
                 ? t('account.profile.cancelLinking')
@@ -592,12 +639,7 @@ function authorize(purpose: CampusOAuthPurpose) {
 
 <style scoped>
 .identity-page {
-  max-width: 620px;
-  box-sizing: border-box;
-  padding: 24px 20px 40px;
-  margin: 0 auto;
-  color: #1f2937;
-  background: #fff;
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
 }
 .identity-heading,
 .identity-account-row {
@@ -607,8 +649,9 @@ function authorize(purpose: CampusOAuthPurpose) {
   gap: 12px;
 }
 .identity-title {
-  font-size: 23px;
-  font-weight: 650;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 .identity-summary {
   display: flex;
@@ -630,20 +673,19 @@ function authorize(purpose: CampusOAuthPurpose) {
 .identity-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   padding: 24px 0;
   border-top: 1px solid #eaecf0;
 }
 .identity-section-title {
-  font-size: 17px;
-  font-weight: 600;
+  margin-bottom: 0;
 }
 .identity-hint,
 .identity-detail {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   color: #667085;
-  line-height: 1.65;
+  line-height: 1.6;
 }
 .identity-detail {
   font-size: 13px;
@@ -652,12 +694,6 @@ function authorize(purpose: CampusOAuthPurpose) {
   overflow-wrap: anywhere;
 }
 .identity-input {
-  box-sizing: border-box;
-  height: 48px;
-  padding: 0 14px;
-  border-radius: 10px;
-  background: #f5f5f6;
-  font-size: 15px;
   caret-color: #660874;
 }
 .identity-code-row {
@@ -669,42 +705,23 @@ function authorize(purpose: CampusOAuthPurpose) {
   flex: 1;
   min-width: 0;
 }
-.identity-primary {
-  margin: 0;
-  padding: 12px 18px;
-  min-height: 46px;
-  border-radius: 10px;
-  background: #660874;
-  color: #fff;
-  font-size: 15px;
-  line-height: 22px;
-  font-weight: 600;
-}
-.identity-primary[disabled] {
-  color: #667085;
-  background: #eaecf0;
-}
-.identity-primary::after,
-.identity-link::after {
-  border: 0;
-}
 .identity-link {
-  margin: 0;
-  padding: 10px 4px;
-  min-height: 44px;
+  justify-content: flex-start;
+  border-color: transparent;
   background: transparent;
   color: #660874;
-  font-size: 14px;
-  line-height: 24px;
   text-align: left;
 }
 .identity-link[disabled] {
+  border-color: transparent;
   background: transparent;
-  color: #667085;
+}
+.identity-code-row > .identity-link {
+  flex-shrink: 0;
 }
 .identity-account-row {
-  font-size: 15px;
-  min-height: 36px;
+  font-size: 16px;
+  overflow-wrap: anywhere;
 }
 .identity-binding {
   display: flex;
@@ -726,9 +743,5 @@ function authorize(purpose: CampusOAuthPurpose) {
   flex-direction: column;
   gap: 20px;
   padding: 48px 0;
-}
-button:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 3px;
 }
 </style>

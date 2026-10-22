@@ -182,3 +182,40 @@ it('retains a cached account profile during a failed background refresh', async 
   expect(wrapper.findAll('.profile-tab')).toHaveLength(3);
   wrapper.unmount();
 });
+
+it.each([
+  ['display', DisplayPage],
+  ['notifications', NotificationsPage],
+] as const)(
+  '%s switches support Enter and Space and stop accepting keys during save',
+  async (_name, Page) => {
+    (getUserProfile as jest.Mock).mockResolvedValue({ code: 200, data: user });
+    const save = deferred<any>();
+    (updateUserProfile as jest.Mock).mockReturnValue(save.promise);
+    const wrapper = mount(Page as any);
+    await flushPromises();
+    const control = wrapper.get('switch');
+    expect(control.attributes('role')).toBe('switch');
+    expect(control.attributes('tabindex')).toBe('0');
+    const original = control.attributes('aria-checked');
+    await control.trigger('keydown', { key: 'Enter' });
+    await control.trigger('keyup', { key: 'Enter' });
+    expect(control.attributes('aria-checked')).not.toBe(original);
+    await control.trigger('keyup', { key: 'Enter' });
+    expect(control.attributes('aria-checked')).not.toBe(original);
+    await control.trigger('keydown', { key: ' ' });
+    await control.trigger('keyup', { key: ' ' });
+    expect(control.attributes('aria-checked')).toBe(original);
+    await control.trigger('keydown', { key: 'Enter' });
+    await control.trigger('keyup', { key: 'Enter' });
+    await wrapper.get('.settings-save-bar button').trigger('click');
+    expect(control.attributes('tabindex')).toBe('-1');
+    const pending = control.attributes('aria-checked');
+    await control.trigger('keydown', { key: ' ' });
+    await control.trigger('keyup', { key: ' ' });
+    expect(control.attributes('aria-checked')).toBe(pending);
+    save.resolve({ code: 200, data: user });
+    await flushPromises();
+    wrapper.unmount();
+  }
+);

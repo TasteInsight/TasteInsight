@@ -216,7 +216,7 @@ test('compact profile header preserves biography and verified identity through o
 
 test('settings group account, food, app and public information while keeping reports at the bottom', async () => {
   const wrapper = mountPage(SettingsPage);
-  expect(wrapper.findAll('.group-title').map(item => item.text())).toEqual([
+  expect(wrapper.findAll('.settings-group-title').map(item => item.text())).toEqual([
     '账号与身份',
     '饮食与推荐',
     '应用偏好',

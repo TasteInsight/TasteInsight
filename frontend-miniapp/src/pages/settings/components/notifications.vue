@@ -12,13 +12,23 @@
             ><text class="settings-label">{{ item.label }}</text
             ><text class="settings-hint">{{ item.description }}</text></view
           >
-          <switch
-            :checked="form[item.key]"
-            :disabled="!canEdit"
-            color="#660874"
-            :aria-label="item.label"
-            @change="updateField(item.key, $event)"
-          />
+          <view class="settings-switch-control">
+            <switch
+              class="settings-switch"
+              :checked="form[item.key]"
+              role="switch"
+              :aria-checked="form[item.key]"
+              :aria-disabled="!canEdit"
+              :tabindex="canEdit ? 0 : -1"
+              @keydown="switchActions[item.key].handleKeydown"
+              @keyup="switchActions[item.key].handleKeyup"
+              @blur="switchActions[item.key].clearPress"
+              :disabled="!canEdit"
+              color="#660874"
+              :aria-label="item.label"
+              @change="updateField(item.key, $event)"
+            />
+          </view>
         </view>
       </label>
     </view>
@@ -30,11 +40,21 @@
 <script setup lang="ts">
 import { t } from '@/i18n';
 import { computed } from 'vue';
+import { useButtonActivation } from '@/composables/use-button-activation';
 import { onBackPress } from '@dcloudio/uni-app';
 import { useNotifications } from '../composables/use-notifications';
 import SettingsPage from './SettingsPage.vue';
 const state = useNotifications();
 const { form, canEdit, canSave, loadProfile, updateField, handleSave, handleBackPress } = state;
+const switchActions = Object.fromEntries(
+  (Object.keys(form) as (keyof typeof form)[]).map(key => [
+    key,
+    useButtonActivation(
+      () => updateField(key, !form[key]),
+      () => !canEdit.value
+    ),
+  ])
+);
 const pageState = computed(() => ({
   loading: state.loading.value,
   initialized: state.initialized.value,

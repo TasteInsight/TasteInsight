@@ -11,21 +11,27 @@
   z-index: -1;
   inset: var(--list-row-background-inset-block, 4px) 0;
   border-radius: var(--list-row-background-radius, 10px);
-  background: transparent;
+  background: var(--list-row-background, transparent);
   pointer-events: none;
   transition: background-color 140ms ease-out;
 }
+.list-row-selected {
+  --list-row-background: #f7eff8;
+  --list-row-hover-background: #f2e5f4;
+  --list-row-pressed-background: #ead9ee;
+  color: #660874;
+}
 @media (hover: hover) {
   .list-row-action:not([disabled]):not([aria-disabled='true']):hover::before {
-    background: #f8f9fa;
+    background: var(--list-row-hover-background, #f8f9fa);
   }
 }
 .list-row-action:not([disabled]):not([aria-disabled='true']):active::before {
-  background: #f1f3f5;
+  background: var(--list-row-pressed-background, #f1f3f5);
 }
 /* #ifndef H5 */
 .list-row-action.list-row-pressed:not([disabled]):not([aria-disabled='true'])::before {
-  background: #f1f3f5;
+  background: var(--list-row-pressed-background, #f1f3f5);
 }
 /* #endif */
 .list-row-action:focus-visible {
