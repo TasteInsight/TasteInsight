@@ -49,7 +49,7 @@ export class WorkerHealthController {
         Promise.all([
           this.prisma.$queryRaw`SELECT 1`,
           this.cache.getRedisClient().ping(),
-          ...workers.map(async (worker) => (await worker.client).ping()),
+          ...workers.map(async (worker) => (await worker.client).info()),
         ]),
         new Promise<never>((_, reject) => {
           deadline = setTimeout(

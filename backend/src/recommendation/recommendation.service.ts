@@ -21,8 +21,7 @@ import {
   mealDate,
   validateMealRange,
 } from '@/common/utils/campus-date';
-import { v4 as uuidv4 } from 'uuid';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import {
   RECOMMENDATION_LIMITS,
   CACHE_CONFIG,
@@ -122,7 +121,8 @@ export class RecommendationService {
     // 使用传入的 requestId（如果有），否则生成新的
     // 以确保同一个推荐会话在不同页之间保持一致
     const mode = options.mode ?? 'online';
-    const requestId = mode === 'online' ? dto.requestId || uuidv4() : uuidv4();
+    const requestId =
+      mode === 'online' ? dto.requestId || randomUUID() : randomUUID();
     const startTime = Date.now();
     let executionDto = dto;
     let sessionReset = false;
@@ -233,7 +233,7 @@ export class RecommendationService {
             },
           );
         } catch {
-          context.requestId = uuidv4();
+          context.requestId = randomUUID();
         }
         if (dto.requestId && context.requestId !== dto.requestId) {
           executionDto = { ...dto, pagination: { ...dto.pagination, page: 1 } };

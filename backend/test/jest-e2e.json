@@ -5,11 +5,21 @@
   "setupFiles": ["<rootDir>/test/setup-environment.cjs"],
   "testMatch": ["<rootDir>/test/**/*.e2e-spec.ts"],
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": {
+          "allowJs": true
+        }
+      }
+    ]
   },
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1"
   },
   "collectCoverageFrom": ["src/**/*.(t|j)s", "!src/**/*.spec.(t|j)s"],
-  "coverageDirectory": "coverage-e2e"
+  "coverageDirectory": "coverage-e2e",
+  "transformIgnorePatterns": [
+    "node_modules/(?!(?:\\.pnpm/)?(?:htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)(?:@|/))"
+  ]
 }

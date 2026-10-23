@@ -8,6 +8,8 @@
 pnpm run test:unit
 ```
 
+HTML 清洗使用的 `htmlparser2` 及其 DOM 依赖采用 ESM。单元和端到端 Jest 配置通过 `ts-jest` 转换这组依赖，保持 Node.js 22 下的真实清洗测试。调整解析库版本时，应同步检查两处 `transformIgnorePatterns`。
+
 ## 端到端测试
 
 `test/**/*.e2e-spec.ts` 使用 `test/jest-e2e.json`。先准备两个独立的 PostgreSQL 测试数据库，实例均需提供 pgvector 扩展，库名以 `_test` 结尾。`DATABASE_URL` 指向业务测试库，`RECOMMENDATION_DATABASE_URL` 指向推荐测试库；可使用同一实例中的不同数据库。`test:setup` 会迁移两个数据库并重新填充业务测试数据，业务测试库中的现有数据会被删除。
