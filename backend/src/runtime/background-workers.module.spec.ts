@@ -134,6 +134,7 @@ describe('background worker composition', () => {
       onApplicationShutdown: () => shutdown.push('database'),
     };
     const ping = jest.fn().mockResolvedValue('PONG');
+    const info = jest.fn().mockResolvedValue('redis_version:7.0.0');
     const builder = Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
@@ -183,7 +184,7 @@ describe('background worker composition', () => {
         },
         isRunning: () => true,
         isPaused: () => false,
-        client: Promise.resolve({ ping }),
+        client: Promise.resolve({ info }),
       });
     }
     try {

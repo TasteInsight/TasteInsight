@@ -9,8 +9,7 @@ import {
   mealDate,
   validateMealRange,
 } from '@/common/utils/campus-date';
-import { v4 as uuidv4 } from 'uuid';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import {
   RECOMMENDATION_WEIGHTS,
   SEARCH_SCENE_WEIGHTS,
@@ -98,7 +97,7 @@ export class RecommendationService {
   ): Promise<RecommendationResultDto> {
     // 使用传入的 requestId（如果有），否则生成新的
     // 以确保同一个推荐会话在不同页之间保持一致
-    const requestId = dto.requestId || uuidv4();
+    const requestId = dto.requestId || randomUUID();
     const startTime = Date.now();
     const hasSearchKeyword = !!dto.search?.keyword?.trim();
 

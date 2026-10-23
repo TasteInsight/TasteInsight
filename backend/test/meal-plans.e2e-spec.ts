@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { randomUUID } from 'crypto';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
 import { MealTime } from '@/common/enums';
@@ -35,7 +36,7 @@ describe('MealPlansController (e2e)', () => {
     // 获取测试用户登录token
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/wechat/login')
-      .send({ code: 'baseline_user_code_placeholder' });
+      .send({ code: `mock_meal_plans_${randomUUID()}` });
 
     userAccessToken = loginResponse.body.data.token.accessToken;
     testUserId = loginResponse.body.data.user.id;
@@ -50,6 +51,7 @@ describe('MealPlansController (e2e)', () => {
   afterAll(async () => {
     // 清理测试过程中创建的 meal plans
     await prisma.mealPlan.deleteMany({ where: { userId: testUserId } });
+    await prisma.user.delete({ where: { id: testUserId } });
     await app.close();
   });
 
@@ -94,6 +96,11 @@ describe('MealPlansController (e2e)', () => {
     });
 
     it('rejects dishes that conflict with the current saved dietary preferences', async () => {
+      await request(app.getHttpServer())
+        .put('/user/profile')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({ preferences: { avoidIngredients: ['花生'] } })
+        .expect(200);
       const dish = await prisma.dish.findFirstOrThrow({
         where: { name: '宫保鸡丁' },
       });

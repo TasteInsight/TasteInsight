@@ -50,6 +50,8 @@ describe('AI chat HTTP stream lifecycle', () => {
     return new Promise<{
       close: () => void;
       done: Promise<string>;
+      status: number | undefined;
+      contentType: string | undefined;
     }>((resolve, reject) => {
       const req = httpRequest(
         url,
@@ -70,7 +72,12 @@ describe('AI chat HTTP stream lifecycle', () => {
             text += chunk.toString();
             if (!ready && text.includes('data: 午餐')) {
               ready = true;
-              resolve({ close: () => req.destroy(), done });
+              resolve({
+                close: () => req.destroy(),
+                done,
+                status: res.statusCode,
+                contentType: res.headers['content-type'],
+              });
             }
           });
         },
@@ -82,6 +89,8 @@ describe('AI chat HTTP stream lifecycle', () => {
 
   it('unsubscribes when the client closes a POST response after its body was parsed', async () => {
     const stream = await openStream();
+    expect(stream.status).toBe(200);
+    expect(stream.contentType).toMatch(/^text\/event-stream/);
     const closed = new Promise<boolean>((resolve) => {
       const timeout = setTimeout(() => resolve(false), 500);
       teardown.mockImplementationOnce(() => {
@@ -98,6 +107,8 @@ describe('AI chat HTTP stream lifecycle', () => {
   it('delivers completion and accepts a subsequent stream', async () => {
     for (let index = 0; index < 2; index++) {
       const stream = await openStream();
+      expect(stream.status).toBe(200);
+      expect(stream.contentType).toMatch(/^text\/event-stream/);
       subscriber.next({ type: 'reply_complete', data: { messageId: 'reply' } });
       subscriber.complete();
       expect(await stream.done).toContain('event: reply_complete');

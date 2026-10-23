@@ -11,9 +11,11 @@ describe('internal worker readiness', () => {
   let processors: any[];
   let controller: WorkerHealthController;
   let ping: jest.Mock;
+  let info: jest.Mock;
 
   beforeEach(() => {
     ping = jest.fn().mockResolvedValue('PONG');
+    info = jest.fn().mockResolvedValue('redis_version:7.0.0');
     prisma = { $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]) };
     cache = {
       isConnected: jest.fn().mockReturnValue(true),
@@ -23,7 +25,7 @@ describe('internal worker readiness', () => {
       worker: {
         isRunning: jest.fn().mockReturnValue(true),
         isPaused: jest.fn().mockReturnValue(false),
-        client: Promise.resolve({ ping }),
+        client: Promise.resolve({ info }),
       },
     }));
     controller = new WorkerHealthController(
@@ -48,7 +50,8 @@ describe('internal worker readiness', () => {
   it('checks database, cache Redis and all four consumer Redis clients', async () => {
     await expect(controller.getHealth()).resolves.toEqual({ status: 'ok' });
     expect(prisma.$queryRaw.mock.calls[0][0].join('')).toBe('SELECT 1');
-    expect(ping).toHaveBeenCalledTimes(5);
+    expect(ping).toHaveBeenCalledTimes(1);
+    expect(info).toHaveBeenCalledTimes(4);
   });
 
   it.each([
@@ -57,6 +60,7 @@ describe('internal worker readiness', () => {
     'closing',
     'cache-disconnected',
     'redis-failure',
+    'worker-redis-failure',
     'db-failure',
   ])('is unavailable when a dependency is %s', async (failure) => {
     if (failure === 'stopped')
@@ -68,6 +72,8 @@ describe('internal worker readiness', () => {
       cache.isConnected.mockReturnValue(false);
     if (failure === 'redis-failure')
       ping.mockRejectedValue(new Error('Redis unavailable'));
+    if (failure === 'worker-redis-failure')
+      info.mockRejectedValue(new Error('Worker Redis unavailable'));
     if (failure === 'db-failure')
       prisma.$queryRaw.mockRejectedValue(new Error('DB unavailable'));
     await expect(controller.getHealth()).rejects.toBeInstanceOf(
