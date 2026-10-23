@@ -93,7 +93,7 @@
           @action="handleFilterChange({})"
         />
         <view v-if="topThreeDishes.length > 0">
-          <RecommendItem v-for="dish in topThreeDishes" :key="dish.id" :dish="dish" />
+          <RecommendItem v-for="dish in topThreeDishes" :key="dish.id" :dish="dish" :delivery-id="deliverySources[dish.id]" :active="homeActive" :session-version="deliverySession" />
         </view>
 
         <!-- 上拉加载更多：底部提示/动画（仅在有列表或正在加载更多时显示） -->
@@ -184,7 +184,7 @@ onBackPress(() => {
   return true;
 });
 onHide(() => {
-  homeActive = false;
+  homeActive.value = false;
   closeFilters();
 });
 
@@ -209,7 +209,9 @@ onScopeDispose(() => {
   recommendationRun += 1;
 });
 let preparingProfileRun: number | null = null;
-let homeActive = false;
+const homeActive = ref(false);
+const deliverySources = ref<Record<string, string>>({});
+const deliverySession = ref(userStore.sessionVersion);
 const homeAudience = computed(() => `${userStore.sessionVersion}:${userStore.isLoggedIn}`);
 let loadedHomeAudience: string | null = null;
 const canteenLoadMode = ref<'refresh' | 'more'>('refresh');
@@ -218,6 +220,7 @@ watch(
   homeAudience,
   () => {
     recommendationRun += 1;
+    deliverySources.value = {};
     currentRequestId.value = null;
     homeError.value = null;
     recommendError.value = null;
@@ -297,7 +300,7 @@ const fetchRecommendations = async (
   const run = ++recommendationRun;
   const ownsResult = () =>
     !disposed && homeAudience.value === audience && run === recommendationRun;
-  const append = options.append === true;
+  let append = options.append === true;
 
   // 设置加载状态
   dishesStore.loadingMore = append;
@@ -309,6 +312,7 @@ const fetchRecommendations = async (
   try {
     // 如果是重置，清空 requestId，让后端生成新的
     if (options.reset) {
+      deliverySources.value = {};
       currentRequestId.value = null;
     }
 
@@ -364,6 +368,14 @@ const fetchRecommendations = async (
     if (response.code !== 200 || !response.data)
       throw new Error(response.message || t('food.couldNotLoadRecommendations'));
 
+    if (response.data.sessionReset) {
+      append = false;
+      deliverySources.value = {};
+      dishesStore.dishes = [];
+      dishesStore.loading = true;
+      dishesStore.loadingMore = false;
+    }
+
     // 使用后端返回的 requestId
     if (response.data.requestId) {
       currentRequestId.value = response.data.requestId;
@@ -406,8 +418,15 @@ const fetchRecommendations = async (
       console.warn(`推荐结果中有 ${missingCount} 个菜品不可用（可能已下线或被删除）`);
     }
 
+    if (response.data.deliveryId && response.data.mode !== 'preview') {
+      deliverySession.value = userStore.sessionVersion;
+      for (const dish of sortedDishes) {
+        if (!append || !deliverySources.value[dish.id]) deliverySources.value[dish.id] = response.data.deliveryId;
+      }
+    }
     if (append) {
-      dishesStore.dishes = [...dishesStore.dishes, ...sortedDishes];
+      const existing = new Set(dishesStore.dishes.map(dish => dish.id));
+      dishesStore.dishes = [...dishesStore.dishes, ...sortedDishes.filter(dish => !existing.has(dish.id))];
     } else {
       dishesStore.dishes = sortedDishes;
     }
@@ -453,7 +472,7 @@ function navigateTo(path: string) {
 
 // --- 生命周期 ---
 onShow(() => {
-  homeActive = true;
+  homeActive.value = true;
   ensureHomeAudience();
 });
 
@@ -463,11 +482,11 @@ async function loadHomeForSession(refreshCanteens = false): Promise<Recommendati
 }
 
 function ensureHomeAudience() {
-  if (homeActive && loadedHomeAudience !== homeAudience.value) void loadHomeForSession();
+  if (homeActive.value && loadedHomeAudience !== homeAudience.value) void loadHomeForSession();
 }
 
 onMounted(() => {
-  homeActive = true;
+  homeActive.value = true;
   ensureHomeAudience();
 });
 
@@ -486,7 +505,7 @@ watch(
     const settingsChanged = JSON.stringify(newSettings) !== JSON.stringify(oldSettings);
 
     if (preferencesChanged || settingsChanged) {
-      if (!homeActive) {
+      if (!homeActive.value) {
         loadedHomeAudience = null;
         return;
       }
