@@ -1220,6 +1220,7 @@ describe('recommendation platform lifecycle (two PostgreSQL databases and Redis)
             connection: {
               host: process.env.REDIS_HOST || '127.0.0.1',
               port: Number(process.env.REDIS_PORT),
+              password: process.env.REDIS_PASSWORD,
               db: 0,
             },
           }),

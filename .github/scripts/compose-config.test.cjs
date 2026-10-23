@@ -25,9 +25,9 @@ const roles = ['public-api', 'admin-api', 'worker', 'migrate'];
 const runtimeRoles = ['public-api', 'admin-api', 'worker'];
 const apiRoles = ['public-api', 'admin-api'];
 const optionalGroups = {
-  common: ['RUN_SEED', 'IMPORT_DATA', 'ENABLE_MOCK_AUTH', 'POSTGRES_SSLMODE', 'DATABASE_URL'],
+  common: ['RUN_SEED', 'IMPORT_DATA', 'ENABLE_MOCK_AUTH', 'POSTGRES_SSLMODE', 'DATABASE_URL', 'RECOMMENDATION_DATABASE_URL'],
   runtime: [
-    'REDIS_REC_DB', 'EXTERNAL_EMBEDDING_SERVICE_ENABLED',
+    'REDIS_REC_DB', 'RECOMMENDATION_MODEL_DEPLOYMENTS', 'EXTERNAL_EMBEDDING_SERVICE_ENABLED',
     'EXTERNAL_EMBEDDING_SERVICE_VERSION', 'EMBEDDING_SERVICE_BATCH_SIZE',
     'NOTIFICATION_WEBHOOK_URL',
     'WECHAT_APPID', 'WECHAT_SECRET',
@@ -321,7 +321,9 @@ test('application and gateway readiness probes gate public traffic', () => {
   }
   assert.equal(migrate.restart, 'no');
   assert.equal(migrate.healthcheck.disable, true);
-  assert.deepEqual(Object.keys(migrate.depends_on), ['db']);
+  assert.deepEqual(Object.keys(migrate.depends_on).sort(), ['db', 'recommendation-db']);
+  assert.deepEqual(migrate.depends_on['recommendation-db'], { condition: 'service_healthy', required: false });
+  assert.equal(result.config.services['recommendation-db'], undefined);
   assert.equal(migrate.depends_on.db.condition, 'service_healthy');
   assert.deepEqual(frontend.healthcheck.test.slice(0, 2), ['CMD', 'wget']);
   assert.ok(frontend.healthcheck.test.includes('http://127.0.0.1/'));
@@ -395,11 +397,16 @@ test('embedding remains opt-in and shares no application secrets', () => {
   assert.deepEqual(Object.keys(embedding.environment).sort(), [
     'PYTHON_EMBEDDING_TEXT_MODEL', 'PYTHON_EMBEDDING_DEFAULT_VERSION',
     'PYTHON_EMBEDDING_DEVICE', 'PYTHON_EMBEDDING_PRELOAD_MODELS', 'HF_ENDPOINT',
+    'PYTHON_EMBEDDING_TOKEN', 'PYTHON_EMBEDDING_ENABLED', 'PYTHON_RANKING_VERSION', 'PYTHON_RANKING_CHECKPOINT',
   ].sort());
   for (const key of ['PYTHON_EMBEDDING_TEXT_MODEL', 'PYTHON_EMBEDDING_DEFAULT_VERSION', 'PYTHON_EMBEDDING_DEVICE']) {
     assert.equal(embedding.environment[key], null, `application owns ${key} default`);
   }
   assert.equal(embedding.environment.PYTHON_EMBEDDING_PRELOAD_MODELS, '');
+  assert.equal(embedding.environment.PYTHON_EMBEDDING_TOKEN, '');
+  assert.equal(embedding.environment.PYTHON_EMBEDDING_ENABLED, 'true');
+  assert.equal(embedding.environment.PYTHON_RANKING_VERSION, 'rank-v1');
+  assert.equal(embedding.environment.PYTHON_RANKING_CHECKPOINT, 'saved_models/rank_v1.pt');
   assert.equal(embedding.environment.HF_ENDPOINT, 'https://huggingface.co');
   assert.ok(embedding.volumes.some((volume) => volume.target === '/app/saved_models' && volume.source === 'embedding_models'));
   assert.match(fs.readFileSync(path.join(backend, 'python-embedding-service/Dockerfile'), 'utf8'), /^WORKDIR \/app$/m);
@@ -411,16 +418,27 @@ test('embedding model choices preserve file values, shell overrides and disabled
     PYTHON_EMBEDDING_TEXT_MODEL: 'organization/custom-encoder',
     PYTHON_EMBEDDING_DEFAULT_VERSION: 'v3', PYTHON_EMBEDDING_DEVICE: 'cpu',
     PYTHON_EMBEDDING_PRELOAD_MODELS: 'v3', HF_ENDPOINT: 'https://models.example.test',
+    PYTHON_EMBEDDING_TOKEN: 'fixture-model-token', PYTHON_EMBEDDING_ENABLED: 'false',
+    PYTHON_RANKING_VERSION: 'rank-custom', PYTHON_RANKING_CHECKPOINT: '/app/saved_models/custom.pt',
   };
   const configured = resolveCompose({ ...configuration, COMPOSE_PROFILES: 'embedding', ...values });
   assert.equal(configured.status, 0, configured.stderr);
   assert.deepEqual(configured.config.services['embedding-service'].environment, values);
+  const overrides = {
+    PYTHON_EMBEDDING_TOKEN: 'shell-model-token', PYTHON_EMBEDDING_ENABLED: 'true',
+    PYTHON_RANKING_VERSION: 'rank-shell', PYTHON_RANKING_CHECKPOINT: '/app/saved_models/shell.pt',
+  };
+  const shell = resolveCompose({ ...configuration, COMPOSE_PROFILES: 'embedding', ...values }, overrides);
+  assert.equal(shell.status, 0, shell.stderr);
+  assert.deepEqual(shell.config.services['embedding-service'].environment, { ...values, ...overrides });
   const blank = resolveCompose({ ...configuration, COMPOSE_PROFILES: 'embedding', ...values },
     Object.fromEntries(Object.keys(values).map((key) => [key, ''])));
   assert.equal(blank.status, 0, blank.stderr);
   assert.deepEqual(blank.config.services['embedding-service'].environment, {
     PYTHON_EMBEDDING_TEXT_MODEL: '', PYTHON_EMBEDDING_DEFAULT_VERSION: '',
     PYTHON_EMBEDDING_DEVICE: '', PYTHON_EMBEDDING_PRELOAD_MODELS: '', HF_ENDPOINT: 'https://huggingface.co',
+    PYTHON_EMBEDDING_TOKEN: '', PYTHON_EMBEDDING_ENABLED: 'true',
+    PYTHON_RANKING_VERSION: 'rank-v1', PYTHON_RANKING_CHECKPOINT: 'saved_models/rank_v1.pt',
   });
 });
 

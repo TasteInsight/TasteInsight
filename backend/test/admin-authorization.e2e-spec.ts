@@ -26,6 +26,8 @@ import { AdminRecommendationController } from '@/admin-recommendation/admin-reco
 import { ExperimentsService } from '@/admin-recommendation/services/experiments.service';
 import { RecallQualityService } from '@/admin-recommendation/services/recall-quality.service';
 import { ExperimentService } from '@/recommendation/services/experiment.service';
+import { RecommendationCatalogService } from '@/recommendation-platform/catalog.service';
+import { RecommendationTrackingService } from '@/recommendation-platform/tracking.service';
 
 jest.setTimeout(30000);
 
@@ -112,6 +114,8 @@ describe('administrator authorization lifecycle (PostgreSQL)', () => {
           VerificationChallengeService,
           CampusOAuthService,
           RecallQualityService,
+          RecommendationCatalogService,
+          RecommendationTrackingService,
         ].map((provide) => ({ provide, useValue: {} })),
         {
           provide: ExperimentService,

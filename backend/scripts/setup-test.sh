@@ -2,6 +2,7 @@
 set -eu
 
 node scripts/test-environment.cjs
+: "${RECOMMENDATION_DATABASE_URL:?RECOMMENDATION_DATABASE_URL is required}"
 : "${REDIS_PORT:?REDIS_PORT is required}"
 : "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"
 
@@ -14,4 +15,5 @@ pnpm run test:embedding:start
 sleep 2
 pnpm exec prisma migrate deploy
 pnpm exec prisma generate
+pnpm exec ts-node scripts/recommendation-store-migrate.ts
 pnpm exec ts-node prisma/seed.ts
