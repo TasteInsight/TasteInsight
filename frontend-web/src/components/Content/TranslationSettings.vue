@@ -10,6 +10,9 @@
       </h3>
       <span class="text-sm text-tsinghua-purple">所有食堂</span>
     </div>
+    <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+      开启后，可在菜品和过敏原编辑页生成英文译文。
+    </p>
     <p v-if="loading" class="mt-5 text-sm text-gray-600" role="status">加载中…</p>
     <div v-else-if="loadError" class="mt-5" role="alert">
       <p class="admin-field-error">{{ loadError }}</p>
