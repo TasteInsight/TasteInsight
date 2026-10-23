@@ -1,4 +1,15 @@
+const { createHash } = require('node:crypto');
+const { readFileSync } = require('node:fs');
+const { tmpdir } = require('node:os');
+const { join } = require('node:path');
+
+// vue3-jest 的缓存键未包含外部 TypeScript 配置，配置变更时切换缓存目录。
+const tsConfigHash = createHash('sha256')
+  .update(readFileSync(join(__dirname, 'tsconfig.jest.json')))
+  .digest('hex');
+
 module.exports = {
+  cacheDirectory: join(tmpdir(), 'tasteinsight-miniapp-jest', tsConfigHash),
   testEnvironment: 'jsdom',
   testEnvironmentOptions: { customExportConditions: ['node', 'node-addons'] },
   moduleFileExtensions: ['js', 'ts', 'json', 'vue'],
