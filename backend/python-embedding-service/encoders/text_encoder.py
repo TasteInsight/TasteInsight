@@ -7,6 +7,9 @@ import torch
 import numpy as np
 from typing import List, Union
 import logging
+import hashlib
+import tempfile
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,17 @@ class TextEncoder:
         self.device = device if device else ('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = None
         self._load_model()
+        # 保存已加载的编码器快照，覆盖权重、分词器与 pooling 配置。
+        digest = hashlib.sha256()
+        with tempfile.TemporaryDirectory(prefix='text-model-identity-') as directory:
+            self.model.save(directory, create_model_card=False)
+            for path in sorted(Path(directory).rglob('*')):
+                if path.is_file():
+                    digest.update(str(path.relative_to(directory)).encode())
+                    with path.open('rb') as source:
+                        for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                            digest.update(chunk)
+        self.artifact_digest = digest.hexdigest()
     
     def _load_model(self):
         """加载模型"""

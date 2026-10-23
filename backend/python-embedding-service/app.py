@@ -17,6 +17,9 @@ from flask import Flask, request, jsonify
 import logging
 import traceback
 import time
+import hmac
+import numpy as np
+from services.ranking_service import RankingService
 
 from config import Config
 from services import EmbeddingService
@@ -33,11 +36,57 @@ app = Flask(__name__)
 
 # 全局嵌入服务实例
 embedding_service: EmbeddingService = None
+ranking_service = RankingService(Config.RANKING_CHECKPOINT, Config.RANKING_VERSION)
+
+
+@app.before_request
+def authenticate():
+    if request.path != '/health' and Config.TOKEN and not hmac.compare_digest(request.headers.get('Authorization', '').encode(), f'Bearer {Config.TOKEN}'.encode()):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+
+def check_requested_identity(data, identity):
+    for key in ('artifactDigest', 'featureSchemaVersion'):
+        if key in data and data[key] != identity[key]:
+            raise ValueError(f'Model identity mismatch: {key}')
+
+
+@app.route('/model-info/<version>', methods=['GET'])
+def model_info(version):
+    try:
+        if version == ranking_service.version:
+            return jsonify(ranking_service.get_model_identity())
+        if embedding_service is None:
+            raise RuntimeError('Embedding service is unavailable')
+        return jsonify(embedding_service.get_model_identity(version))
+    except Exception as error:
+        return jsonify({'ready': False, 'version': version, 'error': str(error)}), 503
+
+
+@app.route('/rank', methods=['POST'])
+def rank():
+    try:
+        data = request.get_json()
+        if not isinstance(data, dict) or data.get('version') != ranking_service.version:
+            raise ValueError('Explicit ranking version is required')
+        identity = ranking_service.get_model_identity()
+        if any(data.get(key) != identity[key] for key in ('artifactDigest', 'featureSchemaVersion')):
+            raise ValueError('Ranking model identity mismatch')
+        scores = ranking_service.rank(data['user'], data['candidates'])
+        return jsonify({**identity, 'scores': scores})
+    except (ValueError, KeyError, TypeError) as error:
+        return jsonify({'error': str(error)}), 400
+    except Exception as error:
+        logger.exception('Ranking failed')
+        return jsonify({'error': str(error)}), 503
+
 
 
 def init_service():
     """初始化嵌入服务"""
     global embedding_service
+    if not Config.ENABLED:
+        return
     
     # 如果已经初始化过，直接返回
     if embedding_service is not None:
@@ -80,6 +129,8 @@ except Exception as e:
 def ensure_service_initialized():
     """确保服务在请求前已初始化"""
     global embedding_service
+    if request.path == '/rank' or request.path == f'/model-info/{ranking_service.version}':
+        return
     if embedding_service is None:
         try:
             init_service()
@@ -92,6 +143,8 @@ def ensure_service_initialized():
 def health_check():
     """健康检查"""
     try:
+        if not Config.ENABLED:
+            return jsonify({'status': 'healthy', **ranking_service.get_model_identity()}), 200
         # 确保服务已初始化
         if embedding_service is None:
             return jsonify({
@@ -99,6 +152,7 @@ def health_check():
                 'message': 'Service is still initializing'
             }), 503
             
+        embedding_service.get_model_identity(embedding_service.model_manager.default_version)
         service_info = embedding_service.get_service_info()
         
         return jsonify({
@@ -163,9 +217,14 @@ def embed_single():
                 'supported_versions': embedding_service.model_manager.get_supported_versions()
             }), 400
         
+        identity = embedding_service.get_model_identity(version or embedding_service.model_manager.default_version)
+        check_requested_identity(data, identity)
         # 生成嵌入
         embedding = embedding_service.generate_embedding(text, features, version)
         
+        if not np.isfinite(embedding).all():
+            raise ValueError('Embedding contains non-finite values')
+
         # 使用的版本
         used_version = version or embedding_service.model_manager.default_version
         
@@ -175,7 +234,7 @@ def embed_single():
         return jsonify({
             'embedding': embedding.tolist(),
             'dimension': len(embedding),
-            'version': used_version,
+            **embedding_service.get_model_identity(used_version),
         }), 200
         
     except Exception as e:
@@ -240,8 +299,12 @@ def embed_batch():
         features_list = [item.get('features', {}) for item in items]
         
         # 批量生成嵌入
+        identity = embedding_service.get_model_identity(version or embedding_service.model_manager.default_version)
+        check_requested_identity(data, identity)
         embeddings = embedding_service.generate_embeddings_batch(texts, features_list, version)
         
+        if not np.isfinite(embeddings).all():
+            raise ValueError('Embedding contains non-finite values')
         # 使用的版本
         used_version = version or embedding_service.model_manager.default_version
         
@@ -252,7 +315,7 @@ def embed_batch():
             'embeddings': embeddings.tolist(),
             'count': len(embeddings),
             'dimension': embeddings.shape[1],
-            'version': used_version,
+            **embedding_service.get_model_identity(used_version),
         }), 200
         
     except Exception as e:

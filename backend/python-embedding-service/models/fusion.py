@@ -87,8 +87,10 @@ class FusionModel(BaseEmbeddingModel):
     
     def load_weights(self, checkpoint_path: str):
         """加载训练好的权重"""
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
         self.model.load_state_dict(checkpoint['model_state_dict'])
+        if not all(torch.isfinite(value).all() for value in self.model.state_dict().values()):
+            raise ValueError('Checkpoint contains non-finite weights')
         self.model.eval()
     
     def generate_embedding(self, text_emb: np.ndarray, numeric_emb: np.ndarray) -> np.ndarray:

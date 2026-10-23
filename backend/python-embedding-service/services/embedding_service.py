@@ -4,6 +4,8 @@
 
 import numpy as np
 import logging
+from pathlib import Path
+from services.artifact_identity import identity_digest, source_digest, state_digest
 from typing import Dict, List, Union
 from encoders import TextEncoder, NumericEncoder
 from services.model_manager import ModelManager
@@ -32,6 +34,7 @@ class EmbeddingService:
         self.numeric_encoder = NumericEncoder(dimension=20)
         self.model_manager = ModelManager(device=device, model_dir=model_dir, default_version=default_version)
         
+        self._identities = {}
         logger.info("EmbeddingService initialized")
     
     def generate_embedding(self, 
@@ -137,3 +140,23 @@ class EmbeddingService:
         """预加载模型"""
         self.model_manager.preload_models(versions)
 
+
+    def get_model_identity(self, version: str) -> Dict:
+        model = self.model_manager.get_model(version)
+        if self.text_encoder.dimension != model.text_dim:
+            raise ValueError('Text encoder dimension does not match embedding model')
+        if version not in self._identities:
+            root = Path(__file__).resolve().parents[1]
+            sources = [root / 'encoders/numeric_encoder.py', root / 'encoders/text_encoder.py',
+                       root / 'models/base.py', root / 'models/concat.py', root / 'models/fusion.py',
+                       Path(__file__), root / 'services/artifact_identity.py']
+            self._identities[version] = {
+                'ready': True, 'kind': 'embedding', 'version': version,
+                'dimension': model.dimension, 'featureSchemaVersion': 'dish-user-v1',
+                'artifactDigest': identity_digest({
+                    'version': version, 'text': self.text_encoder.artifact_digest,
+                    'implementation': source_digest(*sources),
+                    'weights': state_digest(model.model.state_dict()) if model.requires_training else None,
+                }),
+            }
+        return dict(self._identities[version])

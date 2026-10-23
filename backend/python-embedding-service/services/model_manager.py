@@ -94,18 +94,13 @@ class ModelManager:
         model_class = config['class']
         model = model_class(**config['params'])
         
-        # 加载权重（如果有）
+        # 训练模型只有成功加载完整权重后才进入缓存。
         checkpoint_path = config.get('checkpoint')
-        if checkpoint_path and os.path.exists(checkpoint_path):
-            if hasattr(model, 'load_weights'):
-                try:
-                    model.load_weights(checkpoint_path)
-                    logger.info(f"✓ Loaded checkpoint: {checkpoint_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to load checkpoint: {e}")
-        elif checkpoint_path:
-            logger.warning(f"Checkpoint not found: {checkpoint_path}")
-        
+        if checkpoint_path:
+            if not os.path.isfile(checkpoint_path):
+                raise FileNotFoundError(f"Checkpoint required for {version}: {checkpoint_path}")
+            model.load_weights(checkpoint_path)
+
         logger.info(f"Model {version} ready: {model.get_info()}")
         
         return model
@@ -117,11 +112,13 @@ class ModelManager:
     def get_model_info(self, version: str = None) -> Dict:
         """获取模型信息"""
         if version is None:
-            # 返回所有版本信息
-            return {
-                ver: self._model_config[ver]['class'](**self._model_config[ver]['params']).get_info()
-                for ver in self._model_config.keys()
-            }
+            result = {}
+            for ver in self.get_supported_versions():
+                try:
+                    result[ver] = {**self.get_model(ver).get_info(), 'ready': True}
+                except Exception as error:
+                    result[ver] = {'version': ver, 'ready': False, 'error': str(error)}
+            return result
         else:
             model = self.get_model(version)
             return model.get_info()
