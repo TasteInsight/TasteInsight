@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 import {
   IsString,
+  IsIn,
+  IsInt,
+  ArrayMinSize,
   IsNumber,
   IsOptional,
   IsArray,
@@ -17,6 +20,10 @@ import { Type } from 'class-transformer';
  * 创建实验分组配置
  */
 export class CreateExperimentGroupDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  strategyRevisionId?: string;
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -42,6 +49,9 @@ export class CreateExperimentGroupDto {
  * 更新实验分组配置
  */
 export class UpdateExperimentGroupDto {
+  @IsOptional()
+  @IsString()
+  strategyRevisionId?: string | null;
   /**
    * 分组ID（更新现有分组时必传，新增分组时不传）
    */
@@ -69,6 +79,16 @@ export class UpdateExperimentGroupDto {
 }
 
 export class CreateExperimentDto {
+  @IsOptional()
+  @IsIn(['home', 'search', 'similar', 'guess_like', 'today'])
+  scene?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  priority?: number;
+
   @IsNotEmpty()
   @IsString()
   name: string;
@@ -94,12 +114,23 @@ export class CreateExperimentDto {
 
   @IsNotEmpty()
   @IsArray()
+  @ArrayMinSize(1)
   @Type(() => CreateExperimentGroupDto)
   @ValidateNested({ each: true })
   groups: CreateExperimentGroupDto[];
 }
 
 export class UpdateExperimentDto {
+  @IsOptional()
+  @IsIn(['home', 'search', 'similar', 'guess_like', 'today'])
+  scene?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  priority?: number;
+
   @IsOptional()
   @IsString()
   name?: string;
@@ -125,10 +156,12 @@ export class UpdateExperimentDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(['running', 'paused', 'completed'])
   status?: string;
 
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @Type(() => UpdateExperimentGroupDto)
   @ValidateNested({ each: true })
   groups?: UpdateExperimentGroupDto[];

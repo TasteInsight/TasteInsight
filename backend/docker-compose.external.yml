@@ -1,5 +1,5 @@
 # Explicit external-dependency mode. Supply external addresses in the selected env file.
-# Keep one bundled service by enabling local-db or local-redis when using this overlay.
+# Bundled services can be selected with local-db, local-redis or local-recommendation-db.
 x-external-runtime: &external-runtime
   depends_on:
     db:
@@ -12,6 +12,8 @@ services:
     profiles: [local-db]
   redis:
     profiles: [local-redis]
+  recommendation-db:
+    profiles: !override [local-recommendation-db]
   migrate:
     depends_on:
       db:

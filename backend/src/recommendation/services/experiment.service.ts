@@ -8,7 +8,11 @@ import {
   RecommendationWeights,
   RecommendationContext,
 } from '../interfaces';
-import { RECOMMENDATION_WEIGHTS } from '../constants/recommendation.constants';
+import { RecommendationScene } from '../constants/recommendation.constants';
+import {
+  defaultRecommendationWeights,
+  parseRecommendationConfig,
+} from '../config/recommendation-config';
 import { normalizedHash } from '../utils/hash.util';
 
 /**
@@ -56,8 +60,9 @@ export class ExperimentService implements OnModuleInit {
         OR: [{ endTime: null }, { endTime: { gte: now } }],
       },
       include: {
-        groupItems: true,
+        groupItems: { orderBy: { id: 'asc' } },
       },
+      orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
 
     const activeExperiments = new Map<string, ExperimentConfig>();
@@ -65,31 +70,34 @@ export class ExperimentService implements OnModuleInit {
     for (const exp of experiments) {
       const config: ExperimentConfig = {
         experimentId: exp.id,
+        scene: exp.scene ?? RecommendationScene.HOME,
+        priority: exp.priority ?? 0,
         name: exp.name,
         trafficRatio: exp.trafficRatio,
         startTime: exp.startTime,
         endTime: exp.endTime || undefined,
         status: exp.status,
         groupItems: exp.groupItems.map((g) => {
-          // 从 config 中提取 weights 和 recallQuota
-          const dbConfig = g.config as any;
-          return {
-            groupItemId: g.id,
-            name: g.name,
-            ratio: g.ratio,
-            weights:
-              dbConfig && typeof dbConfig === 'object' && 'weights' in dbConfig
-                ? (dbConfig.weights as
-                    | Partial<RecommendationWeights>
-                    | undefined)
-                : undefined,
-            recallQuota:
-              dbConfig &&
-              typeof dbConfig === 'object' &&
-              'recallQuota' in dbConfig
-                ? dbConfig.recallQuota
-                : undefined,
-          };
+          try {
+            const config = parseRecommendationConfig(g.config);
+            return {
+              groupItemId: g.id,
+              strategyRevisionId: g.strategyRevisionId ?? undefined,
+              name: g.name,
+              ratio: g.ratio,
+              ...config,
+            };
+          } catch (error) {
+            this.logger.warn(
+              `Invalid recommendation config for group ${g.id}: ${error.message}`,
+            );
+            return {
+              groupItemId: g.id,
+              name: g.name,
+              ratio: g.ratio,
+              configFallback: true,
+            };
+          }
         }),
       };
 
@@ -108,7 +116,8 @@ export class ExperimentService implements OnModuleInit {
    */
   async assignUserToExperiment(
     userId: string,
-    _context?: RecommendationContext,
+    context?: RecommendationContext,
+    requestedExperimentId?: string,
   ): Promise<ExperimentAssignment | null> {
     await this.refreshActiveExperiments();
     const activeExperiments = this.activeExperiments;
@@ -119,6 +128,10 @@ export class ExperimentService implements OnModuleInit {
 
     // 遍历活跃实验，找到用户应该参与的实验
     for (const [experimentId, experiment] of activeExperiments) {
+      if (experiment.scene !== (context?.scene ?? RecommendationScene.HOME))
+        continue;
+      if (requestedExperimentId && experimentId !== requestedExperimentId)
+        continue;
       // 检查用户是否应该参与这个实验（根据流量比例）
       const shouldParticipate = this.shouldUserParticipate(userId, experiment);
 
@@ -149,18 +162,21 @@ export class ExperimentService implements OnModuleInit {
         continue;
       }
 
-      const weights = groupItem.weights
-        ? this.mergeWeights(groupItem.weights)
-        : this.getDefaultWeights();
+      const weights = {
+        ...this.getDefaultWeights(context?.scene),
+        ...groupItem.weights,
+      };
 
       return {
         groupItemId: groupItem.groupItemId,
+        strategyRevisionId: groupItem.strategyRevisionId,
         name: groupItem.name,
         ratio: groupItem.ratio,
         weights: groupItem.weights,
         recallQuota: groupItem.recallQuota, // 明确返回召回配额
         experimentId,
         resolvedWeights: weights,
+        configFallback: groupItem.configFallback,
       };
     }
 
@@ -286,39 +302,7 @@ export class ExperimentService implements OnModuleInit {
 
   // ==================== 辅助方法 ====================
 
-  /**
-   * 合并权重配置
-   */
-  private mergeWeights(
-    partialWeights: Partial<RecommendationWeights>,
-    referenceWeights: RecommendationWeights = this.getDefaultWeights(),
-  ): RecommendationWeights {
-    return {
-      preferenceMatch:
-        partialWeights?.preferenceMatch ?? referenceWeights.preferenceMatch,
-      favoriteSimilarity:
-        partialWeights?.favoriteSimilarity ??
-        referenceWeights.favoriteSimilarity,
-      browseRelevance:
-        partialWeights?.browseRelevance ?? referenceWeights.browseRelevance,
-      dishQuality: partialWeights?.dishQuality ?? referenceWeights.dishQuality,
-      diversity: partialWeights?.diversity ?? referenceWeights.diversity,
-      searchRelevance:
-        partialWeights?.searchRelevance ?? referenceWeights.searchRelevance,
-    };
-  }
-
-  /**
-   * 获取默认权重
-   */
-  getDefaultWeights(): RecommendationWeights {
-    return {
-      preferenceMatch: RECOMMENDATION_WEIGHTS.PREFERENCE_MATCH,
-      favoriteSimilarity: RECOMMENDATION_WEIGHTS.FAVORITE_SIMILARITY,
-      browseRelevance: RECOMMENDATION_WEIGHTS.BROWSE_RELEVANCE,
-      dishQuality: RECOMMENDATION_WEIGHTS.DISH_QUALITY,
-      diversity: RECOMMENDATION_WEIGHTS.DIVERSITY,
-      searchRelevance: RECOMMENDATION_WEIGHTS.SEARCH_RELEVANCE,
-    };
+  getDefaultWeights(scene = RecommendationScene.HOME): RecommendationWeights {
+    return defaultRecommendationWeights(scene);
   }
 }

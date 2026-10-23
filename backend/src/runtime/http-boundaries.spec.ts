@@ -65,6 +65,7 @@ const adminControllers = [
   'AdminLogsController',
   'AdminNewsController',
   'AdminRecommendationController',
+  'RecommendationPlatformController',
   'AdminReportsController',
   'AdminReviewsController',
   'AdminSocialController',
@@ -229,7 +230,7 @@ describe.each([
     expect(providers).not.toEqual(
       expect.arrayContaining([
         expect.stringMatching(
-          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService|ModerationDispatcher|NewsSourcesProcessor)$/,
+          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService|ModerationDispatcher|NewsSourcesProcessor|RecommendationIndexProcessor|RecommendationIndexDispatcher)$/,
         ),
       ]),
     );

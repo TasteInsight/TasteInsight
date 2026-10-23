@@ -34,6 +34,8 @@ export interface RecallQuotaConfig {
 export interface ExperimentConfig {
   /** 实验 ID */
   experimentId: string;
+  scene?: string;
+  priority?: number;
   /** 实验名称 */
   name: string;
   /** 实验分组项列表 */
@@ -54,6 +56,7 @@ export interface ExperimentConfig {
 export interface ExperimentGroupItemConfig {
   /** 分组项 ID */
   groupItemId: string;
+  strategyRevisionId?: string;
   /** 分组名称 */
   name: string;
   /** 组内流量比例 */
@@ -62,6 +65,8 @@ export interface ExperimentGroupItemConfig {
   weights?: Partial<RecommendationWeights>;
   /** 该分组使用的召回配额配置（用于测试不同的召回策略） */
   recallQuota?: RecallQuotaConfig;
+  /** 已存配置无效时使用完整场景基线 */
+  configFallback?: boolean;
 }
 
 /**

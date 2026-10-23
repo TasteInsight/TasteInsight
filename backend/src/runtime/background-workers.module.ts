@@ -1,3 +1,4 @@
+import { RecommendationIndexWorkerModule } from '@/recommendation-platform/index-worker.module';
 import { ModerationDispatcher } from '@/content-moderation/moderation-dispatcher.service';
 import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
 import { NewsSourcesModule } from '@/news-sources/news-sources.module';
@@ -20,6 +21,7 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
 
 @Module({
   imports: [
+    RecommendationIndexWorkerModule,
     ModerationProcessingModule,
     NewsSourcesModule,
     RecommendationModule,
@@ -41,6 +43,7 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
     ContributionPublicationService,
   ],
   exports: [
+    RecommendationIndexWorkerModule,
     NewsSourcesProcessor,
     EmbeddingQueueProcessor,
     DishSyncProcessor,

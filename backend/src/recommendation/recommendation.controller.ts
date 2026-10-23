@@ -1,3 +1,4 @@
+import { RecommendationTrackingService } from '@/recommendation-platform/tracking.service';
 import {
   Controller,
   Get,
@@ -40,7 +41,15 @@ export class RecommendationController {
   constructor(
     private readonly recommendationService: RecommendationService,
     private readonly eventLogger: EventLoggerService,
+    private readonly tracking: RecommendationTrackingService,
   ) {}
+
+  @Post('events/feedback')
+  @HttpCode(HttpStatus.OK)
+  async feedback(@Body() body: any, @Request() req) {
+    const event = await this.tracking.feedback(req.user.sub, body);
+    return { code: 200, message: 'success', data: { eventId: event.id } };
+  }
 
   // ==================== 推荐获取接口 ====================
 
@@ -82,6 +91,7 @@ export class RecommendationController {
       code: 200,
       message: 'success',
       data: {
+        ...result.trace,
         items: result.items.map((item) => ({
           id: item.dish.id,
           score: item.score,
@@ -123,6 +133,7 @@ export class RecommendationController {
       code: 200,
       message: 'success',
       data: {
+        ...result.trace,
         items: result.items.map((item) => ({
           id: item.dish.id,
           score: item.score,

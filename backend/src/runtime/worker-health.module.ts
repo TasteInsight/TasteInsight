@@ -1,3 +1,4 @@
+import { RecommendationIndexProcessor } from '@/recommendation-platform/index-worker.module';
 import { NewsSourcesProcessor } from '@/news-sources/news-sources.processor';
 import {
   Controller,
@@ -21,6 +22,7 @@ export class WorkerHealthController {
     private readonly dishSync: DishSyncProcessor,
     private readonly reviewStats: DishReviewStatsProcessor,
     private readonly newsSources: NewsSourcesProcessor,
+    private readonly recommendationIndex: RecommendationIndexProcessor,
   ) {}
 
   @Get()
@@ -32,6 +34,7 @@ export class WorkerHealthController {
         this.dishSync,
         this.reviewStats,
         this.newsSources,
+        this.recommendationIndex,
       ].map((processor) => processor.worker);
       if (
         workers.some(

@@ -1,3 +1,4 @@
+import { RecommendationTrackingService } from '@/recommendation-platform/tracking.service';
 import {
   Controller,
   Get,
@@ -35,7 +36,21 @@ export class AdminRecommendationController {
   constructor(
     private readonly experimentsService: ExperimentsService,
     private readonly recallQualityService: RecallQualityService,
+    private readonly tracking: RecommendationTrackingService,
   ) {}
+
+  @Get('experiments/:id/metrics')
+  @RequirePermissions('experiment:view')
+  async metrics(@Param('id') id: string, @Query('days') days?: string) {
+    return {
+      code: 200,
+      message: 'success',
+      data: await this.tracking.metrics(
+        id,
+        days === undefined ? 7 : Number(days),
+      ),
+    };
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // 实验管理相关端点

@@ -1,7 +1,10 @@
+import type { ResolvedPolicy } from '@/recommendation-platform/policy.service';
 import {
   RecommendationScene,
   RecommendationEventType,
 } from '../constants/recommendation.constants';
+
+import type { ResolvedRecommendationConfig } from '../config/recommendation-config';
 
 /**
  * 推荐上下文
@@ -17,6 +20,14 @@ export interface RecommendationContext {
   triggerDishId?: string;
   /** 实验分组项 ID（A/B 测试） */
   groupItemId?: string;
+  experimentId?: string;
+  mode?: 'online' | 'evaluation' | 'preview';
+  policy?: ResolvedPolicy;
+  fallbackReason?: string;
+  candidateFeatures?: Record<string, unknown>[];
+  offsetPagination?: boolean;
+  configuration?: ResolvedRecommendationConfig;
+  configFallback?: boolean;
 }
 
 /**
