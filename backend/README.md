@@ -15,6 +15,19 @@ TasteInsight 后端服务是基于 **NestJS** 框架构建的 RESTful API 服务
 - **对象存储**: 本地文件与通用 S3 多实例（AWS S3、腾讯云 COS、阿里云 OSS）
 - **包管理器**: pnpm
 
+## 依赖维护
+
+后端使用 NestJS 11.2.7，Node.js 22.13+ 和 TypeScript 5.9。依赖安装统一执行 `pnpm install --frozen-lockfile`。
+
+- Excel 读写使用 [SheetJS 官方发布包](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/) 0.20.3，下载地址和完整性校验记录在 `pnpm-lock.yaml`。
+- `pnpm-workspace.yaml` 的定向覆盖将 Swagger 的 `js-yaml` 固定到 5.4.1、Prisma 6 配置加载器的 `deepmerge-ts` 固定到 8.0.0。后者在 v8 调整了 Map 合并规则；项目的 Prisma 配置使用普通对象，升级验证覆盖配置加载、客户端生成与数据库迁移。
+- Nest CLI 的 Webpack 固定到 5.112.0，满足新版 `schema-utils` 的 peer 约束。
+- `allowBuilds` 列出允许执行安装脚本的依赖，包含 Nest CLI 文件监听使用的 `@parcel/watcher`。
+- 聊天 SSE 接口显式返回 HTTP 200，保持流式连接的响应约定。
+- Jest、Prettier 和 TypeScript ESLint 分别保持在 30.2、3.6 和 8.46 系列，安全依赖通过锁文件更新。
+
+2026-10-23 的全量依赖审计剩余一条 `braces@3.0.3` 高危告警（[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)），来源为 Jest 的文件匹配依赖。上游修复版待发布，触发条件是深层嵌套的匹配表达式；测试匹配规则由仓库配置维护。后续升级需复查该告警和上述定向覆盖。
+
 ## 项目结构
 
 ```

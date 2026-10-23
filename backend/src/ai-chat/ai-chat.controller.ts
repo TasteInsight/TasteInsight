@@ -10,6 +10,8 @@ import {
   Res,
   Sse,
   MessageEvent,
+  HttpCode,
+  HttpStatus,
   Delete,
 } from '@nestjs/common';
 import { fromEvent, Observable, takeUntil } from 'rxjs';
@@ -57,6 +59,7 @@ export class AIChatController {
    * POST /ai/sessions/:sessionId/chat/stream
    */
   @Post('sessions/:sessionId/chat/stream')
+  @HttpCode(HttpStatus.OK)
   @Sse()
   streamChat(
     @Req() req: any,

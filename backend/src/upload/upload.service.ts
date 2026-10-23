@@ -117,7 +117,7 @@ export class UploadService {
     // Step 1: Initial compression (Resize to 1920px, Quality 80)
     let pipeline = image.resize({ width: 1920, withoutEnlargement: true });
 
-    if (format === 'jpeg' || format === 'jpg') {
+    if (format === 'jpeg') {
       pipeline = pipeline.jpeg({ quality: 80 });
     } else if (format === 'png') {
       pipeline = pipeline.png({ quality: 80, palette: true });
@@ -138,7 +138,7 @@ export class UploadService {
         pipeline2 = pipeline2.resize({ width: 1280, withoutEnlargement: true });
       }
 
-      if (format2 === 'jpeg' || format2 === 'jpg') {
+      if (format2 === 'jpeg') {
         pipeline2 = pipeline2.jpeg({ quality: 60 });
       } else if (format2 === 'png') {
         pipeline2 = pipeline2.png({ quality: 60, palette: true });
