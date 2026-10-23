@@ -63,7 +63,9 @@ async function installChat(
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await gotoUniPage(page, '/pages/ai-chat/index');
-  await expect(page.getByText('欢迎提问', { exact: true })).toBeVisible();
+  await expect(page.locator('.chat-bubble-ai').first()).toHaveText(
+    '你好！我是你的校园美食助手，今天想吃点什么？'
+  );
   await page.getByRole('textbox', { name: '消息输入', exact: true }).fill('午餐');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   return { authorizations, getRefreshCount: () => refreshes };
