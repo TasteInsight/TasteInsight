@@ -8,15 +8,17 @@ const dish = {
 
 async function prepare(page: Page) {
   const writes: string[] = []
-  await page.addInitScript(() => {
+  const admin = { scope: 'GLOBAL', canteenIds: [], canteens: [], id: 'ui-admin', username: '界面验收', role: 'admin' }
+  const permissions = [
+    'dish:view', 'dish:create', 'dish:edit', 'dish:delete', 'canteen:view', 'canteen:create',
+    'admin:view', 'admin:edit', 'news:view', 'news:create', 'report:handle', 'review:delete',
+    'config:view', 'config:edit',
+  ]
+  await page.addInitScript(({ admin, permissions }) => {
     sessionStorage.setItem('admin_token', 'style-contract-test')
-    sessionStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL', canteenIds: [], canteens: [], id: 'ui-admin', username: '界面验收', role: 'admin' }))
-    sessionStorage.setItem('admin_permissions', JSON.stringify([
-      'dish:view', 'dish:create', 'dish:edit', 'dish:delete', 'canteen:view', 'canteen:create',
-      'admin:view', 'admin:edit', 'news:view', 'news:create', 'report:handle', 'review:delete',
-      'config:view', 'config:edit',
-    ]))
-  })
+    sessionStorage.setItem('admin_user', JSON.stringify(admin))
+    sessionStorage.setItem('admin_permissions', JSON.stringify(permissions))
+  }, { admin, permissions })
   const list = (items: unknown[]) => ({ code: 200, data: { items, meta: { page: 1, pageSize: 20, total: items.length, totalPages: 1 } } })
   await page.route('**/*', async route => {
     const request = route.request(), path = new URL(request.url()).pathname
@@ -26,6 +28,9 @@ async function prepare(page: Page) {
     }
     if (!['fetch', 'xhr'].includes(request.resourceType())) return route.continue()
     if (request.method() !== 'GET') { writes.push(path); return route.abort() }
+    if (path.endsWith('/auth/admin/session')) return route.fulfill({ json: { code: 200, data: {
+      admin, permissions, authorization: { groups: [], dependencies: {}, globalOnly: [] },
+    } } })
     if (path.endsWith('/admin/canteens/options')) return route.fulfill({ json: list([{ id: 'c1', name: '第一食堂' }, { id: 'c2', name: '第二食堂' }]) })
     if (path.endsWith('/admin/dishes')) return route.fulfill({ json: list([dish]) })
     if (path.endsWith(`/admin/dishes/${dish.id}`)) return route.fulfill({ json: { code: 200, data: dish } })
@@ -298,7 +303,7 @@ test('configuration keeps the selected canteen policy when an earlier activation
   }))
   try {
     await page.goto('/config-manage')
-    const target = page.getByRole('combobox', { name: '配置范围', exact: true })
+    const target = page.getByRole('combobox', { name: '规则适用范围', exact: true })
     await expect(target).toBeDisabled()
     await expect.poll(() => globalRequests).toBe(1)
     await page.getByRole('link', { name: '新闻管理', exact: true }).click()

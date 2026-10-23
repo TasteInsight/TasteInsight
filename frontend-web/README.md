@@ -30,6 +30,23 @@ Docker 静态服务为文本资源启用 gzip，并返回 `Vary: Accept-Encoding
 
 浏览器兼容性数据由 Autoprefixer / Browserslist 间接使用。可在本目录运行 `pnpm update --no-save caniuse-lite baseline-browser-mapping` 更新锁文件中的数据版本，再验证类型检查、构建和页面回归。
 
+### 依赖安全维护
+
+Axios 使用 1.20、Vite 使用 7.3、Vitest 及其 UI、覆盖率组件统一使用 4.1.12。公共请求封装的响应拦截器返回正文，请求方法保留调用方指定的正文类型。更新后执行类型检查、ESLint、完整单元测试、发布构建，以及编辑器相关浏览器回归。
+
+`pnpm-workspace.yaml` 为上游固定的 `editorconfig > minimatch` 和 `postcss-selector-parser` 指定安全版本。升级父依赖后，核对其版本范围并移除已由上游覆盖的 override。
+
+编辑器发行模块内嵌 Uppy/Preact，锁文件更新与这些内嵌代码分别维护。当前上传使用 XHRUpload 和管理端 `customUpload`；引入 Uppy UI 插件前，先核对内嵌渲染器的安全修复及输入处理。
+
+在本目录检查官方 npm 安全公告：
+
+```bash
+pnpm audit --registry=https://registry.npmjs.org
+pnpm audit --prod --registry=https://registry.npmjs.org
+```
+
+截至 2026-10-23，生产依赖审计为零项；开发链保留 `braces@3.0.3` 的深层模式解析告警，来源为文件匹配工具。npm 当前发布版本为 3.0.3，npm 审计元数据列出的修复范围为 `>=3.0.4`。跟踪[上游公告](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)，在修复版本发布后更新锁文件。
+
 ## 项目结构
 
 ```

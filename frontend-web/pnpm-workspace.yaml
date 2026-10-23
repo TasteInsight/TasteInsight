@@ -8,3 +8,8 @@ allowBuilds:
 
 patchedDependencies:
   '@wangeditor/editor-for-vue@5.1.12': patches/@wangeditor__editor-for-vue@5.1.12.patch
+
+# These upstream dependencies pin older parser versions.
+overrides:
+  'editorconfig>minimatch': 9.0.9
+  'postcss-selector-parser@6': 7.1.7
