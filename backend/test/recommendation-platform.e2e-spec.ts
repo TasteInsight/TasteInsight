@@ -68,6 +68,10 @@ describe('recommendation platform lifecycle (two PostgreSQL databases and Redis)
   const experimentIds: string[] = [];
   const sessions = new Set<string>();
   const calls = new Map<string, number>();
+  const parameterCalls: { path: string; payload: any }[] = [];
+  let parameterEmbedding: any;
+  let parameterRanker: any;
+  const parameterIndexes: any[] = [];
   const fixtureModels = new Map<string, any>([
     [
       'synthetic-3',
@@ -269,13 +273,34 @@ describe('recommendation platform lifecycle (two PostgreSQL databases and Redis)
           res.writeHead(409).end('{}');
           return;
         }
+        const appliedParameters = identity.parameterSchema
+          ? Object.fromEntries(
+              Object.entries(identity.parameterSchema.properties).map(
+                ([name, definition]: [string, any]) => [
+                  name,
+                  payload.parameters?.[name] ?? definition.default,
+                ],
+              ),
+            )
+          : undefined;
+        if (identity.parameterSchema)
+          parameterCalls.push({ path: req.url!, payload });
         if (req.url === '/embed' && identity.kind === 'embedding') {
           res.end(
             JSON.stringify({
               ...identity,
-              embedding: Array(identity.dimension).fill(
-                1 / Math.sqrt(identity.dimension),
-              ),
+              ...(appliedParameters ? { appliedParameters } : {}),
+              embedding: appliedParameters
+                ? [
+                    1,
+                    (Number(appliedParameters.numericWeight) *
+                      payload.features.price) /
+                      50,
+                    0,
+                  ]
+                : Array(identity.dimension).fill(
+                    1 / Math.sqrt(identity.dimension),
+                  ),
             }),
           );
           return;
@@ -288,9 +313,20 @@ describe('recommendation platform lifecycle (two PostgreSQL databases and Redis)
           res.end(
             JSON.stringify({
               ...identity,
+              ...(appliedParameters ? { appliedParameters } : {}),
               scores: payload.candidates.map((candidate: any, i: number) => ({
                 dishId: candidate.dishId,
-                score: (i + 1) / payload.candidates.length,
+                score: appliedParameters
+                  ? 1 /
+                    (1 +
+                      Math.exp(
+                        -(
+                          ((1 - Number(appliedParameters.pricePenalty)) *
+                            candidate.price) /
+                          50
+                        ) / Number(appliedParameters.temperature),
+                      ))
+                  : (i + 1) / payload.candidates.length,
               })),
             }),
           );
@@ -1270,5 +1306,382 @@ describe('recommendation platform lifecycle (two PostgreSQL databases and Redis)
     expect((await sync.progress(index.id)).pending).toBe(0);
     await workerApp.close();
     workerApp = undefined;
+  });
+
+  it('persists model-owned parameter declarations after verification and rejects malformed declarations', async () => {
+    const declarations = [
+      {
+        ready: true,
+        version: 'parameter-embedding',
+        kind: 'embedding',
+        dimension: 3,
+        artifactDigest: `${prefix}-parameter-embedding`,
+        featureSchemaVersion: 'dish-user-v1',
+        parameterSchema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            numericWeight: {
+              type: 'number',
+              title: '数值权重',
+              default: 1,
+              minimum: 0,
+              maximum: 5,
+            },
+          },
+        },
+      },
+      {
+        ready: true,
+        version: 'parameter-ranking',
+        kind: 'ranking',
+        artifactDigest: `${prefix}-parameter-ranking`,
+        featureSchemaVersion: 'ranking-numeric-v1',
+        parameterSchema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            pricePenalty: {
+              type: 'number',
+              title: '价格惩罚',
+              default: 0,
+              minimum: 0,
+              maximum: 2,
+            },
+            temperature: {
+              type: 'number',
+              title: '温度',
+              default: 1,
+              minimum: 0.25,
+              maximum: 4,
+            },
+          },
+        },
+      },
+    ];
+    for (const info of declarations) {
+      fixtureModels.set(info.version, info);
+      const registration = {
+        name: `${prefix}-${info.version}`,
+        kind: info.kind,
+        provider: 'http',
+        serviceVersion: info.version,
+        artifactDigest: info.artifactDigest,
+        featureSchemaVersion: info.featureSchemaVersion,
+        ...('dimension' in info ? { dimension: info.dimension } : {}),
+        deploymentId: 'synthetic',
+      };
+      await admin(
+        'post',
+        '/admin/recommendation/models',
+        { ...registration, parameterSchema: info.parameterSchema },
+        400,
+      );
+      const model = await admin(
+        'post',
+        '/admin/recommendation/models',
+        registration,
+      );
+      models.push(model);
+      const validSchema = info.parameterSchema;
+      fixtureModels.set(info.version, {
+        ...info,
+        parameterSchema: { ...validSchema, additionalProperties: true },
+      });
+      await admin(
+        'post',
+        `/admin/recommendation/models/${model.id}/verify`,
+        undefined,
+        400,
+      );
+      expect(
+        await prisma.recommendationModel.findUniqueOrThrow({
+          where: { id: model.id },
+        }),
+      ).toMatchObject({ status: 'draft' });
+      fixtureModels.set(info.version, info);
+      await admin('post', `/admin/recommendation/models/${model.id}/verify`);
+      const persisted = await prisma.recommendationModel.findUniqueOrThrow({
+        where: { id: model.id },
+      });
+      expect(persisted).toMatchObject({
+        status: 'ready',
+        parameterSchema: validSchema,
+      });
+      if (info.kind === 'embedding') parameterEmbedding = persisted;
+      else parameterRanker = persisted;
+    }
+    expect(
+      (
+        await prisma.recommendationModel.findUniqueOrThrow({
+          where: { id: models[1].id },
+        })
+      ).parameterSchema,
+    ).toEqual({ type: 'object', additionalProperties: false, properties: {} });
+  });
+
+  it('persists default and zero index parameters through vector construction, rebuild and query caching', async () => {
+    for (const parameters of [
+      { unknown: 1 },
+      { numericWeight: -1 },
+      { numericWeight: 6 },
+      { numericWeight: false },
+    ])
+      await admin(
+        'post',
+        '/admin/recommendation/indexes',
+        {
+          name: `${prefix}-invalid-parameters`,
+          modelVersionId: parameterEmbedding.id,
+          parameters,
+        },
+        400,
+      );
+    const vectorDb = new PrismaClient({
+      datasourceUrl: process.env.RECOMMENDATION_DATABASE_URL,
+    });
+    try {
+      const dish = await prisma.dish.findFirstOrThrow({
+        where: { canteenId },
+        orderBy: { id: 'asc' },
+      });
+      const vectors: number[][] = [];
+      for (const numericWeight of [1, 0]) {
+        const index = await admin('post', '/admin/recommendation/indexes', {
+          name: `${prefix}-weight-${numericWeight}`,
+          modelVersionId: parameterEmbedding.id,
+          ...(numericWeight === 0 ? { parameters: { numericWeight: 0 } } : {}),
+        });
+        indexes.push(index);
+        parameterIndexes.push(index);
+        expect(
+          (
+            await prisma.recommendationIndex.findUniqueOrThrow({
+              where: { id: index.id },
+            })
+          ).parameters,
+        ).toEqual({ numericWeight });
+        const start = parameterCalls.length;
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const progress = await sync.syncIndex(index.id, 1000);
+          if (progress.pending === 0) break;
+        }
+        expect(
+          await prisma.recommendationIndex.findUniqueOrThrow({
+            where: { id: index.id },
+          }),
+        ).toMatchObject({ status: 'ready', parameters: { numericWeight } });
+        const builds = parameterCalls
+          .slice(start)
+          .filter(
+            (call) =>
+              call.path === '/embed' &&
+              call.payload.version === 'parameter-embedding',
+          );
+        expect(builds.length).toBeGreaterThanOrEqual(12);
+        expect(
+          builds.every(
+            (call) => call.payload.parameters.numericWeight === numericWeight,
+          ),
+        ).toBe(true);
+        const rows = await vectorDb.$queryRawUnsafe<{ embedding: string }[]>(
+          `SELECT embedding::text AS embedding FROM ${indexTable(index.id)} WHERE dish_id = $1`,
+          dish.id,
+        );
+        const vector = JSON.parse(rows[0].embedding);
+        expect(vector[0]).toBe(1);
+        expect(vector[1]).toBeCloseTo((numericWeight * dish.price) / 50);
+        vectors.push(vector);
+      }
+      expect(vectors[0]).not.toEqual(vectors[1]);
+      const queryStrategies = [] as any[];
+      for (const index of parameterIndexes)
+        queryStrategies.push(
+          await publish(
+            `query-${index.id}`,
+            config(index.id, undefined, strategies[0].id),
+          ),
+        );
+      const queryStart = parameterCalls.length;
+      const preview = async (strategy: any) =>
+        admin('post', '/admin/recommendation/preview', {
+          userId,
+          strategyRevisionId: strategy.id,
+          filter: { canteenId: [canteenId] },
+          pageSize: 3,
+        });
+      for (const strategy of queryStrategies) {
+        const result = await preview(strategy);
+        expect(result.strategyRevisionId).toBe(strategy.id);
+        expect(result.fallbackReason).toBeUndefined();
+        expect(result.items).toHaveLength(3);
+      }
+      const queries = parameterCalls
+        .slice(queryStart)
+        .filter((call) => call.path === '/embed');
+      expect(queries.map((call) => call.payload.parameters)).toEqual([
+        { numericWeight: 1 },
+        { numericWeight: 0 },
+      ]);
+      const cachedCount = parameterCalls.filter(
+        (call) => call.path === '/embed',
+      ).length;
+      await preview(queryStrategies[0]);
+      expect(
+        parameterCalls.filter((call) => call.path === '/embed'),
+      ).toHaveLength(cachedCount);
+      const rebuilt = await admin(
+        'post',
+        `/admin/recommendation/indexes/${parameterIndexes[1].id}/build`,
+      );
+      expect(rebuilt.parameters).toEqual({ numericWeight: 0 });
+      const rebuildStart = parameterCalls.length;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const progress = await sync.syncIndex(parameterIndexes[1].id, 1000);
+        if (progress.pending === 0) break;
+      }
+      expect(
+        (
+          await prisma.recommendationIndex.findUniqueOrThrow({
+            where: { id: parameterIndexes[1].id },
+          })
+        ).parameters,
+      ).toEqual({ numericWeight: 0 });
+      const rebuiltCalls = parameterCalls
+        .slice(rebuildStart)
+        .filter((call) => call.path === '/embed');
+      expect(rebuiltCalls.length).toBeGreaterThanOrEqual(12);
+      expect(
+        rebuiltCalls.every(
+          (call) => call.payload.parameters.numericWeight === 0,
+        ),
+      ).toBe(true);
+    } finally {
+      await vectorDb.$disconnect();
+    }
+  });
+
+  it('binds ranking parameters to immutable strategy digests and restores a previous published strategy', async () => {
+    const rankConfig = (parameters?: object) => {
+      const value = config(
+        parameterIndexes[0].id,
+        parameterRanker.id,
+        strategies[0].id,
+      );
+      return {
+        ...value,
+        ranking: { ...value.ranking, ...(parameters ? { parameters } : {}) },
+      };
+    };
+    for (const parameters of [
+      { unknown: 1 },
+      { pricePenalty: 3 },
+      { pricePenalty: -1 },
+      { temperature: 0 },
+      { temperature: false },
+    ])
+      await admin(
+        'post',
+        '/admin/recommendation/strategies',
+        {
+          name: `${prefix}-invalid-ranker`,
+          scene: 'home',
+          config: rankConfig(parameters),
+        },
+        400,
+      );
+    const defaultRank = await publish('rank-default', rankConfig());
+    const zeroRank = await publish(
+      'rank-zero',
+      rankConfig({ pricePenalty: 0 }),
+    );
+    const penalizedRank = await publish(
+      'rank-penalized',
+      rankConfig({ pricePenalty: 2 }),
+    );
+    for (const [strategy, pricePenalty] of [
+      [defaultRank, 0],
+      [zeroRank, 0],
+      [penalizedRank, 2],
+    ] as const) {
+      const persisted = await prisma.recommendationStrategy.findUniqueOrThrow({
+        where: { id: strategy.id },
+      });
+      expect((persisted.config as any).ranking.parameters).toEqual({
+        temperature: 1,
+        pricePenalty,
+      });
+      expect(persisted.digest).toBe(
+        digest({ scene: 'home', config: persisted.config }),
+      );
+    }
+    expect(defaultRank.digest).toBe(zeroRank.digest);
+    expect(defaultRank.digest).not.toBe(penalizedRank.digest);
+    await admin(
+      'put',
+      `/admin/recommendation/strategies/${defaultRank.id}`,
+      { config: rankConfig({ pricePenalty: 2 }) },
+      409,
+    );
+    const results: any[] = [];
+    for (const [strategy, pricePenalty] of [
+      [defaultRank, 0],
+      [penalizedRank, 2],
+      [defaultRank, 0],
+    ] as const) {
+      await setDefault(strategy);
+      const start = parameterCalls.length;
+      const result = await recommend();
+      expect(result).toMatchObject({
+        strategyRevisionId: strategy.id,
+        rankerVersionId: parameterRanker.id,
+      });
+      expect(result.fallbackReason).toBeUndefined();
+      const rankCalls = parameterCalls
+        .slice(start)
+        .filter((call) => call.path === '/rank');
+      expect(rankCalls).toHaveLength(1);
+      expect(rankCalls[0].payload.parameters).toEqual({
+        pricePenalty,
+        temperature: 1,
+      });
+      const prices = new Map(
+        rankCalls[0].payload.candidates.map((candidate: any) => [
+          candidate.dishId,
+          candidate.price,
+        ]),
+      );
+      const scores = result.items.map((item: any) => ({
+        id: item.id,
+        price: prices.get(item.id) as number,
+      }));
+      expect(scores[0].price).toBe(
+        pricePenalty === 0
+          ? Math.max(
+              ...rankCalls[0].payload.candidates.map(
+                (candidate: any) => candidate.price,
+              ),
+            )
+          : Math.min(
+              ...rankCalls[0].payload.candidates.map(
+                (candidate: any) => candidate.price,
+              ),
+            ),
+      );
+      results.push(result);
+    }
+    expect(results[0].items.map((item: any) => item.id)).not.toEqual(
+      results[1].items.map((item: any) => item.id),
+    );
+    expect(results[0].items.map((item: any) => item.id)).toEqual(
+      results[2].items.map((item: any) => item.id),
+    );
+    await setDefault(strategies[2]);
+    const legacy = await recommend();
+    expect(legacy).toMatchObject({
+      strategyRevisionId: strategies[2].id,
+      rankerVersionId: models[3].id,
+    });
+    expect(legacy.fallbackReason).toBeUndefined();
   });
 });

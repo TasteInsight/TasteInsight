@@ -1275,6 +1275,7 @@ model AllergenAlias {
 
 // 推荐控制配置；向量数据由独立推荐库管理。
 model RecommendationModel {
+  parameterSchema      Json @default("{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{}}")
   id                   String @id @default(cuid())
   name                 String
   kind                 String
@@ -1292,6 +1293,7 @@ model RecommendationModel {
 }
 
 model RecommendationIndex {
+  parameters     Json @default("{}")
   generation     Int @default(0)
   id             String @id @default(cuid())
   name           String

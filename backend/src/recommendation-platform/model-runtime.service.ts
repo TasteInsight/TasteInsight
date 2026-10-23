@@ -1,3 +1,11 @@
+import {
+  EMPTY_PARAMETER_SCHEMA,
+  ModelParameterSchema,
+  ModelParameters,
+  parseParameterSchema,
+  resolveModelParameters,
+  sameParameters,
+} from './model-parameters';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RecommendationModel } from '@prisma/client';
@@ -16,16 +24,16 @@ export class ModelRuntimeService {
     private readonly cache: RecommendationCacheService,
   ) {}
 
-  async verify(model: RecommendationModel): Promise<void> {
+  async verify(model: RecommendationModel): Promise<ModelParameterSchema> {
     if (model.provider === 'local') {
       this.assertLocal(model);
-      return;
+      return structuredClone(EMPTY_PARAMETER_SCHEMA);
     }
     const info = await this.request(
       model,
       `/model-info/${encodeURIComponent(model.serviceVersion)}`,
     );
-    this.assertIdentity(model, info);
+    this.assertIdentity(model, info, model.status === 'ready');
     if (
       info.ready !== true ||
       info.kind !== model.kind ||
@@ -35,29 +43,44 @@ export class ModelRuntimeService {
         'Model is not ready or has an incompatible output contract',
       );
     }
+    return parseParameterSchema(info.parameterSchema);
   }
 
   async generateDish(
     model: RecommendationModel,
     payload: Record<string, unknown>,
+    suppliedParameters?: unknown,
   ): Promise<number[]> {
     this.assertEmbedding(model);
+    const parameters = resolveModelParameters(
+      model.parameterSchema,
+      suppliedParameters,
+    );
     const features = this.embedding.mapToDishFeatures(payload);
     if (model.provider === 'local') {
       this.assertLocal(model);
       return this.vector(model, this.encoder.encodeDishFeatures(features));
     }
-    return this.embed(model, {
-      text: this.embedding.buildDishFeatureText(features),
-      features: this.embedding.extractDishNumericFeatures(features),
-    });
+    return this.embed(
+      model,
+      {
+        text: this.embedding.buildDishFeatureText(features),
+        features: this.embedding.extractDishNumericFeatures(features),
+      },
+      parameters,
+    );
   }
 
   async generateUser(
     model: RecommendationModel,
     features: UserFeatures,
+    suppliedParameters?: unknown,
   ): Promise<number[]> {
     this.assertEmbedding(model);
+    const parameters = resolveModelParameters(
+      model.parameterSchema,
+      suppliedParameters,
+    );
     if (model.provider === 'local') this.assertLocal(model);
     const input =
       model.provider === 'local'
@@ -68,7 +91,7 @@ export class ModelRuntimeService {
           };
     const digest = createHash('sha256')
       .update(
-        JSON.stringify(input, (_key, value) => {
+        JSON.stringify({ input, parameters }, (_key, value) => {
           if (value instanceof Map) return [...value.entries()];
           if (value instanceof Set) return [...value];
           return value;
@@ -82,7 +105,7 @@ export class ModelRuntimeService {
     const vector =
       model.provider === 'local'
         ? this.vector(model, this.encoder.encodeUserFeatures(features))
-        : await this.embed(model, input);
+        : await this.embed(model, input, parameters);
     await this.cache.setUserEmbedding(key, vector, model.serviceVersion);
     return vector;
   }
@@ -92,7 +115,12 @@ export class ModelRuntimeService {
     features: UserFeatures,
     dishes: any[],
     timeoutMs: number,
+    suppliedParameters?: unknown,
   ): Promise<Map<string, number>> {
+    const parameters = resolveModelParameters(
+      model.parameterSchema,
+      suppliedParameters,
+    );
     if (model.kind !== 'ranking' || model.provider !== 'http')
       throw new Error('Ranking requires an HTTP ranking model');
     const ids = new Set(dishes.map((dish) => dish.id));
@@ -107,6 +135,7 @@ export class ModelRuntimeService {
       '/rank',
       {
         ...this.identity(model),
+        parameters,
         user: this.embedding.extractUserNumericFeatures(features),
         candidates: dishes.map((dish) => ({
           dishId: dish.id,
@@ -118,6 +147,7 @@ export class ModelRuntimeService {
       timeoutMs,
     );
     this.assertIdentity(model, response);
+    this.assertAppliedParameters(parameters, response);
     if (!Array.isArray(response.scores) || response.scores.length !== ids.size)
       throw new Error('Ranking response must cover every candidate');
     const scores = new Map<string, number>();
@@ -146,7 +176,11 @@ export class ModelRuntimeService {
     };
   }
 
-  private assertIdentity(model: RecommendationModel, value: any): void {
+  private assertIdentity(
+    model: RecommendationModel,
+    value: any,
+    checkParameters = true,
+  ): void {
     if (
       !value ||
       Object.entries(this.identity(model)).some(
@@ -155,6 +189,24 @@ export class ModelRuntimeService {
     ) {
       throw new Error('Model response identity mismatch');
     }
+    if (
+      checkParameters &&
+      !sameParameters(
+        parseParameterSchema(model.parameterSchema),
+        parseParameterSchema(value.parameterSchema),
+      )
+    )
+      throw new Error('Model parameter schema mismatch');
+  }
+
+  private assertAppliedParameters(parameters: ModelParameters, response: any) {
+    const applied =
+      response.appliedParameters === undefined &&
+      Object.keys(parameters).length === 0
+        ? {}
+        : response.appliedParameters;
+    if (!sameParameters(parameters, applied))
+      throw new Error('Model did not confirm applied parameters');
   }
 
   private assertLocal(model: RecommendationModel): void {
@@ -163,7 +215,11 @@ export class ModelRuntimeService {
       model.serviceVersion !== 'local-v1' ||
       model.artifactDigest !== 'local-v1' ||
       model.featureSchemaVersion !== 'dish-user-v1' ||
-      model.dimension !== 128
+      model.dimension !== 128 ||
+      !sameParameters(
+        parseParameterSchema(model.parameterSchema),
+        EMPTY_PARAMETER_SCHEMA,
+      )
     ) {
       throw new Error('Unsupported local model identity');
     }
@@ -192,12 +248,15 @@ export class ModelRuntimeService {
   private async embed(
     model: RecommendationModel,
     input: unknown,
+    parameters: ModelParameters,
   ): Promise<number[]> {
     const response = await this.request(model, '/embed', {
       ...(input as object),
       ...this.identity(model),
+      parameters,
     });
     this.assertIdentity(model, response);
+    this.assertAppliedParameters(parameters, response);
     if (response.dimension !== model.dimension)
       throw new Error('Embedding dimension mismatch');
     return this.vector(model, response.embedding);

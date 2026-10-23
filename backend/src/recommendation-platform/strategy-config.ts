@@ -42,6 +42,16 @@ const validate = ajv.compile({
             type: { const: 'model_endpoint' },
             modelVersionId: { type: 'string', minLength: 1, maxLength: 128 },
             timeoutMs: { type: 'integer', minimum: 50, maximum: 5000 },
+            parameters: {
+              type: 'object',
+              additionalProperties: {
+                anyOf: [
+                  { type: 'number' },
+                  { type: 'boolean' },
+                  { type: 'string' },
+                ],
+              },
+            },
           },
         },
       ],

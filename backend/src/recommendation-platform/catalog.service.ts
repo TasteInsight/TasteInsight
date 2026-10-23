@@ -1,3 +1,4 @@
+import { resolveModelParameters, sameParameters } from './model-parameters';
 import {
   BadRequestException,
   ConflictException,
@@ -131,14 +132,34 @@ export class RecommendationCatalogService {
       where: { id },
     });
     if (!model) throw new NotFoundException('模型不存在');
-    await this.models.verify(model);
-    return this.prisma.recommendationModel.update({
-      where: { id },
-      data: { status: 'ready', verifiedAt: new Date() },
+    const parameterSchema = await this.models.verify(model);
+    return controlTransaction(this.prisma, async (tx) => {
+      const current = await tx.recommendationModel.findUniqueOrThrow({
+        where: { id },
+      });
+      if (
+        current.status === 'ready' &&
+        !sameParameters(current.parameterSchema, parameterSchema)
+      )
+        throw new ConflictException(
+          '已验证模型的参数契约保持不变，请登记新版本',
+        );
+      return tx.recommendationModel.update({
+        where: { id },
+        data: {
+          status: 'ready',
+          verifiedAt: new Date(),
+          parameterSchema: canonicalValue(parameterSchema),
+        },
+      });
     });
   }
 
-  async createIndex(body: { name: string; modelVersionId: string }) {
+  async createIndex(body: {
+    name: string;
+    modelVersionId: string;
+    parameters?: unknown;
+  }) {
     if (!this.store.isConfigured())
       throw new ServiceUnavailableException('请配置独立推荐数据库');
     if (
@@ -147,7 +168,9 @@ export class RecommendationCatalogService {
       !body.name.trim() ||
       body.name.length > 120 ||
       typeof body.modelVersionId !== 'string' ||
-      Object.keys(body).some((k) => !['name', 'modelVersionId'].includes(k))
+      Object.keys(body).some(
+        (k) => !['name', 'modelVersionId', 'parameters'].includes(k),
+      )
     )
       throw new BadRequestException('索引参数无效');
     const model = await this.prisma.recommendationModel.findUnique({
@@ -156,7 +179,17 @@ export class RecommendationCatalogService {
     if (!model || model.status !== 'ready' || model.kind !== 'embedding')
       throw new BadRequestException('索引需要已验证的嵌入模型');
     await this.models.verify(model);
-    return this.prisma.recommendationIndex.create({ data: body });
+    const parameters = resolveModelParameters(
+      model.parameterSchema,
+      body.parameters,
+    );
+    return this.prisma.recommendationIndex.create({
+      data: {
+        name: body.name,
+        modelVersionId: body.modelVersionId,
+        parameters: canonicalValue(parameters),
+      },
+    });
   }
 
   async rebuildIndex(id: string) {
@@ -208,6 +241,7 @@ export class RecommendationCatalogService {
     )
       throw new BadRequestException('策略参数无效');
     const config = parseStrategy(body.config, body.scene);
+    await this.resolveRankingParameters(this.prisma, config);
     return this.prisma.recommendationStrategy.create({
       data: {
         name: body.name,
@@ -234,14 +268,32 @@ export class RecommendationCatalogService {
       if (!strategy) throw new NotFoundException('策略不存在');
       if (strategy.status !== 'draft')
         throw new ConflictException('发布后的策略保持不可变，请创建新草稿');
+      const config = parseStrategy(body.config, strategy.scene);
+      await this.resolveRankingParameters(tx, config);
       return tx.recommendationStrategy.update({
         where: { id },
         data: {
           name: body.name,
-          config: canonicalValue(parseStrategy(body.config, strategy.scene)),
+          config: canonicalValue(config),
         },
       });
     });
+  }
+
+  private async resolveRankingParameters(
+    tx: Prisma.TransactionClient,
+    config: StrategyConfig,
+  ) {
+    if (config.ranking.type !== 'model_endpoint') return;
+    const model = await tx.recommendationModel.findUnique({
+      where: { id: config.ranking.modelVersionId },
+    });
+    if (!model || model.kind !== 'ranking' || model.status !== 'ready')
+      throw new BadRequestException('排序模型须处于就绪状态');
+    config.ranking.parameters = resolveModelParameters(
+      model.parameterSchema,
+      config.ranking.parameters,
+    );
   }
 
   async validateReferences(
@@ -257,13 +309,7 @@ export class RecommendationCatalogService {
       if (!index || index.status !== 'ready' || index.model.status !== 'ready')
         throw new BadRequestException('向量索引及其模型须处于就绪状态');
     }
-    if (config.ranking.type === 'model_endpoint') {
-      const model = await tx.recommendationModel.findUnique({
-        where: { id: config.ranking.modelVersionId },
-      });
-      if (!model || model.kind !== 'ranking' || model.status !== 'ready')
-        throw new BadRequestException('排序模型须处于就绪状态');
-    }
+    await this.resolveRankingParameters(tx, config);
     if (config.fallbackStrategyRevisionId) {
       if (config.fallbackStrategyRevisionId === strategy.id)
         throw new BadRequestException('回退策略不能引用自身');

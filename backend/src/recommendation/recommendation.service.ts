@@ -835,11 +835,16 @@ export class RecommendationService {
         where: { id: triggerDishId },
       });
       if (!dish) return [];
-      query = await this.modelRuntime.generateDish(policy.index.model, dish);
+      query = await this.modelRuntime.generateDish(
+        policy.index.model,
+        dish,
+        policy.index.parameters,
+      );
     } else
       query = await this.modelRuntime.generateUser(
         policy.index.model,
         features,
+        policy.index.parameters,
       );
     const excludeDishIds = filters.flatMap((f) =>
       typeof f.id === 'object' && f.id && 'notIn' in f.id
@@ -1091,6 +1096,7 @@ export class RecommendationService {
         userFeatures,
         candidateDishes,
         context.policy.config.ranking.timeoutMs,
+        context.policy.config.ranking.parameters,
       );
       return candidateDishes.map((dish) => ({
         dish,

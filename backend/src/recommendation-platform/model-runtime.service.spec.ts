@@ -97,6 +97,134 @@ describe('ModelRuntimeService', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('reads a draft model declaration and refuses declaration drift after verification', async () => {
+    const parameterSchema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        weight: {
+          type: 'number',
+          title: '权重',
+          default: 1,
+          minimum: 0,
+          maximum: 2,
+        },
+      },
+    };
+    fetchMock.mockResolvedValue(
+      reply({
+        ...identity,
+        ready: true,
+        kind: 'embedding',
+        dimension: 2,
+        parameterSchema,
+      }),
+    );
+    expect(await service.verify({ ...model, status: 'draft' })).toEqual(
+      parameterSchema,
+    );
+    await expect(
+      service.verify({ ...model, status: 'ready', parameterSchema }),
+    ).resolves.toEqual(parameterSchema);
+    await expect(service.verify({ ...model, status: 'ready' })).rejects.toThrow(
+      'parameter schema mismatch',
+    );
+  });
+
+  it('binds embedding parameters to the request, output confirmation and cache key', async () => {
+    const parameterSchema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        weight: {
+          type: 'number',
+          title: '权重',
+          default: 1,
+          minimum: 0,
+          maximum: 2,
+        },
+      },
+    };
+    const parameterModel = { ...model, parameterSchema };
+    fetchMock.mockImplementation(async (_url, options) => {
+      const parameters = JSON.parse(options.body).parameters;
+      return reply({
+        ...identity,
+        parameterSchema,
+        appliedParameters: parameters,
+        dimension: 2,
+        embedding: [1, parameters.weight],
+      });
+    });
+    const user = { userId: 'u', preferences: { price: 10 } } as any;
+    expect(await service.generateUser(parameterModel, user)).toEqual([1, 1]);
+    expect(
+      await service.generateUser(parameterModel, user, { weight: 0 }),
+    ).toEqual([1, 0]);
+    expect(
+      await service.generateUser(parameterModel, user, { weight: 0 }),
+    ).toEqual([1, 0]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(cache.setUserEmbedding.mock.calls[0][0]).not.toBe(
+      cache.setUserEmbedding.mock.calls[1][0],
+    );
+    fetchMock.mockResolvedValue(
+      reply({
+        ...identity,
+        parameterSchema,
+        appliedParameters: { weight: 1 },
+        dimension: 2,
+        embedding: [1, 1],
+      }),
+    );
+    await expect(
+      service.generateDish(parameterModel, {}, { weight: 0 }),
+    ).rejects.toThrow('confirm applied parameters');
+  });
+
+  it('resolves rank defaults and refuses silent ignored or missing parameter acknowledgements', async () => {
+    const parameterSchema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        reverse: { type: 'boolean', title: '反向', default: true },
+      },
+    };
+    const parameterModel = { ...model, kind: 'ranking', parameterSchema };
+    const base = {
+      ...identity,
+      parameterSchema,
+      scores: [{ dishId: 'a', score: 0.3 }],
+    };
+    fetchMock.mockResolvedValue(
+      reply({ ...base, appliedParameters: { reverse: false } }),
+    );
+    await service.rank(
+      parameterModel,
+      { preferences: { price: 1 } } as any,
+      [{ id: 'a', price: 10 }],
+      100,
+      { reverse: false },
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).parameters).toEqual({
+      reverse: false,
+    });
+    fetchMock.mockResolvedValue(reply(base));
+    await expect(
+      service.rank(
+        parameterModel,
+        { preferences: { price: 1 } } as any,
+        [{ id: 'a' }],
+        100,
+      ),
+    ).rejects.toThrow('confirm applied parameters');
+    const before = fetchMock.mock.calls.length;
+    await expect(
+      service.rank(parameterModel, {} as any, [], 100, { reverse: 0 }),
+    ).rejects.toThrow('模型参数无效');
+    expect(fetchMock.mock.calls.length).toBe(before);
+  });
+
   it('isolates cache by input, model ID and artifact digest', async () => {
     const user = { userId: 'u', preferences: { price: 10 } } as any;
     await service.generateUser(model, user);

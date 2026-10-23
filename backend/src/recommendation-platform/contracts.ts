@@ -1,3 +1,4 @@
+import type { ModelParameters } from './model-parameters';
 import type {
   RecommendationWeights,
   RecallQuotaConfig,
@@ -12,7 +13,12 @@ export interface StrategyConfig {
   };
   ranking:
     | { type: 'weighted_rules'; weights: RecommendationWeights }
-    | { type: 'model_endpoint'; modelVersionId: string; timeoutMs: number };
+    | {
+        type: 'model_endpoint';
+        modelVersionId: string;
+        timeoutMs: number;
+        parameters?: ModelParameters;
+      };
   rerank: { diversityEnabled: boolean };
   fallbackStrategyRevisionId?: string;
 }

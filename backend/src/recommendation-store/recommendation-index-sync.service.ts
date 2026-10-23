@@ -79,7 +79,11 @@ export class RecommendationIndexSyncService {
           const payload = projection.payload ?? {};
           const embedding = projection.deleted
             ? undefined
-            : await this.runtime.generateDish(index.model, payload);
+            : await this.runtime.generateDish(
+                index.model,
+                payload,
+                index.parameters,
+              );
           await this.store.upsert(id, {
             dishId: projection.dishId,
             sourceRevision: projection.revision,
