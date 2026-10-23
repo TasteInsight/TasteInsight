@@ -121,7 +121,9 @@ esac
 
   function expectRejected(result: ReturnType<typeof run>, key: string) {
     expect(result.error).toBeUndefined();
-    expect(result.status).toBe(1);
+    // POSIX shells use different positive exit codes for missing required variables.
+    expect(result.signal).toBeNull();
+    expect(result.status).toBeGreaterThan(0);
     expect(result.stderr).toContain(key);
     expect(result.stderr).not.toContain('fixture-only-password');
     expect(existsSync(environment.SUITE_LOG!)).toBe(false);
