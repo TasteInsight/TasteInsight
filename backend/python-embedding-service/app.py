@@ -20,6 +20,7 @@ import time
 import hmac
 import numpy as np
 from services.ranking_service import RankingService
+from model_parameters import resolve_parameters
 
 from config import Config
 from services import EmbeddingService
@@ -72,8 +73,9 @@ def rank():
         identity = ranking_service.get_model_identity()
         if any(data.get(key) != identity[key] for key in ('artifactDigest', 'featureSchemaVersion')):
             raise ValueError('Ranking model identity mismatch')
-        scores = ranking_service.rank(data['user'], data['candidates'])
-        return jsonify({**identity, 'scores': scores})
+        parameters = resolve_parameters(identity['parameterSchema'], data.get('parameters', {}))
+        scores = ranking_service.rank(data['user'], data['candidates'], parameters)
+        return jsonify({**identity, 'scores': scores, 'appliedParameters': parameters})
     except (ValueError, KeyError, TypeError) as error:
         return jsonify({'error': str(error)}), 400
     except Exception as error:
@@ -219,8 +221,9 @@ def embed_single():
         
         identity = embedding_service.get_model_identity(version or embedding_service.model_manager.default_version)
         check_requested_identity(data, identity)
+        parameters = resolve_parameters(identity['parameterSchema'], data.get('parameters', {}))
         # 生成嵌入
-        embedding = embedding_service.generate_embedding(text, features, version)
+        embedding = embedding_service.generate_embedding(text, features, version, parameters)
         
         if not np.isfinite(embedding).all():
             raise ValueError('Embedding contains non-finite values')
@@ -234,15 +237,19 @@ def embed_single():
         return jsonify({
             'embedding': embedding.tolist(),
             'dimension': len(embedding),
-            **embedding_service.get_model_identity(used_version),
+            **identity,
+            'appliedParameters': parameters,
         }), 200
         
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         duration = (time.time() - start_time) * 1000
         logger.error(f"Embedding generation failed after {duration:.2f}ms: {e}\n{traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/embed-batch', methods=['POST'])
 @app.route('/embed_batch', methods=['POST'])
 def embed_batch():
     """
@@ -301,7 +308,8 @@ def embed_batch():
         # 批量生成嵌入
         identity = embedding_service.get_model_identity(version or embedding_service.model_manager.default_version)
         check_requested_identity(data, identity)
-        embeddings = embedding_service.generate_embeddings_batch(texts, features_list, version)
+        parameters = resolve_parameters(identity['parameterSchema'], data.get('parameters', {}))
+        embeddings = embedding_service.generate_embeddings_batch(texts, features_list, version, parameters)
         
         if not np.isfinite(embeddings).all():
             raise ValueError('Embedding contains non-finite values')
@@ -315,9 +323,12 @@ def embed_batch():
             'embeddings': embeddings.tolist(),
             'count': len(embeddings),
             'dimension': embeddings.shape[1],
-            **embedding_service.get_model_identity(used_version),
+            **identity,
+            'appliedParameters': parameters,
         }), 200
         
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         duration = (time.time() - start_time) * 1000
         logger.error(f"Batch embedding generation failed after {duration:.2f}ms: {e}\n{traceback.format_exc()}")
@@ -363,13 +374,18 @@ def convert_version():
             return jsonify({'error': 'Missing from_version or to_version'}), 400
         
         # 转换
-        embedding = embedding_service.convert_version(text, features, from_version, to_version)
+        identity = embedding_service.get_model_identity(to_version)
+        check_requested_identity(data, identity)
+        parameters = resolve_parameters(identity['parameterSchema'], data.get('parameters', {}))
+        embedding = embedding_service.convert_version(text, features, from_version, to_version, parameters)
         
         return jsonify({
             'embedding': embedding.tolist(),
             'dimension': len(embedding),
             'from_version': from_version,
             'to_version': to_version,
+            **identity,
+            'appliedParameters': parameters,
         }), 200
         
     except ValueError as e:

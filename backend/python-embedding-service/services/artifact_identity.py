@@ -25,7 +25,7 @@ def state_digest(state):
 
 def identity_digest(parts):
     versions = {}
-    for package in ('torch', 'numpy', 'transformers', 'sentence-transformers'):
+    for package in ('torch', 'numpy', 'transformers', 'sentence-transformers', 'jsonschema'):
         try:
             versions[package] = importlib.metadata.version(package)
         except importlib.metadata.PackageNotFoundError:

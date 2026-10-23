@@ -8,6 +8,7 @@ import torch.nn as nn
 import numpy as np
 from typing import Dict, Any
 from .base import BaseEmbeddingModel
+from model_parameters import resolve_parameters
 
 
 class FeatureFusionMLP(nn.Module):
@@ -93,7 +94,7 @@ class FusionModel(BaseEmbeddingModel):
             raise ValueError('Checkpoint contains non-finite weights')
         self.model.eval()
     
-    def generate_embedding(self, text_emb: np.ndarray, numeric_emb: np.ndarray) -> np.ndarray:
+    def generate_embedding(self, text_emb: np.ndarray, numeric_emb: np.ndarray, parameters: Dict = None) -> np.ndarray:
         """
         使用神经网络融合
         
@@ -104,6 +105,7 @@ class FusionModel(BaseEmbeddingModel):
         Returns:
             (N, 256) 或 (256,)
         """
+        resolve_parameters(self.parameter_schema, {} if parameters is None else parameters)
         with torch.no_grad():
             # 转换为 tensor
             text_tensor = torch.from_numpy(text_emb).float().to(self.device)

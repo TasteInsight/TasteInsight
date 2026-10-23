@@ -2,7 +2,7 @@
 
 ## 部署身份
 
-`GET /model-info/<version>` 返回 `ready/version/kind/artifactDigest/featureSchemaVersion`；嵌入模型附带 `dimension`。管理平台登记该端点的完整身份，再执行验证。`v2` 为文本与数值拼接；`v3` 需要 `MODEL_DIR/fusion_v3.pt` 的完整且有限的权重。权重缺失、结构不匹配与加载失败均返回未就绪。
+`GET /model-info/<version>` 返回 `ready/version/kind/artifactDigest/featureSchemaVersion/parameterSchema`；嵌入模型附带 `dimension`。管理平台登记该端点的完整身份，再执行验证。`v2` 为文本与数值拼接；`v3` 需要 `MODEL_DIR/fusion_v3.pt` 的完整且有限的权重。权重缺失、结构不匹配与加载失败均返回未就绪。
 
 嵌入摘要来自已加载文本编码器的权重、分词器与 pooling 配置快照，融合网络的实际参数、编码实现和运行库版本。排序摘要来自实际线性网络参数、数值特征实现和运行库版本。checkpoint 的自报摘要不参与身份认证。进程首次加载后固定模型，部署新产物使用新服务版本并重启进程，向管理平台登记新摘要。身份文件记录部署查询结果与离线评估，服务端计算结果为验证依据。
 
@@ -17,6 +17,32 @@
 排序输入契约 `ranking-numeric-v1`：`user` 与每个候选均含 `price/spicyLevel/sweetness/saltiness/oiliness/averageRating/reviewCount`；候选另含 `dishId`。服务共用训练和推理特征函数，将七项菜品属性与七项用户差值输入 `torch.nn.Linear(14,1)`，经 sigmoid 输出点击概率估计。
 
 仅部署排序时设置 `PYTHON_EMBEDDING_ENABLED=false`，无需加载文本模型。设置 `PYTHON_RANKING_VERSION` 和 `PYTHON_RANKING_CHECKPOINT` 选择版本与训练文件。默认值分别为 `rank-v1`、`saved_models/rank_v1.pt`。健康与就绪请查询具体版本的 `/model-info/<version>`。
+
+## 模型推理参数
+
+`parameterSchema` 由具体模型声明，采用扁平 JSON Schema 对象；每个属性包含类型、中文名称、默认值和数值范围。参数声明、参数计算实现及校验库版本均参与 `artifactDigest`。管理平台读取服务声明，发布后的模型契约固定保存。
+
+| 模型 | 参数 | 类型 | 默认值 | 范围 | 计算位置 |
+| --- | --- | --- | --- | --- | --- |
+| v2 | `numericWeight` | number | 1 | 0–5 | 文本与数值特征拼接前，数值向量乘以该值，再统一 L2 归一化 |
+| 排序线性模型 | `temperature` | number | 1 | 0.25–4 | sigmoid 前的分数除以该值 |
+| 排序线性模型 | `pricePenalty` | number | 0 | 0–2 | sigmoid 前扣减该值乘以菜品价格 / 50 |
+
+v3 的声明为 `{"type":"object","additionalProperties":false,"properties":{}}`。排序公式为 `sigmoid((logit - pricePenalty * price / 50) / temperature)`；温度越大，概率越接近 0.5，价格惩罚可以改变候选顺序。
+
+`POST /embed`、`POST /embed-batch`（兼容 `/embed_batch`）、`POST /convert_version` 与 `POST /rank` 接收顶层 `parameters` 对象。服务补齐省略的默认值，在成功响应中返回 `parameterSchema` 和完整的 `appliedParameters`。省略 `parameters` 或传入 `{}` 使用模型默认值。未知字段、类型错误、越界、非有限数值和显式 `null` 返回 HTTP 400。布尔值与数值严格区分，显式 `0` 保留。
+
+单条 v2 请求示例：
+
+```json
+{"version":"v2","text":"米饭","features":{"price":10,"averageRating":4.5},"parameters":{"numericWeight":0}}
+```
+
+该请求返回 `appliedParameters: {"numericWeight":0}`，788 维向量的最后 20 维为零。文本向量需包含有效特征，最终向量通过平台的有限值与非零校验后进入索引。批量请求将相同的 `parameters` 放在 `items` 外层，对整批生效。
+
+排序请求在完整模型身份、`user` 和 `candidates` 之外增加 `"parameters":{"pricePenalty":2}`，响应补全为 `{"temperature":1,"pricePenalty":2}`。排序策略固定保存完整参数；向量索引固定保存嵌入参数，构建与在线查询使用相同配置。
+
+测试通过真实 PyTorch 线性模型验证分数变化与价格惩罚导致的顺序翻转，通过本地 SentenceTransformer BoW 编码器验证数值权重、零值、单条与批量一致性，并对默认兼容、参数拒绝和身份摘要变化进行回归验证。测试权重与文本编码器用于协议和计算路径验收，模型质量仍需真实数据评估。
 
 ## 从真实曝光导出训练样本
 
@@ -49,7 +75,7 @@ python train/train_ranker.py /secure/samples.jsonl \
 ## 验证
 
 ```sh
-python -m unittest test_config test_model_contract -v
+python -m unittest test_config test_model_contract test_model_parameters -v
 ```
 
 测试覆盖缺失/损坏/非有限的融合权重、排序权重结构和版本、伪造摘要、时间切分、Bearer 认证、重复候选，以及实际本地 SentenceTransformer 编码器的摘要稳定性与输出身份。测试使用临时合成 PyTorch checkpoint 和 768 维 BoW 文本编码器，生产文本模型与真实用户训练数据需单独验收。

@@ -6,11 +6,23 @@ Concat 模型 (v2)
 import numpy as np
 from typing import Dict, Any
 from .base import BaseEmbeddingModel
+from model_parameters import resolve_parameters
 
 
 class ConcatModel(BaseEmbeddingModel):
     """拼接模型 - 简单拼接文本和数值特征"""
     
+    parameter_schema = {
+        'type': 'object', 'additionalProperties': False,
+        'properties': {
+            'numericWeight': {
+                'type': 'number', 'title': '数值特征权重',
+                'description': '拼接前缩放数值特征；0 表示仅使用文本特征。',
+                'default': 1, 'minimum': 0, 'maximum': 5,
+            },
+        },
+    }
+
     def __init__(self, text_dim=768, numeric_dim=20):
         super().__init__()
         self.version = 'v2'
@@ -29,7 +41,7 @@ class ConcatModel(BaseEmbeddingModel):
         })
         return info
     
-    def generate_embedding(self, text_emb: np.ndarray, numeric_emb: np.ndarray) -> np.ndarray:
+    def generate_embedding(self, text_emb: np.ndarray, numeric_emb: np.ndarray, parameters: Dict = None) -> np.ndarray:
         """
         拼接并归一化
         
@@ -40,6 +52,9 @@ class ConcatModel(BaseEmbeddingModel):
         Returns:
             (N, 788) 或 (788,)
         """
+        applied = resolve_parameters(self.parameter_schema, {} if parameters is None else parameters)
+        numeric_emb = numeric_emb * applied['numericWeight']
+
         # 拼接
         if text_emb.ndim == 1 and numeric_emb.ndim == 1:
             # 单个样本
