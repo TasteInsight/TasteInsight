@@ -5,7 +5,7 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 ## 技术栈
 
 - **框架**: UniApp Vue 3 编译器 5.26 + Vue 3.4.21
-- **构建**: Vite 5.2.8；DCloud 编译器依赖统一锁定为 `3.0.0-5020620260917001`
+- **构建**: Vite 6.4.5；DCloud 编译器依赖统一锁定为 `3.0.0-5020620260917001`
 - **状态管理**: Pinia 2
 - **样式**: TailwindCSS + CSS
 - **国际化**: Vue I18n
@@ -31,6 +31,31 @@ Vue I18n 的入口及其依赖由 `vite.config.ts` 从所属包解析，`project
 `scripts/uni-h5-picker-compat.ts` 适配当前 UniApp 的 H5 picker：重开时恢复已确认值，并按实例取消上一轮关闭延迟；组件卸载时清除定时器。适配设有编译器版本检查。升级 DCloud 依赖时复核该适配和 `uni-h5-picker-compat.spec.ts`，再验证打开、关闭及快速重开的行为。
 
 本地 Mock 路由和夹具仅在 `mock` 模式加载，首个请求等待路由注册完成。H5、小程序和 App 的正式构建使用真实 API，构建器会移除 Mock 路由及其数据依赖。
+
+### 依赖安全维护
+
+Markdown 使用 `markdown-it@14.3.3`，覆盖智能引号、自动链接和多行引用解析的性能修复。AI 回复保留中文标点相邻的强调语法及原生 `rich-text` 渲染。项目移除了源码和脚本中闲置的 `sanitize-html` 依赖。
+
+DCloud 编译器保持 5.26，Vite 使用 6.4.5。`pnpm-workspace.yaml` 将编译器及插件统一解析到该 Vite 版本，并通过 `peerDependencyRules.allowedVersions` 显式记录项目采用的版本；DCloud 插件自身声明的 peer 版本为 5.2.8。调整此组合时，验证 H5 开发服务、微信/H5/App 发布构建、产物 i18n 运行检查，以及 H5 选择器和 AI 流式对话浏览器回归。Vue 运行时与编译器继续保持 3.4.21 配套。
+
+编译器和微信官方扫描器固定的旧依赖通过 pnpm overrides 维护安全版本，涵盖 Babel 7、esbuild、PostCSS、图片解码、压缩包和本地工具依赖。升级父包时核对这些固定项，移除已由上游覆盖的 override。安装继续使用 pnpm 的发布冷静期策略。
+
+在本目录使用官方 npm 审计接口：
+
+```bash
+pnpm audit --registry=https://registry.npmjs.org
+pnpm audit --prod --registry=https://registry.npmjs.org
+```
+
+审计结果需结合依赖来源判断：
+
+| 来源 | 保留的上游依赖与使用范围 |
+| --- | --- |
+| 微信官方 `miniprogram-ci@2.1.31` | 稳定版仍包含 Babel 6、protobufjs 6、download/decompress 等旧依赖。项目使用 `checkCodeQuality` 分析本地产物；扫描在独立进程中运行，使用占位 AppID 和密钥参数。启用 SDK 上传、远程下载或原生打包前，先升级相关旧依赖并验证接口。 |
+| DCloud 编译链 | `phin@2.9.3` 用于构建工具的图片请求，`braces@3.0.3` 用于文件模式匹配；包被归入生产依赖，实际用途属于构建过程。braces 的修复版本以上游实际发布为准。 |
+| Vue SSR | `@vue/server-renderer@3.4.21` 跟随框架版本，存在服务端渲染属性相关告警。当前 CI 发布目标为微信小程序、静态 H5 和 App；启用 SSR 服务前先完成配套框架升级及服务端渲染验证。 |
+
+
 
 图标字体通过 CSS 相对路径引用，由各平台构建器解析资源地址。应用组件使用普通 CSS。`@dcloudio/uni-ui@1.5.12` 的 `uni-icons` 使用纯 CSS，但上游声明为 SCSS；`patches/` 中的 pnpm 补丁修正该声明，保留字体、条件编译和组件行为。补丁由锁文件固定，升级组件库时复核样式声明并重跑三端构建与图标加载检查。实际引入 SCSS 时仍需评估 UniApp 编译器的 Sass API 兼容性。
 

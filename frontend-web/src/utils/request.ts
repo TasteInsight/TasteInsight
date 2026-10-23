@@ -229,22 +229,22 @@ service.interceptors.response.use(
   },
 )
 
-// 封装请求方法，确保返回正确的类型
+// 响应拦截器返回正文，包装方法保留调用方指定的正文类型。
 const request = {
   async get<T = any>(url: string, config?: any): Promise<T> {
-    return service.get(url, config)
+    return service.get<T, T>(url, config) as Promise<T>
   },
   async post<T = any>(url: string, data?: any, config?: any): Promise<T> {
-    return service.post(url, data, config)
+    return service.post<T, T>(url, data, config) as Promise<T>
   },
   async put<T = any>(url: string, data?: any, config?: any): Promise<T> {
-    return service.put(url, data, config)
+    return service.put<T, T>(url, data, config) as Promise<T>
   },
   delete<T = any>(url: string, config?: any): Promise<T> {
-    return service.delete(url, config)
+    return service.delete<T, T>(url, config) as Promise<T>
   },
   patch<T = any>(url: string, data?: any, config?: any): Promise<T> {
-    return service.patch(url, data, config)
+    return service.patch<T, T>(url, data, config) as Promise<T>
   },
 }
 

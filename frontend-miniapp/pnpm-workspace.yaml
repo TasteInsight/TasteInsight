@@ -8,18 +8,51 @@ packageExtensions:
       eslint: 8.57.1
 
 overrides:
+  # Vite 6 security fixes; validate the UniApp build and dev pipelines together.
+  vite: 6.4.5
   vue: 3.4.21
   '@vue/server-renderer': 3.4.21
   '@vue/runtime-dom': 3.4.21
   '@vue/runtime-core': 3.4.21
   '@vue/reactivity': 3.4.21
   '@dcloudio/types': 3.4.31
+  # UniApp compiler packages pin these build-time dependencies.
+  '@babel/core@7': 7.29.7
+  '@intlify/core-base@9.1.9': 9.14.5
+  '@intlify/message-resolver@9.1.9': 9.1.11
+  'esbuild@0.20.2': 0.25.12
+  'source-map-js@1.2.1': 1.2.2
+  'postcss@8.5.6': 8.5.31
+  'postcss-selector-parser@6': 7.1.7
+  'ws@8': 8.22.0
+  'body-parser@1': 1.20.8
+  'cookie@0.6.0': 0.7.2
+  'path-to-regexp@0.1.10': 0.1.13
+  'send@0.18.0': 0.19.2
+  'qs@6': 6.16.1
+  'jpeg-js@0.3.7': 0.4.4
+  'adm-zip@0.5': 0.6.1
+  # The official local scanner retains exact versions of its Babel and utility packages.
+  '@babel/helpers@7': 7.29.10
+  '@babel/runtime@7': 7.29.10
+  '@babel/traverse@7': 7.29.10
+  '@babel/plugin-transform-modules-systemjs@7': 7.29.8
+  'miniprogram-ci>minimatch': 3.1.5
+  'miniprogram-ci>terser': 4.8.1
+  'miniprogram-ci>tmp': 0.2.7
+  'form-data@2': 2.5.6
+  'fast-xml-parser@4.2.5': 4.5.7
+  'ajv@8.17.1': 8.20.0
+  'fast-uri@3.1.5': 3.1.9
+  'webpack@5.102.1': 5.112.0
+  'editorconfig>minimatch': 9.0.9
 # Vue compilers retain the matching @vue/shared version declared by each package.
 peerDependencyRules:
   ignoreMissing:
     - '@algolia/client-search'
     - webpack
   allowedVersions:
+    vite: 6.4.5
     vue: 3.4.21
     '@dcloudio/types': 3.4.31
 allowBuilds:
