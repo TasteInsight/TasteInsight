@@ -42,6 +42,7 @@ export function getFirstAccessibleRoute(authStore: PermissionChecker): string {
     { path: '/student-verification-manage', permissions: ['student:review'], globalOnly: true },
     { path: '/community-manage', permissions: ['post:view'], globalOnly: true },
     { path: '/config-manage', permissions: ['config:view', 'dish:edit'] },
+    { path: '/recommendation-manage', permissions: ['experiment:view'], globalOnly: true },
     { path: '/experiment-manage', permissions: ['experiment:view'], globalOnly: true },
   ]
 

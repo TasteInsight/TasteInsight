@@ -1,6 +1,18 @@
 import { AllergensService } from '@/allergens/allergens.service';
 import { allergenComparisonKey } from '@/allergens/allergen-values';
-import { Injectable, Logger } from '@nestjs/common';
+
+import { MealTime } from '@/common/enums';
+import {
+  RecommendationPolicyService,
+  ResolvedPolicy,
+} from '@/recommendation-platform/policy.service';
+import { RecommendationTrackingService } from '@/recommendation-platform/tracking.service';
+import { RecommendationSessionService } from '@/recommendation-platform/session.service';
+import { ModelRuntimeService } from '@/recommendation-platform/model-runtime.service';
+import { RecommendationStoreService } from '@/recommendation-store/recommendation-store.service';
+import { digest } from '@/recommendation-platform/strategy-config';
+import { resolveRecommendationConfig } from './config/recommendation-config';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
 import { supplyDatesCover } from '@/dishes/dish-availability';
@@ -11,8 +23,6 @@ import {
 } from '@/common/utils/campus-date';
 import { createHash, randomUUID } from 'crypto';
 import {
-  RECOMMENDATION_WEIGHTS,
-  SEARCH_SCENE_WEIGHTS,
   RECOMMENDATION_LIMITS,
   CACHE_CONFIG,
   RecommendationScene,
@@ -80,6 +90,12 @@ export class RecommendationService {
     private embeddingService: EmbeddingService,
     private tokenizerService: TokenizerService,
     private readonly allergensService: AllergensService,
+
+    @Optional() private policies?: RecommendationPolicyService,
+    @Optional() private modelRuntime?: ModelRuntimeService,
+    @Optional() private vectorStore?: RecommendationStoreService,
+    @Optional() private tracking?: RecommendationTrackingService,
+    @Optional() private sessions?: RecommendationSessionService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════
@@ -94,11 +110,22 @@ export class RecommendationService {
   async getRecommendations(
     userId: string,
     dto: RecommendationRequestDto,
+    options: {
+      mode?: 'online' | 'evaluation' | 'preview';
+      strategyRevisionId?: string;
+      captureTrace?: boolean;
+      offsetPagination?: boolean;
+      userFeatures?: UserFeatures;
+    } = {},
   ): Promise<RecommendationResultDto> {
     // 使用传入的 requestId（如果有），否则生成新的
     // 以确保同一个推荐会话在不同页之间保持一致
-    const requestId = dto.requestId || randomUUID();
+    const mode = options.mode ?? 'online';
+    const requestId =
+      mode === 'online' ? dto.requestId || randomUUID() : randomUUID();
     const startTime = Date.now();
+    let executionDto = dto;
+    let sessionReset = false;
     const hasSearchKeyword = !!dto.search?.keyword?.trim();
 
     // 1. 确定推荐场景
@@ -110,6 +137,8 @@ export class RecommendationService {
       scene,
       requestId,
       triggerDishId: dto.triggerDishId,
+      mode,
+      offsetPagination: options.offsetPagination,
     };
 
     this.logger.debug(
@@ -118,43 +147,205 @@ export class RecommendationService {
 
     try {
       // 3. A/B 测试分组
-      const experimentAssignment = await this.resolveExperimentAssignment(
-        userId,
-        dto.experimentId,
-        context,
-      );
+      const experimentAssignment =
+        mode === 'online'
+          ? await this.resolveExperimentAssignment(
+              userId,
+              dto.experimentId,
+              context,
+            )
+          : null;
       context.groupItemId = experimentAssignment?.groupItemId;
+      context.experimentId = experimentAssignment?.experimentId;
+      context.configFallback = experimentAssignment?.configFallback;
 
       // 4. 获取用户特征
-      const userFeatures = await this.getUserFeaturesWithCache(userId);
+      const userFeatures =
+        options.userFeatures ?? (await this.getUserFeaturesWithCache(userId));
 
       // 5. 确保用户嵌入向量存在（异步，不阻塞）
-      this.ensureUserEmbeddingAsync(userId, userFeatures);
+      if (this.policies) {
+        try {
+          context.policy =
+            (mode === 'evaluation'
+              ? await this.policies.fallback(scene, null)
+              : await this.policies.resolve(
+                  scene,
+                  experimentAssignment,
+                  options.strategyRevisionId,
+                )) ?? undefined;
+        } catch (error) {
+          if (mode === 'preview') throw error;
+          context.policy = await this.policies.fallback(scene, null);
+          context.fallbackReason = 'policy-unavailable';
+        }
+      }
+      if (mode === 'online' && !context.policy)
+        this.ensureUserEmbeddingAsync(userId, userFeatures);
 
       // 6. 获取推荐权重
-      const weights = this.resolveWeights(
+      const baseConfig = resolveRecommendationConfig(
+        context.policy
+          ? {
+              weights:
+                context.policy.config.ranking.type === 'weighted_rules'
+                  ? context.policy.config.ranking.weights
+                  : undefined,
+              recallQuota: context.policy.config.recall.sources,
+            }
+          : {
+              ...(experimentAssignment?.weights
+                ? { weights: experimentAssignment.weights }
+                : {}),
+              ...(experimentAssignment?.recallQuota
+                ? { recallQuota: experimentAssignment.recallQuota }
+                : {}),
+            },
         scene,
-        hasSearchKeyword,
-        experimentAssignment,
       );
+      context.configuration = resolveRecommendationConfig(
+        {
+          weights: this.applyUserContextToWeights(
+            baseConfig.weights,
+            dto.userContext,
+          ),
+          recallQuota: baseConfig.recallQuota,
+        },
+        scene,
+      );
+      if (this.sessions && mode === 'online' && !options.offsetPagination) {
+        try {
+          context.requestId = await this.sessions.resolve(
+            userId,
+            dto.requestId,
+            {
+              scene,
+              pageSize: dto.pagination.pageSize,
+              filter: dto.filter,
+              search: dto.search,
+              userContext: dto.userContext,
+              triggerDishId: dto.triggerDishId,
+              experimentId: context.experimentId,
+              groupItemId: context.groupItemId,
+              strategyRevisionId: context.policy?.strategyRevisionId,
+              digest:
+                context.policy?.digest ?? context.configuration.configDigest,
+            },
+          );
+        } catch {
+          context.requestId = randomUUID();
+        }
+        if (dto.requestId && context.requestId !== dto.requestId) {
+          executionDto = { ...dto, pagination: { ...dto.pagination, page: 1 } };
+          sessionReset = true;
+        }
+      }
+      let weights = context.configuration.weights;
 
       // 7. 构建搜索上下文
       const searchContext = this.buildSearchContext(dto.search);
 
       // 8. 执行推荐核心逻辑（使用无限滚动模式）
-      const result = await this.executeInfiniteScrollRecommendation(
-        userId,
-        dto,
-        context,
-        userFeatures,
-        weights,
-        searchContext,
-        experimentAssignment,
-        startTime,
-      );
-
-      // 9. 记录曝光事件
-      await this.logImpressionEvents(userId, result, context, dto.experimentId);
+      let result: RecommendationResultDto;
+      try {
+        result = await this.executeInfiniteScrollRecommendation(
+          userId,
+          executionDto,
+          context,
+          userFeatures,
+          weights,
+          searchContext,
+          experimentAssignment,
+          startTime,
+        );
+      } catch (error) {
+        if (!context.policy || !this.policies) throw error;
+        context.policy = await this.policies.fallback(scene, context.policy);
+        context.fallbackReason = 'recommendation-stage-failed';
+        context.configuration = resolveRecommendationConfig(
+          {
+            weights:
+              context.policy.config.ranking.type === 'weighted_rules'
+                ? context.policy.config.ranking.weights
+                : undefined,
+            recallQuota: context.policy.config.recall.sources,
+          },
+          scene,
+        );
+        weights = context.configuration.weights;
+        result = await this.executeInfiniteScrollRecommendation(
+          userId,
+          executionDto,
+          context,
+          userFeatures,
+          weights,
+          searchContext,
+          experimentAssignment,
+          startTime,
+        );
+      }
+      result.data.experimentId = context.experimentId;
+      result.data.configDigest = context.policy
+        ? digest({
+            policy: context.policy.digest,
+            resolved: context.configuration,
+          })
+        : context.configuration.configDigest;
+      result.data.mode = mode;
+      result.data.sessionReset = sessionReset;
+      result.data.strategyRevisionId = context.policy?.strategyRevisionId;
+      result.data.indexId = context.policy?.index?.id;
+      result.data.modelVersionId = context.policy?.index?.modelVersionId;
+      result.data.rankerVersionId = context.policy?.ranker?.id;
+      result.data.fallbackReason = context.fallbackReason;
+      if (mode === 'preview')
+        result.data.debug = {
+          ...result.data.debug,
+          processingTimeMs: Date.now() - startTime,
+          candidateCount: context.candidateFeatures?.length,
+          scene,
+          weightsUsed: weights,
+        };
+      if (options.captureTrace && mode !== 'online') {
+        result.data.evaluationTrace = {
+          queryId: context.requestId,
+          userId,
+          strategyRevisionId:
+            options.strategyRevisionId ?? context.policy?.strategyRevisionId,
+          featureAsOf: new Date(startTime).toISOString(),
+          predictedAt: new Date().toISOString(),
+          historyCount:
+            userFeatures.favoriteFeatures.dishIds.size +
+            userFeatures.browseFeatures.recentDishIds.size,
+          candidateIds: (context.candidateFeatures ?? []).map(
+            (dish) => dish.dishId,
+          ),
+          rankedIds: result.data.items.map((dish) => dish.id),
+          candidateTags: Object.fromEntries(
+            (context.candidateFeatures ?? []).map((dish) => [
+              dish.dishId,
+              dish.tags ?? [],
+            ]),
+          ),
+          catalogSize: await this.prisma.dish.count({
+            where: { status: 'online' },
+          }),
+          latencyMs: Date.now() - startTime,
+          fallbackReason: context.fallbackReason,
+        };
+      }
+      if (mode === 'online') {
+        if (this.tracking)
+          result.data.deliveryId = await this.tracking.deliver(
+            context,
+            result,
+            userFeatures,
+            Date.now() - startTime,
+            executionDto.pagination.page,
+            executionDto.pagination.pageSize,
+          );
+        else await this.logImpressionEvents(userId, result, context);
+      }
 
       return result;
     } catch (error) {
@@ -194,7 +385,7 @@ export class RecommendationService {
     experimentId: string | undefined,
     context: RecommendationContext,
   ): Promise<ExperimentAssignment | null> {
-    if (!experimentId || !this.experimentService) {
+    if (!this.experimentService) {
       return null;
     }
 
@@ -202,6 +393,7 @@ export class RecommendationService {
       return await this.experimentService.assignUserToExperiment(
         userId,
         context,
+        experimentId,
       );
     } catch (error) {
       this.logger.warn(`Failed to assign experiment: ${error.message}`);
@@ -230,15 +422,18 @@ export class RecommendationService {
     // 探索模式：增加多样性权重
     if (userContext.exploratory === true) {
       weights.diversity = Math.min(weights.diversity * 1.5, 30);
-      weights.favoriteSimilarity = Math.max(
-        weights.favoriteSimilarity * 0.7,
-        5,
-      );
+      if (weights.favoriteSimilarity > 0) {
+        weights.favoriteSimilarity = Math.max(
+          weights.favoriteSimilarity * 0.7,
+          5,
+        );
+      }
     }
 
     // 紧急模式：减少多样性，增加质量权重
     if (userContext.urgency === 'high') {
-      weights.diversity = Math.max(weights.diversity * 0.5, 2);
+      if (weights.diversity > 0)
+        weights.diversity = Math.max(weights.diversity * 0.5, 2);
       weights.dishQuality = Math.min(weights.dishQuality * 1.3, 30);
     }
 
@@ -246,42 +441,6 @@ export class RecommendationService {
     // 例如：早餐时段可能更偏好清淡口味等
 
     return weights;
-  }
-
-  /**
-   * 解析推荐权重
-   */
-  private resolveWeights(
-    scene: RecommendationScene,
-    hasSearch: boolean,
-    experimentAssignment: ExperimentAssignment | null,
-  ): RecommendationWeights {
-    // 优先使用实验分组的权重配置
-    if (experimentAssignment?.resolvedWeights) {
-      return experimentAssignment.resolvedWeights;
-    }
-
-    // 搜索场景使用特殊权重
-    if (hasSearch || scene === RecommendationScene.SEARCH) {
-      return {
-        preferenceMatch: SEARCH_SCENE_WEIGHTS.PREFERENCE_MATCH,
-        favoriteSimilarity: SEARCH_SCENE_WEIGHTS.FAVORITE_SIMILARITY,
-        browseRelevance: SEARCH_SCENE_WEIGHTS.BROWSE_RELEVANCE,
-        dishQuality: SEARCH_SCENE_WEIGHTS.DISH_QUALITY,
-        diversity: SEARCH_SCENE_WEIGHTS.DIVERSITY,
-        searchRelevance: SEARCH_SCENE_WEIGHTS.SEARCH_RELEVANCE,
-      };
-    }
-
-    // 默认权重
-    return {
-      preferenceMatch: RECOMMENDATION_WEIGHTS.PREFERENCE_MATCH,
-      favoriteSimilarity: RECOMMENDATION_WEIGHTS.FAVORITE_SIMILARITY,
-      browseRelevance: RECOMMENDATION_WEIGHTS.BROWSE_RELEVANCE,
-      dishQuality: RECOMMENDATION_WEIGHTS.DISH_QUALITY,
-      diversity: RECOMMENDATION_WEIGHTS.DIVERSITY,
-      searchRelevance: RECOMMENDATION_WEIGHTS.SEARCH_RELEVANCE,
-    };
   }
 
   /**
@@ -322,14 +481,14 @@ export class RecommendationService {
     const requestId = context.requestId!;
 
     // 0. 根据用户上下文调整权重
-    const adjustedWeights = this.applyUserContextToWeights(
-      weights,
-      dto.userContext,
-    );
+    const adjustedWeights = weights;
 
     // 1. 获取或初始化会话状态（已看过的菜品ID）
     // 使用 requestId（来自 context）而不是 dto.requestId
-    const seenDishIds = await this.getSeenDishIds(requestId);
+    const seenDishIds =
+      context.offsetPagination || (context.mode && context.mode !== 'online')
+        ? new Set<string>()
+        : await this.getSeenDishIds(requestId);
 
     this.logger.debug(
       `[${requestId}] Session has ${seenDishIds.size} seen dishes`,
@@ -383,7 +542,12 @@ export class RecommendationService {
         pageSize: Math.max(minCandidates, requestedItems + pageSize * 2),
       },
       filterConditions,
-      { triggerDishId: context.triggerDishId },
+      {
+        triggerDishId: context.triggerDishId,
+        recallQuota: context.configuration?.recallQuota,
+        policy: context.policy,
+        userFeatures,
+      },
     );
 
     const diversifyCanteens =
@@ -422,6 +586,22 @@ export class RecommendationService {
       candidateDishes = [...candidateDishes, ...fallbackDishes];
     }
 
+    if (context.policy)
+      candidateDishes = candidateDishes.slice(
+        0,
+        context.policy.config.recall.candidateLimit,
+      );
+    context.candidateFeatures = candidateDishes.map((dish) => ({
+      dishId: dish.id,
+      tags: dish.tags ?? [],
+      price: dish.price,
+      spicyLevel: dish.spicyLevel,
+      sweetness: dish.sweetness,
+      saltiness: dish.saltiness,
+      oiliness: dish.oiliness,
+      averageRating: dish.averageRating,
+      reviewCount: dish.reviewCount,
+    }));
     // 6. 计算推荐分数
     const scoredDishes = await this.scoreCandidates(
       candidateDishes,
@@ -434,13 +614,23 @@ export class RecommendationService {
 
     // 7. 排序并应用多样性
     scoredDishes.sort((a, b) => b.score - a.score);
-    // 8. 获取当前页的菜品
-    const pageItems = diversifyCanteens
-      ? this.selectCanteenOptions(scoredDishes, pageSize)
-      : this.applyDiversityBoost(scoredDishes, seenDishIds).slice(0, pageSize);
+    const ordered = diversifyCanteens
+      ? this.selectCanteenOptions(
+          scoredDishes,
+          context.offsetPagination ? scoredDishes.length : pageSize,
+        )
+      : context.policy?.config.rerank.diversityEnabled === false
+        ? scoredDishes
+        : this.applyDiversityBoost(scoredDishes, seenDishIds);
+    const offset = context.offsetPagination ? (page - 1) * pageSize : 0;
+    const pageItems = ordered.slice(offset, offset + pageSize);
 
     // 9. 更新已看过的菜品列表
-    if (pageItems.length > 0) {
+    if (
+      !context.offsetPagination &&
+      pageItems.length > 0 &&
+      (!context.mode || context.mode === 'online')
+    ) {
       const newSeenIds = pageItems.map((d) => d.dish.id);
       await this.addSeenDishIds(requestId, newSeenIds);
     }
@@ -449,8 +639,16 @@ export class RecommendationService {
 
     // 10. 构建响应
     // 如果没有结果，返回 total=0；否则返回 -1 表示无限滚动模式
-    const total = pageItems.length === 0 ? 0 : -1;
-    const totalPages = pageItems.length === 0 ? 0 : -1;
+    const total = context.offsetPagination
+      ? ordered.length
+      : pageItems.length === 0
+        ? 0
+        : -1;
+    const totalPages = context.offsetPagination
+      ? Math.ceil(ordered.length / pageSize)
+      : pageItems.length === 0
+        ? 0
+        : -1;
 
     return this.buildRecommendationResult(
       pageItems,
@@ -490,17 +688,26 @@ export class RecommendationService {
     filterConditions: Prisma.DishWhereInput[],
     options: {
       triggerDishId?: string;
+      recallQuota?: RecallQuotaConfig;
+      policy?: ResolvedPolicy;
+      userFeatures?: UserFeatures;
     } = {},
   ): Promise<any[]> {
     // 计算需要召回的候选数量
     const minCandidatesNeeded = pagination.page * pagination.pageSize;
-    const candidateLimit = Math.max(
-      minCandidatesNeeded * RECOMMENDATION_LIMITS.CANDIDATE_MULTIPLIER,
-      RECOMMENDATION_LIMITS.MIN_CANDIDATES,
-    );
+    const candidateLimit =
+      options.policy?.config.recall.candidateLimit ??
+      Math.max(
+        minCandidatesNeeded * RECOMMENDATION_LIMITS.CANDIDATE_MULTIPLIER,
+        RECOMMENDATION_LIMITS.MIN_CANDIDATES,
+      );
 
     // 相似推荐场景：使用专门的相似召回逻辑
-    if (scene === RecommendationScene.SIMILAR && options.triggerDishId) {
+    if (
+      !options.policy &&
+      scene === RecommendationScene.SIMILAR &&
+      options.triggerDishId
+    ) {
       return this.recallSimilarCandidates(
         options.triggerDishId,
         candidateLimit,
@@ -510,7 +717,8 @@ export class RecommendationService {
 
     // === 多路召回策略 ===
     // 从 A/B 测试实验配置中获取召回配额，如果没有配置则使用默认值
-    const quotaConfig = await this.getRecallQuotaConfig(userId, scene);
+    const quotaConfig =
+      options.recallQuota ?? resolveRecommendationConfig({}, scene).recallQuota;
 
     const vectorQuota = Math.floor(candidateLimit * quotaConfig.vectorQuota);
     const ruleQuota = Math.floor(candidateLimit * quotaConfig.ruleQuota);
@@ -523,15 +731,33 @@ export class RecommendationService {
         `rule=${quotaConfig.ruleQuota}, collaborative=${quotaConfig.collaborativeQuota}`,
     );
 
+    const versionedIds =
+      options.policy && vectorQuota > 0
+        ? await this.recallVersioned(
+            options.policy,
+            options.userFeatures!,
+            options.triggerDishId,
+            vectorQuota,
+            filterConditions,
+          )
+        : undefined;
     const recallResults = await Promise.allSettled([
       // 路径1：向量召回（语义相似度）
-      this.recallByVector(userId, vectorQuota, filterConditions),
+      vectorQuota > 0
+        ? versionedIds
+          ? Promise.resolve(versionedIds)
+          : this.recallByVector(userId, vectorQuota, filterConditions)
+        : Promise.resolve([]),
 
       // 路径2：规则召回（业务规则 + SQL过滤）
-      this.recallByRules(ruleQuota, filterConditions),
+      ruleQuota > 0
+        ? this.recallByRules(ruleQuota, filterConditions)
+        : Promise.resolve([]),
 
       // 路径3：协同召回（基于用户相似度）
-      this.recallByCollaboration(userId, collabQuota, filterConditions),
+      collabQuota > 0
+        ? this.recallByCollaboration(userId, collabQuota, filterConditions)
+        : Promise.resolve([]),
     ]);
 
     // 融合召回结果并去重
@@ -582,78 +808,64 @@ export class RecommendationService {
         `Collab: ${recallResults[2].status === 'fulfilled' ? recallResults[2].value.length : 0}`,
     );
 
-    return dishes;
+    const byId = new Map(dishes.map((dish) => [dish.id, dish]));
+    return Array.from(allDishIds).flatMap((id) =>
+      byId.has(id) ? [byId.get(id)!] : [],
+    );
   }
 
-  /**
-   * 获取召回配额配置
-   *
-   * 优先从 A/B 测试实验配置中获取，如果没有则使用默认值
-   * 这允许通过 A/B 测试来优化召回策略
-   *
-   * @param userId 用户ID
-   * @param scene 推荐场景
-   */
-  private async getRecallQuotaConfig(
-    userId: string,
-    scene: RecommendationScene,
-  ): Promise<RecallQuotaConfig> {
-    // 默认配额配置
-    const DEFAULT_QUOTA: RecallQuotaConfig = {
-      vectorQuota: 0.6, // 60% 向量召回
-      ruleQuota: 0.3, // 30% 规则召回
-      collaborativeQuota: 0.1, // 10% 协同召回
-    };
-
-    // 如果没有实验服务，直接返回默认值
-    if (!this.experimentService) {
-      return DEFAULT_QUOTA;
-    }
-
-    try {
-      // 构建实验上下文
-      const experimentContext: RecommendationContext = {
-        userId,
-        scene,
-      };
-
-      // 获取用户的实验分组
-      const assignment = await this.experimentService.assignUserToExperiment(
-        userId,
-        experimentContext,
+  private async recallVersioned(
+    policy: ResolvedPolicy,
+    features: UserFeatures,
+    triggerDishId: string | undefined,
+    limit: number,
+    filters: Prisma.DishWhereInput[],
+  ): Promise<string[]> {
+    if (
+      !policy.index ||
+      policy.index.status !== 'ready' ||
+      policy.index.model.status !== 'ready' ||
+      !this.vectorStore ||
+      !this.modelRuntime
+    )
+      throw new Error('Vector index unavailable');
+    let query: number[];
+    if (triggerDishId) {
+      const dish = await this.prisma.dish.findUnique({
+        where: { id: triggerDishId },
+      });
+      if (!dish) return [];
+      query = await this.modelRuntime.generateDish(
+        policy.index.model,
+        dish,
+        policy.index.parameters,
       );
-
-      // 如果实验分组中配置了召回配额，则使用实验配置
-      if (assignment && 'recallQuota' in assignment && assignment.recallQuota) {
-        const quota = assignment.recallQuota;
-
-        // 验证配额总和是否为 1
-        const sum =
-          quota.vectorQuota + quota.ruleQuota + quota.collaborativeQuota;
-        if (Math.abs(sum - 1.0) > 0.01) {
-          this.logger.warn(
-            `Recall quota sum (${sum}) is not 1.0, using default config`,
-          );
-          return DEFAULT_QUOTA;
-        }
-
-        this.logger.debug(
-          `Using recall quota from experiment: ${JSON.stringify(quota)}`,
-        );
-        return quota;
-      }
-    } catch (error) {
-      this.logger.warn(
-        `Failed to get recall quota from experiment: ${error.message}`,
+    } else
+      query = await this.modelRuntime.generateUser(
+        policy.index.model,
+        features,
+        policy.index.parameters,
       );
-    }
-
-    return DEFAULT_QUOTA;
+    const excludeDishIds = filters.flatMap((f) =>
+      typeof f.id === 'object' && f.id && 'notIn' in f.id
+        ? (f.id.notIn as string[])
+        : [],
+    );
+    const canteen = filters.find((f) => f.canteenId)?.canteenId;
+    const canteenIds =
+      typeof canteen === 'string'
+        ? [canteen]
+        : canteen && typeof canteen === 'object' && 'in' in canteen
+          ? (canteen.in as string[])
+          : undefined;
+    return (
+      await this.vectorStore.search(policy.index.id, query, limit, {
+        excludeDishIds,
+        canteenIds,
+      })
+    ).map((hit) => hit.dishId);
   }
 
-  /**
-   * 向量召回路径
-   */
   private async recallByVector(
     userId: string,
     limit: number,
@@ -876,7 +1088,26 @@ export class RecommendationService {
     // 如果启用了嵌入服务且有用户嵌入，使用向量相似度增强
     let embeddingSimilarities: Map<string, number> | null = null;
 
-    if (this.embeddingService && this.embeddingService.isEnabled()) {
+    if (context.policy?.config.ranking.type === 'model_endpoint') {
+      if (!context.policy.ranker || context.policy.ranker.status !== 'ready')
+        throw new Error('Ranking model unavailable');
+      const scores = await this.modelRuntime!.rank(
+        context.policy.ranker,
+        userFeatures,
+        candidateDishes,
+        context.policy.config.ranking.timeoutMs,
+        context.policy.config.ranking.parameters,
+      );
+      return candidateDishes.map((dish) => ({
+        dish,
+        score: scores.get(dish.id)!,
+      }));
+    }
+    if (
+      !context.policy &&
+      this.embeddingService &&
+      this.embeddingService.isEnabled()
+    ) {
       const dishIds = candidateDishes.map((d) => d.id);
       try {
         embeddingSimilarities =
@@ -2008,7 +2239,6 @@ export class RecommendationService {
     userId: string,
     result: RecommendationResultDto,
     context: RecommendationContext,
-    experimentId?: string,
   ): Promise<void> {
     if (!this.eventLogger) {
       return;
@@ -2020,8 +2250,17 @@ export class RecommendationService {
       {
         scene: context.scene,
         requestId: context.requestId!,
-        experimentId,
+        experimentId: context.experimentId,
         groupItemId: context.groupItemId,
+        extras: new Map(
+          result.data.items.map((item) => [
+            item.id,
+            {
+              configDigest: context.configuration?.configDigest,
+              configFallback: context.configFallback === true,
+            },
+          ]),
+        ),
       },
     );
   }
@@ -2191,11 +2430,63 @@ export class RecommendationService {
   /**
    * 获取相似菜品推荐
    */
+  private async getCompatibilityRecommendations(
+    userId: string,
+    request: RecommendationRequestDto,
+  ): Promise<{
+    items: ScoredDish[];
+    total: number;
+    totalPages: number;
+    trace?: RecommendationResultDto['data'];
+  }> {
+    const result = await this.getRecommendations(
+      userId,
+      { ...request, includeScoreBreakdown: true },
+      { offsetPagination: true },
+    );
+    const dishes = await this.prisma.dish.findMany({
+      where: {
+        id: { in: result.data.items.map((item) => item.id) },
+        status: 'online',
+      },
+      include: { canteen: true, window: true },
+    });
+    const byId = new Map(dishes.map((dish) => [dish.id, dish]));
+    return {
+      items: result.data.items
+        .filter((item) => byId.has(item.id))
+        .map((item) => ({
+          dish: byId.get(item.id)!,
+          score: item.score ?? 0,
+          scoreBreakdown: item.scoreBreakdown,
+        })),
+      total: result.data.meta.total,
+      totalPages: result.data.meta.totalPages,
+      trace: result.data,
+    };
+  }
+
   async getSimilarDishes(
     dishId: string,
     pagination: { page: number; pageSize: number },
     userId?: string,
-  ): Promise<{ items: ScoredDish[]; total: number; totalPages: number }> {
+  ): Promise<{
+    items: ScoredDish[];
+    total: number;
+    totalPages: number;
+    trace?: RecommendationResultDto['data'];
+  }> {
+    if (
+      userId &&
+      this.policies &&
+      (await this.policies.resolve(RecommendationScene.SIMILAR, null))
+    )
+      return this.getCompatibilityRecommendations(userId, {
+        scene: RecommendationScene.SIMILAR,
+        triggerDishId: dishId,
+        filter: {},
+        pagination,
+      });
     // 尝试从缓存获取完整结果
     const cacheKey = `${CACHE_CONFIG.KEY_PREFIX.RECOMMENDATION}${userId || 'anonymous'}:similar:${dishId}`;
     let allScoredDishes: ScoredDish[];
@@ -2565,7 +2856,26 @@ export class RecommendationService {
       mealTime?: string;
       pagination: { page: number; pageSize: number };
     },
-  ): Promise<{ items: ScoredDish[]; total: number; totalPages: number }> {
+  ): Promise<{
+    items: ScoredDish[];
+    total: number;
+    totalPages: number;
+    trace?: RecommendationResultDto['data'];
+  }> {
+    if (
+      this.policies &&
+      (await this.policies.resolve(RecommendationScene.HOME, null))
+    )
+      return this.getCompatibilityRecommendations(userId, {
+        scene: RecommendationScene.HOME,
+        filter: {
+          ...(options.canteenId ? { canteenId: [options.canteenId] } : {}),
+          ...(options.mealTime
+            ? { mealTime: [options.mealTime as MealTime] }
+            : {}),
+        },
+        pagination: options.pagination,
+      });
     const { canteenId, mealTime, pagination } = options;
 
     // 尝试从缓存获取完整结果
@@ -2667,11 +2977,10 @@ export class RecommendationService {
         take: RECOMMENDATION_LIMITS.MIN_CANDIDATES,
       });
 
-      const weights = this.resolveWeights(
+      const weights = resolveRecommendationConfig(
+        {},
         RecommendationScene.HOME,
-        false,
-        null,
-      );
+      ).weights;
       allScoredDishes = await this.scoreCandidates(
         dishes,
         userFeatures,
@@ -2771,6 +3080,7 @@ export class RecommendationService {
     const assignment = await this.experimentService.assignUserToExperiment(
       userId,
       context,
+      experimentId,
     );
 
     if (assignment && 'groupItemId' in assignment) {

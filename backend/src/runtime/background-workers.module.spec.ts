@@ -1,3 +1,7 @@
+import {
+  RecommendationIndexProcessor,
+  RECOMMENDATION_INDEX_QUEUE,
+} from '@/recommendation-platform/index-worker.module';
 import { ModerationDispatcher } from '@/content-moderation/moderation-dispatcher.service';
 import { NewsSourcesProcessor } from '@/news-sources/news-sources.processor';
 import { NEWS_SYNC_QUEUE } from '@/news-sources/news-sources.queue';
@@ -160,6 +164,7 @@ describe('background worker composition', () => {
         onApplicationShutdown: () => shutdown.push('cache'),
       });
     for (const queue of [
+      RECOMMENDATION_INDEX_QUEUE,
       NEWS_SYNC_QUEUE,
       EMBEDDING_QUEUE,
       DISH_SYNC_QUEUE,
@@ -173,6 +178,7 @@ describe('background worker composition', () => {
     }
     const module = await builder.compile();
     for (const processor of [
+      RecommendationIndexProcessor,
       NewsSourcesProcessor,
       EmbeddingQueueProcessor,
       DishSyncProcessor,
@@ -196,12 +202,13 @@ describe('background worker composition', () => {
     } finally {
       await module.close();
     }
-    expect(shutdown.slice(0, 4).sort()).toEqual([
+    expect(shutdown.slice(0, 5).sort()).toEqual([
       'DishReviewStatsProcessor',
       'DishSyncProcessor',
       'EmbeddingQueueProcessor',
       'NewsSourcesProcessor',
+      'RecommendationIndexProcessor',
     ]);
-    expect(shutdown.slice(4).sort()).toEqual(['cache', 'database']);
+    expect(shutdown.slice(5).sort()).toEqual(['cache', 'database']);
   });
 });

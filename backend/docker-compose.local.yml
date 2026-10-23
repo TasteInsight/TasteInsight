@@ -22,6 +22,26 @@ services:
       retries: 5
     restart: unless-stopped
 
+  recommendation-db:
+    profiles: [recommendation]
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_USER: ${RECOMMENDATION_POSTGRES_USER:-recommendation}
+      POSTGRES_PASSWORD: ${RECOMMENDATION_POSTGRES_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
+      POSTGRES_DB: ${RECOMMENDATION_POSTGRES_DB:-tasteinsight_recommendation}
+    ports:
+      - "127.0.0.1:${RECOMMENDATION_POSTGRES_PORT:-5435}:5432"
+    volumes:
+      - recommendation-db-data:/var/lib/postgresql/data
+    networks:
+      - db_net
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${RECOMMENDATION_POSTGRES_USER:-recommendation}", "-d", "${RECOMMENDATION_POSTGRES_DB:-tasteinsight_recommendation}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
@@ -40,6 +60,7 @@ services:
 
 volumes:
   db-data:
+  recommendation-db-data:
   redis-data:
 
 networks:

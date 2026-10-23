@@ -387,6 +387,7 @@ const {
   isFavorited,
   favoriteLoading,
   toggleFavorite,
+  setRecommendationSource,
 } = useDishDetail();
 
 const {
@@ -620,6 +621,7 @@ const displayedSubDishes = computed(() => {
 onLoad(async (options: Record<string, string | undefined> = {}) => {
   if (options.id) {
     dishId.value = options.id;
+    setRecommendationSource(options.deliveryId && options.recommendationSession ? { deliveryId: options.deliveryId, dishId: options.id, session: options.recommendationSession } : null);
     const loaded = await fetchDishDetail(options.id);
     if (loaded && active && options.reviewId) showAllCommentsPanel(options.reviewId);
   }

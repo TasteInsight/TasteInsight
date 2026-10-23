@@ -21,7 +21,7 @@ describe('internal worker readiness', () => {
       isConnected: jest.fn().mockReturnValue(true),
       getRedisClient: jest.fn().mockReturnValue({ ping }),
     };
-    processors = Array.from({ length: 4 }, () => ({
+    processors = Array.from({ length: 5 }, () => ({
       worker: {
         isRunning: jest.fn().mockReturnValue(true),
         isPaused: jest.fn().mockReturnValue(false),
@@ -35,6 +35,7 @@ describe('internal worker readiness', () => {
       processors[1],
       processors[2],
       processors[3],
+      processors[4],
     );
   });
 
@@ -47,16 +48,17 @@ describe('internal worker readiness', () => {
     );
   });
 
-  it('checks database, cache Redis and all four consumer Redis clients', async () => {
+  it('checks database, cache Redis and all five consumer Redis clients', async () => {
     await expect(controller.getHealth()).resolves.toEqual({ status: 'ok' });
     expect(prisma.$queryRaw.mock.calls[0][0].join('')).toBe('SELECT 1');
     expect(ping).toHaveBeenCalledTimes(1);
-    expect(info).toHaveBeenCalledTimes(4);
+    expect(info).toHaveBeenCalledTimes(5);
   });
 
   it.each([
     'stopped',
     'paused',
+    'recommendation-stopped',
     'closing',
     'cache-disconnected',
     'redis-failure',
@@ -65,6 +67,8 @@ describe('internal worker readiness', () => {
   ])('is unavailable when a dependency is %s', async (failure) => {
     if (failure === 'stopped')
       processors[0].worker.isRunning.mockReturnValue(false);
+    if (failure === 'recommendation-stopped')
+      processors[4].worker.isRunning.mockReturnValue(false);
     if (failure === 'paused')
       processors[1].worker.isPaused.mockReturnValue(true);
     if (failure === 'closing') processors[2].worker.closing = Promise.resolve();

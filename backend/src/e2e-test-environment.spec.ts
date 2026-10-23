@@ -20,6 +20,8 @@ const scripts: Record<string, string> = JSON.parse(
 ).scripts;
 const testDatabase =
   'postgresql://fixture:fixture-only-password@localhost:5432/catalog_test?schema=public';
+const recommendationDatabase =
+  'postgresql://fixture:fixture-only-password@localhost:5432/recommendation_test?schema=public';
 const developmentDatabase =
   'postgresql://fixture:fixture-only-password@localhost:5432/catalog';
 
@@ -70,7 +72,7 @@ if [ "$1 $2" = "run test:setup" ]; then
   exec /bin/sh -c '${scripts['test:setup']}'
 fi
 case "$1 $2" in
-  'run test:embedding:start'|'exec prisma'|'exec ts-node') echo "pnpm" >> "$CALL_LOG" ;;
+  'run test:embedding:start'|'exec prisma'|'exec ts-node') echo "pnpm $*" >> "$CALL_LOG" ;;
   *) exit 86 ;;
 esac
 `,
@@ -81,6 +83,7 @@ esac
       `require('fs').writeFileSync(process.env.SUITE_LOG, JSON.stringify({
   mode: process.env.NODE_ENV,
   database: process.env.DATABASE_URL,
+  recommendationDatabase: process.env.RECOMMENDATION_DATABASE_URL,
   redisPassword: process.env.REDIS_PASSWORD,
   mock: process.env.USE_MOCK_AI_PROVIDER,
 }));\n`,
@@ -112,13 +115,15 @@ esac
   function writeTestEnvironment() {
     writeFileSync(
       join(directory, '.env.test'),
-      `NODE_ENV=test\nDATABASE_URL=${testDatabase}\nREDIS_PORT=6381\nREDIS_PASSWORD=fixture-redis-password\nUSE_MOCK_AI_PROVIDER=true\n`,
+      `NODE_ENV=test\nDATABASE_URL=${testDatabase}\nRECOMMENDATION_DATABASE_URL=${recommendationDatabase}\nREDIS_PORT=6381\nREDIS_PASSWORD=fixture-redis-password\nUSE_MOCK_AI_PROVIDER=true\n`,
     );
   }
 
   function expectRejected(result: ReturnType<typeof run>, key: string) {
     expect(result.error).toBeUndefined();
-    expect(result.status).toBe(1);
+    // POSIX shells use different positive exit codes for missing required variables.
+    expect(result.signal).toBeNull();
+    expect(result.status).toBeGreaterThan(0);
     expect(result.stderr).toContain(key);
     expect(result.stderr).not.toContain('fixture-only-password');
     expect(existsSync(environment.SUITE_LOG!)).toBe(false);
@@ -188,12 +193,14 @@ esac
       const result = run(command, {
         NODE_ENV: 'test',
         DATABASE_URL: testDatabase,
+        RECOMMENDATION_DATABASE_URL: recommendationDatabase,
         REDIS_PASSWORD: 'ci-fixture-redis',
       });
       expect(result.status).toBe(0);
       expect(JSON.parse(readFileSync(environment.SUITE_LOG!, 'utf8'))).toEqual({
         mode: 'test',
         database: testDatabase,
+        recommendationDatabase,
         redisPassword: 'ci-fixture-redis',
       });
     },
@@ -208,6 +215,7 @@ esac
       expect(JSON.parse(readFileSync(environment.SUITE_LOG!, 'utf8'))).toEqual({
         mode: 'test',
         database: testDatabase,
+        recommendationDatabase,
         redisPassword: 'fixture-redis-password',
         mock: 'true',
       });
@@ -268,12 +276,58 @@ esac
     },
   );
 
+  describe.each([directJest, 'sh scripts/setup-test.sh'])(
+    'recommendation database boundary through %s',
+    (command) => {
+      it.each([
+        developmentDatabase,
+        'mysql://fixture:fixture-only-password@localhost/recommendation_test',
+        'postgresql://localhost/recommendation/other_test',
+        'postgresql://localhost/%zz_test',
+        testDatabase,
+        'postgresql://other:fixture-only-password@127.0.0.1/catalog_test?schema=other',
+      ])('rejects an unsafe recommendation database %s', (url) => {
+        expectRejected(
+          run(command, {
+            NODE_ENV: 'test',
+            DATABASE_URL: testDatabase,
+            RECOMMENDATION_DATABASE_URL: url,
+            REDIS_PORT: '6381',
+            REDIS_PASSWORD: 'fixture-redis-password',
+          }),
+          'RECOMMENDATION_DATABASE_URL',
+        );
+      });
+    },
+  );
+
+  it('requires the recommendation database before setup side effects', () => {
+    expectRejected(
+      run('sh scripts/setup-test.sh', {
+        NODE_ENV: 'test',
+        DATABASE_URL: testDatabase,
+        REDIS_PORT: '6381',
+        REDIS_PASSWORD: 'fixture-redis-password',
+      }),
+      'RECOMMENDATION_DATABASE_URL',
+    );
+  });
+
   it('retains setup environment loading with only stubbed Docker and Prisma commands', () => {
     writeTestEnvironment();
     const result = run(scripts['test:setup']);
     expect(result.status).toBe(0);
     expect(
       readFileSync(environment.CALL_LOG!, 'utf8').trim().split('\n'),
-    ).toEqual(['docker', 'docker', 'pnpm', 'sleep', 'pnpm', 'pnpm', 'pnpm']);
+    ).toEqual([
+      'docker',
+      'docker',
+      'pnpm run test:embedding:start',
+      'sleep',
+      'pnpm exec prisma migrate deploy',
+      'pnpm exec prisma generate',
+      'pnpm exec ts-node scripts/recommendation-store-migrate.ts',
+      'pnpm exec ts-node prisma/seed.ts',
+    ]);
   });
 });

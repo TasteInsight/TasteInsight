@@ -693,9 +693,7 @@ export class EmbeddingService implements OnModuleInit {
   /**
    * 提取用户数值特征（用于混合嵌入）
    */
-  private extractUserNumericFeatures(
-    userFeatures: UserFeatures,
-  ): NumericFeatures {
+  extractUserNumericFeatures(userFeatures: UserFeatures): NumericFeatures {
     const prefs = userFeatures.preferences;
     const favFeatures = userFeatures.favoriteFeatures;
 

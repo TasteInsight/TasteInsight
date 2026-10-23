@@ -10,6 +10,7 @@ x-database-environment: &database-environment
   POSTGRES_PORT: ${POSTGRES_PORT:-5432}
   POSTGRES_SSLMODE:
   DATABASE_URL:
+  RECOMMENDATION_DATABASE_URL:
   # Every production root rejects unsafe legacy startup switches.
   RUN_SEED:
   IMPORT_DATA:
@@ -22,6 +23,7 @@ x-runtime-environment: &runtime-environment
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
   REDIS_REC_DB:
+  RECOMMENDATION_MODEL_DEPLOYMENTS:
   EXTERNAL_EMBEDDING_SERVICE_ENABLED:
   EXTERNAL_EMBEDDING_SERVICE_URL: ${EXTERNAL_EMBEDDING_SERVICE_URL:-http://embedding-service:5001}
   EXTERNAL_EMBEDDING_SERVICE_VERSION:
@@ -108,6 +110,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      recommendation-db:
+        condition: service_healthy
+        required: false
 
   public-api:
     <<: *backend
@@ -227,6 +232,10 @@ services:
     image: ${IMAGE_REGISTRY:-ghcr.io/tasteinsight}/tasteinsight-embedding:${TAG:-latest}
     environment:
       # Only pass variables used by the Python service; do not expose backend secrets.
+      PYTHON_EMBEDDING_TOKEN: ${PYTHON_EMBEDDING_TOKEN:-}
+      PYTHON_EMBEDDING_ENABLED: ${PYTHON_EMBEDDING_ENABLED:-true}
+      PYTHON_RANKING_VERSION: ${PYTHON_RANKING_VERSION:-rank-v1}
+      PYTHON_RANKING_CHECKPOINT: ${PYTHON_RANKING_CHECKPOINT:-saved_models/rank_v1.pt}
       PYTHON_EMBEDDING_TEXT_MODEL:
       PYTHON_EMBEDDING_DEFAULT_VERSION:
       PYTHON_EMBEDDING_DEVICE:
@@ -315,9 +324,16 @@ services:
       service: db
     ports: !reset []
 
+  recommendation-db:
+    extends:
+      file: docker-compose.local.yml
+      service: recommendation-db
+    ports: !reset []
+
 volumes:
   werss_data:
   db-data:
+  recommendation-db-data:
   uploads_data:
   redis-data:
   embedding_models:

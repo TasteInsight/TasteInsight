@@ -1,3 +1,4 @@
+import { RecommendationPlatformController } from '@/recommendation-platform/admin.controller';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
@@ -17,7 +18,10 @@ import { RecommendationModule } from '@/recommendation/recommendation.module';
  */
 @Module({
   imports: [JwtModule.register({}), ConfigModule, RecommendationModule],
-  controllers: [AdminRecommendationController],
+  controllers: [
+    AdminRecommendationController,
+    RecommendationPlatformController,
+  ],
   providers: [
     ExperimentsService,
     RecallQualityService,

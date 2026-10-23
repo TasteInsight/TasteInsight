@@ -160,12 +160,21 @@
       </router-link>
       <router-link
         v-if="authStore.user?.scope === 'GLOBAL'" v-permission="'experiment:view'"
+        to="/recommendation-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/recommendation-manage' || $route.path.startsWith('/recommendation-manage/') }"
+      >
+        <AppIcon class="iconify" icon="carbon:chemistry"></AppIcon>
+        <span>推荐策略与模型</span>
+      </router-link>
+      <router-link
+        v-if="authStore.user?.scope === 'GLOBAL'" v-permission="'experiment:view'"
         to="/experiment-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/experiment-manage' || $route.path.startsWith('/experiment-manage/') }"
       >
         <AppIcon class="iconify" icon="carbon:chemistry"></AppIcon>
-        <span>推荐配置</span>
+        <span>推荐实验</span>
       </router-link>
     </nav>
 

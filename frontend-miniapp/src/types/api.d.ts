@@ -1186,7 +1186,21 @@ export interface RecommendedDishItem {
 /**
  * 推荐响应数据
  */
+export interface RecommendationFeedback {
+  deliveryId: string;
+  dishId: string;
+  eventType: 'impression' | 'click' | 'favorite' | 'review';
+}
+
 export interface RecommendationResponseData extends PaginatedData<RecommendedDishItem> {
+  sessionReset?: boolean;
+  deliveryId?: string;
+  strategyRevisionId?: string;
+  indexId?: string;
+  modelVersionId?: string;
+  rankerVersionId?: string;
+  mode?: string;
+  fallbackReason?: string;
   requestId?: string;
   groupItemId?: string;
 }

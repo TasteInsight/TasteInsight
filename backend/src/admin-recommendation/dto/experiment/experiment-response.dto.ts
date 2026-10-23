@@ -2,6 +2,8 @@ import { BaseResponseDto, PaginationMeta } from '@/common/dto/response.dto';
 
 export class ExperimentDto {
   id: string;
+  scene: string;
+  priority: number;
   name: string;
   description?: string;
   trafficRatio: number;
@@ -10,6 +12,7 @@ export class ExperimentDto {
   status: string;
   groups: {
     id: string;
+    strategyRevisionId?: string;
     name: string;
     ratio: number;
     config?: Record<string, any>;

@@ -18,6 +18,11 @@ class Config:
     DEFAULT_VERSION = os.getenv('PYTHON_EMBEDDING_DEFAULT_VERSION') or 'v2'
     MODEL_DIR = os.getenv('PYTHON_EMBEDDING_MODEL_DIR', 'saved_models')  # 训练好的模型文件目录
     
+    ENABLED = os.getenv('PYTHON_EMBEDDING_ENABLED', 'true').lower() == 'true'
+    TOKEN = os.getenv('PYTHON_EMBEDDING_TOKEN', '')
+    RANKING_VERSION = os.getenv('PYTHON_RANKING_VERSION', 'rank-v1')
+    RANKING_CHECKPOINT = os.getenv('PYTHON_RANKING_CHECKPOINT', os.path.join(MODEL_DIR, 'rank_v1.pt'))
+
     # 设备配置
     DEVICE = os.getenv('PYTHON_EMBEDDING_DEVICE') or None  # None = 自动检测
     

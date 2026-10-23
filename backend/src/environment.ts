@@ -7,6 +7,7 @@ import {
 } from './auth/identity-configuration';
 import { isIP } from 'net';
 import { resolveDatabaseUrl } from './database-url';
+import { recommendationDatabaseUrl } from './recommendation-store/recommendation-database.config';
 import {
   notificationWebhookConfiguration,
   notificationWebhookUrl,
@@ -150,6 +151,11 @@ export function validateEnvironment(
   if (!['development', 'test', 'production'].includes(NODE_ENV)) {
     throw new Error('NODE_ENV must be development, test or production');
   }
+  recommendationDatabaseUrl(
+    environment.RECOMMENDATION_DATABASE_URL,
+    environment.DATABASE_URL,
+    NODE_ENV === 'production',
+  );
   const ENABLE_MOCK_AUTH = booleanSetting(
     environment.ENABLE_MOCK_AUTH,
     'ENABLE_MOCK_AUTH',

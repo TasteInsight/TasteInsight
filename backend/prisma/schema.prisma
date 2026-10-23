@@ -989,6 +989,8 @@ model RecommendationEvent {
 // ==================== A/B 测试实验配置 ====================
 
 model Experiment {
+  scene String @default("home")
+  priority Int @default(0)
   id          String  @id @default(cuid())
   name        String
   description String?
@@ -1015,6 +1017,7 @@ model Experiment {
 }
 
 model ExperimentGroupItem {
+  strategyRevisionId String?
   id           String     @id @default(cuid())
   experimentId String // 所属实验ID
   experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
@@ -1268,4 +1271,114 @@ model AllergenAlias {
 
   @@index([allergenValue])
   @@map("allergen_aliases")
+}
+
+// 推荐控制配置；向量数据由独立推荐库管理。
+model RecommendationModel {
+  parameterSchema      Json @default("{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{}}")
+  id                   String @id @default(cuid())
+  name                 String
+  kind                 String
+  provider             String
+  serviceVersion       String
+  artifactDigest       String
+  featureSchemaVersion String
+  dimension            Int?
+  deploymentId         String?
+  status               String @default("draft")
+  createdAt            DateTime @default(now())
+  verifiedAt           DateTime?
+  indexes              RecommendationIndex[]
+  @@map("recommendation_models")
+}
+
+model RecommendationIndex {
+  parameters     Json @default("{}")
+  generation     Int @default(0)
+  id             String @id @default(cuid())
+  name           String
+  modelVersionId String
+  model          RecommendationModel @relation(fields: [modelVersionId], references: [id])
+  status         String @default("building")
+  createdAt      DateTime @default(now())
+  readyAt        DateTime?
+  lastSyncedAt   DateTime?
+  lastError      String?
+  tasks          RecommendationIndexTask[]
+  @@map("recommendation_indexes")
+}
+
+model RecommendationProjection {
+  dishId    String @id
+  revision  BigInt @default(1)
+  payload   Json?
+  deleted   Boolean @default(false)
+  updatedAt DateTime @default(now())
+  @@map("recommendation_projections")
+}
+
+model RecommendationIndexTask {
+  indexId   String
+  dishId    String
+  revision  BigInt @default(0)
+  lastError String?
+  attempts  Int @default(0)
+  updatedAt DateTime @default(now())
+  index     RecommendationIndex @relation(fields: [indexId], references: [id], onDelete: Cascade)
+  @@id([indexId, dishId])
+  @@map("recommendation_index_tasks")
+}
+
+model RecommendationStrategy {
+  id          String @id @default(cuid())
+  name        String
+  scene       String
+  config      Json
+  digest      String?
+  status      String @default("draft")
+  createdAt   DateTime @default(now())
+  publishedAt DateTime?
+  @@index([scene, status])
+  @@map("recommendation_strategies")
+}
+
+model RecommendationSceneDefault {
+  scene              String @id
+  strategyRevisionId String
+  updatedAt          DateTime @updatedAt
+  @@map("recommendation_scene_defaults")
+}
+
+model RecommendationDelivery {
+  id                 String @id @default(cuid())
+  userId             String
+  requestId          String
+  scene              String
+  experimentId       String?
+  groupItemId        String?
+  strategyRevisionId String?
+  modelVersionId     String?
+  indexId            String?
+  rankerVersionId    String?
+  configDigest       String
+  items              Json
+  featureSnapshot    Json
+  fallbackReason     String?
+  latencyMs          Int
+  createdAt          DateTime @default(now())
+  feedback           RecommendationFeedback[]
+  @@index([experimentId, createdAt])
+  @@index([userId, requestId])
+  @@map("recommendation_deliveries")
+}
+
+model RecommendationFeedback {
+  id         String @id @default(cuid())
+  deliveryId String
+  dishId     String
+  eventType  String
+  createdAt  DateTime @default(now())
+  delivery   RecommendationDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  @@unique([deliveryId, dishId, eventType])
+  @@map("recommendation_feedback")
 }

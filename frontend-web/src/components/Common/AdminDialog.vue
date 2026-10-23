@@ -4,6 +4,7 @@
       ref="dialog"
       v-bind="$attrs"
       class="admin-dialog"
+      :class="{ 'admin-dialog-right': placement === 'right' }"
       role="dialog"
       aria-modal="true"
       :aria-labelledby="labelledby"
@@ -30,12 +31,14 @@ import { nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, 
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<{
+  placement?: 'center' | 'right'
   open: boolean
   labelledby?: string
   label?: string
   closeOnBackdrop?: boolean
   closeOnEscape?: boolean
 }>(), {
+  placement: 'center',
   closeOnBackdrop: true,
   closeOnEscape: true,
 })
@@ -126,6 +129,23 @@ function handleBackdrop() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+:global(html:has(.admin-dialog-right)) {
+  scrollbar-gutter: stable;
+}
+
+:global(html:has(.admin-dialog-right[open])) {
+  overflow: hidden;
+}
+
+.admin-dialog-right[open] {
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-end;
+  overflow: hidden;
 }
 
 .admin-dialog::backdrop {

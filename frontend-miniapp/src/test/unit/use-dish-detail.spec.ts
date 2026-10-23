@@ -5,6 +5,11 @@ import { useComment } from '@/pages/dish/composables/use-comment';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getDishById, getDishesByIds } from '@/api/modules/dish';
 
+import { logRecommendationFeedback } from '@/api/modules/recommendation';
+jest.mock('@/api/modules/recommendation', () => ({
+  logRecommendationFeedback: jest.fn().mockResolvedValue({ code: 200 }),
+}));
+
 // Mock APIs
 jest.mock('@/api/modules/dish', () => ({
   getDishById: jest.fn(),
@@ -184,6 +189,39 @@ describe('useDishDetail', () => {
   });
 
   describe('toggleFavorite', () => {
+    it('attributes successful favorites only to the matching dish and current recommendation session', async () => {
+      const user = useUserStore() as any;
+      user.isLoggedIn = true;
+      user.sessionVersion = 1;
+      user.userInfo = { myFavoriteDishes: [] };
+      const detail = useDishDetail();
+      detail.dish.value = { id: 'd1' } as any;
+      (require('@/api/modules/dish').favoriteDish as jest.Mock).mockResolvedValue({ code: 200 });
+      detail.setRecommendationSource({ deliveryId: 'delivery', dishId: 'd1', session: '1' });
+      await detail.toggleFavorite();
+      expect(logRecommendationFeedback).toHaveBeenCalledWith({
+        deliveryId: 'delivery',
+        dishId: 'd1',
+        eventType: 'favorite',
+      });
+      (logRecommendationFeedback as jest.Mock).mockClear();
+      detail.setRecommendationSource({
+        deliveryId: 'another-delivery',
+        dishId: 'd2',
+        session: '1',
+      });
+      await detail.toggleFavorite();
+      expect(logRecommendationFeedback).not.toHaveBeenCalled();
+      detail.setRecommendationSource({
+        deliveryId: 'another-delivery',
+        dishId: 'd1',
+        session: '1',
+      });
+      user.sessionVersion = 2;
+      await detail.toggleFavorite();
+      expect(logRecommendationFeedback).not.toHaveBeenCalled();
+    });
+
     it('skips when no dish id or not logged in and handles favorite/unfavorite success', async () => {
       const user = useUserStore() as any;
       const { toggleFavorite, dish, favoriteLoading } = useDishDetail();

@@ -152,3 +152,89 @@ test('a superseded hydration cannot publish either online or offline cards after
   expect(wrapper.findAll('.dish-card')).toHaveLength(0);
   expect(wrapper.text()).toContain('暂无推荐菜品');
 });
+
+test('pagination retains each delivery and refresh clears the preceding delivery sources', async () => {
+  const RecommendItem = (await import('@/pages/index/components/RecommendItem.vue')).default;
+  (uni as any).createIntersectionObserver = jest.fn(() => ({
+    disconnect: jest.fn(),
+    relativeToViewport() {
+      return this;
+    },
+    observe: jest.fn(),
+  }));
+  const first = recommendations(['first'], 1, 2);
+  const second = recommendations(['first', 'second'], 2, 2);
+  const refreshed = recommendations(['second']);
+  (getRecommendations as jest.Mock)
+    .mockResolvedValueOnce({ ...first, data: { ...first.data, deliveryId: 'delivery-1' } })
+    .mockResolvedValueOnce({ ...second, data: { ...second.data, deliveryId: 'delivery-2' } })
+    .mockResolvedValueOnce({ ...refreshed, data: { ...refreshed.data, deliveryId: 'delivery-3' } });
+  (getDishesByIds as jest.Mock)
+    .mockResolvedValueOnce(details([dish('first')]))
+    .mockResolvedValueOnce(details([dish('first'), dish('second')]))
+    .mockResolvedValueOnce(details([dish('second')]));
+  const { wrapper } = mountHome();
+  await flushPromises();
+  await wrapper.get('.home-text-button').trigger('click');
+  await flushPromises();
+  expect(wrapper.findAllComponents(RecommendItem).map(card => card.props('deliveryId'))).toEqual([
+    'delivery-1',
+    'delivery-2',
+  ]);
+  await (wrapper.vm as any).fetchRecommendations({ reset: true });
+  await flushPromises();
+  expect(wrapper.findAllComponents(RecommendItem).map(card => card.props('deliveryId'))).toEqual([
+    'delivery-3',
+  ]);
+});
+
+test('server strategy reset replaces pagination and delivery attribution before continuing from page one', async () => {
+  const RecommendItem = (await import('@/pages/index/components/RecommendItem.vue')).default;
+  (uni as any).createIntersectionObserver = jest.fn(() => ({
+    disconnect: jest.fn(),
+    relativeToViewport() {
+      return this;
+    },
+    observe: jest.fn(),
+  }));
+  const first = recommendations(['old'], 1, 3);
+  const reset = recommendations(['new'], 1, 3);
+  const next = recommendations(['next'], 2, 3);
+  (getRecommendations as jest.Mock)
+    .mockResolvedValueOnce({ ...first, data: { ...first.data, deliveryId: 'old-delivery' } })
+    .mockResolvedValueOnce({
+      ...reset,
+      data: {
+        ...reset.data,
+        requestId: 'new-session',
+        sessionReset: true,
+        deliveryId: 'reset-delivery',
+      },
+    })
+    .mockResolvedValueOnce({
+      ...next,
+      data: { ...next.data, requestId: 'new-session', deliveryId: 'next-delivery' },
+    });
+  (getDishesByIds as jest.Mock)
+    .mockResolvedValueOnce(details([dish('old')]))
+    .mockResolvedValueOnce(details([dish('new')]))
+    .mockResolvedValueOnce(details([dish('next')]));
+  const { wrapper, dishes } = mountHome();
+  await flushPromises();
+  await wrapper.get('.home-text-button').trigger('click');
+  await flushPromises();
+  expect(dishes.pagination).toEqual({ page: 1, totalPages: 3 });
+  expect(wrapper.findAllComponents(RecommendItem).map(card => card.props('deliveryId'))).toEqual([
+    'reset-delivery',
+  ]);
+  expect(wrapper.text()).not.toContain('菜品 old');
+  await wrapper.get('.home-text-button').trigger('click');
+  await flushPromises();
+  expect(getRecommendations).toHaveBeenLastCalledWith(
+    expect.objectContaining({ requestId: 'new-session', pagination: { page: 2, pageSize: 10 } })
+  );
+  expect(wrapper.findAllComponents(RecommendItem).map(card => card.props('deliveryId'))).toEqual([
+    'reset-delivery',
+    'next-delivery',
+  ]);
+});

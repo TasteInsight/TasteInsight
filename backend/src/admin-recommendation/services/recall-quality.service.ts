@@ -107,11 +107,15 @@ export class RecallQualityService {
         try {
           // 使用推荐服务获取召回结果
           const recommendations =
-            await this.recommendationService.getRecommendations(user.id, {
-              scene: RecommendationScene.HOME,
-              pagination: { page: 1, pageSize: k },
-              filter: {},
-            });
+            await this.recommendationService.getRecommendations(
+              user.id,
+              {
+                scene: RecommendationScene.HOME,
+                pagination: { page: 1, pageSize: k },
+                filter: {},
+              },
+              { mode: 'evaluation' },
+            );
 
           const dishIds = recommendations.data.items.map((item) => item.id);
           recallResults.set(user.id, dishIds);
@@ -141,7 +145,10 @@ export class RecallQualityService {
       return {
         code: 200,
         message: 'Recall quality evaluation completed successfully',
-        data: report,
+        data: {
+          ...report,
+          summary: `历史交互命中诊断（首页基线配置）：${report.summary}`,
+        },
       };
     } catch (error) {
       this.logger.error(

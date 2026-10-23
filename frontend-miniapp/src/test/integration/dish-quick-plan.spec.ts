@@ -96,6 +96,7 @@ beforeEach(() => {
     isFavorited: ref(false),
     favoriteLoading: ref(false),
     toggleFavorite: jest.fn(),
+    setRecommendationSource: jest.fn(),
   };
   setActivePinia(createPinia());
 });

@@ -39,6 +39,18 @@ export class RecommendationResultDataDto {
   requestId?: string;
   /** 实验分组项 ID（A/B 测试） */
   groupItemId?: string;
+  experimentId?: string;
+  /** 实际场景、排序权重和召回配额的内容摘要 */
+  configDigest?: string;
+  deliveryId?: string;
+  sessionReset?: boolean;
+  evaluationTrace?: Record<string, unknown>;
+  strategyRevisionId?: string;
+  indexId?: string;
+  modelVersionId?: string;
+  rankerVersionId?: string;
+  mode?: 'online' | 'evaluation' | 'preview';
+  fallbackReason?: string;
   /** 调试信息（可选） */
   debug?: RecommendationDebugInfo;
 }

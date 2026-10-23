@@ -44,3 +44,6 @@ export const logClickEvent = (
     data,
   });
 };
+
+export const logRecommendationFeedback = (data: import('@/types/api').RecommendationFeedback) =>
+  request<{ recorded: boolean }>({ url: '/recommend/events/feedback', method: 'POST', data });

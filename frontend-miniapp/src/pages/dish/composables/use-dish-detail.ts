@@ -5,12 +5,17 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import type { Dish } from '@/types/api';
 import { useReview } from './use-review';
 import { useComment } from './use-comment';
+import { createRecommendationFeedback } from '@/composables/use-recommendation-feedback';
 import { requireLogin } from '@/utils/login-navigation';
 
 /**
  * 菜品详情页面逻辑
  */
 export function useDishDetail() {
+  let recommendationSource: { deliveryId: string; dishId: string; session: string } | null = null;
+  const feedback = createRecommendationFeedback(() => !!recommendationSource && recommendationSource.session === String(userStore.sessionVersion) && userStore.isLoggedIn);
+  const setRecommendationSource = (source: typeof recommendationSource) => { feedback.reset(); recommendationSource = source; };
+  if (getCurrentScope()) onScopeDispose(() => { recommendationSource = null; feedback.reset(); });
   // --- 引入新的 Composables ---
   const {
     reviews,
@@ -278,6 +283,7 @@ export function useDishDetail() {
           // 更新本地用户信息
           const newFavorites = [...(userStore.userInfo?.myFavoriteDishes || []), dishId];
           userStore.updateLocalUserInfo({ myFavoriteDishes: newFavorites });
+          if (recommendationSource?.dishId === dishId) feedback.send({ deliveryId: recommendationSource.deliveryId, dishId, eventType: 'favorite' });
           uni.showToast({ title: t('food.addedToFavorites'), icon: 'success' });
         } else {
           uni.showToast({ title: res.message || t('food.actionFailed'), icon: 'none' });
@@ -295,6 +301,7 @@ export function useDishDetail() {
   watch(
     () => userStore.sessionVersion,
     () => {
+      setRecommendationSource(null);
       detailVersion++;
       currentDishId = '';
       dish.value = null;
@@ -353,5 +360,6 @@ export function useDishDetail() {
     isFavorited,
     favoriteLoading,
     toggleFavorite,
+    setRecommendationSource,
   };
 }

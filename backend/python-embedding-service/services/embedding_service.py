@@ -4,6 +4,9 @@
 
 import numpy as np
 import logging
+from pathlib import Path
+from copy import deepcopy
+from services.artifact_identity import identity_digest, source_digest, state_digest
 from typing import Dict, List, Union
 from encoders import TextEncoder, NumericEncoder
 from services.model_manager import ModelManager
@@ -32,12 +35,14 @@ class EmbeddingService:
         self.numeric_encoder = NumericEncoder(dimension=20)
         self.model_manager = ModelManager(device=device, model_dir=model_dir, default_version=default_version)
         
+        self._identities = {}
         logger.info("EmbeddingService initialized")
     
     def generate_embedding(self, 
                           text: str, 
                           features: Dict,
-                          version: str = None) -> np.ndarray:
+                          version: str = None,
+                          parameters: Dict = None) -> np.ndarray:
         """
         生成单个嵌入
         
@@ -57,14 +62,15 @@ class EmbeddingService:
         
         # 3. 获取模型并生成嵌入
         model = self.model_manager.get_model(version)
-        embedding = model.generate_embedding(text_emb, numeric_emb)
+        embedding = model.generate_embedding(text_emb, numeric_emb, parameters)
         
         return embedding
     
     def generate_embeddings_batch(self,
                                   texts: List[str],
                                   features_list: List[Dict],
-                                  version: str = None) -> np.ndarray:
+                                  version: str = None,
+                                  parameters: Dict = None) -> np.ndarray:
         """
         批量生成嵌入
         
@@ -87,7 +93,7 @@ class EmbeddingService:
         
         # 3. 获取模型并生成嵌入
         model = self.model_manager.get_model(version)
-        embeddings = model.generate_embedding(text_embs, numeric_embs)
+        embeddings = model.generate_embedding(text_embs, numeric_embs, parameters)
         
         return embeddings
     
@@ -95,7 +101,8 @@ class EmbeddingService:
                        text: str,
                        features: Dict,
                        from_version: str,
-                       to_version: str) -> np.ndarray:
+                       to_version: str,
+                       parameters: Dict = None) -> np.ndarray:
         """
         转换嵌入版本
         
@@ -117,7 +124,7 @@ class EmbeddingService:
                 raise ValueError("Only upgrade is supported (v1->v2->v3)")
         
         # 直接生成目标版本的嵌入
-        return self.generate_embedding(text, features, to_version)
+        return self.generate_embedding(text, features, to_version, parameters)
     
     def get_service_info(self) -> Dict:
         """获取服务信息"""
@@ -137,3 +144,25 @@ class EmbeddingService:
         """预加载模型"""
         self.model_manager.preload_models(versions)
 
+
+    def get_model_identity(self, version: str) -> Dict:
+        model = self.model_manager.get_model(version)
+        if self.text_encoder.dimension != model.text_dim:
+            raise ValueError('Text encoder dimension does not match embedding model')
+        if version not in self._identities:
+            root = Path(__file__).resolve().parents[1]
+            sources = [root / 'encoders/numeric_encoder.py', root / 'encoders/text_encoder.py',
+                       root / 'models/base.py', root / 'models/concat.py', root / 'models/fusion.py',
+                       Path(__file__), root / 'services/artifact_identity.py', root / 'model_parameters.py']
+            self._identities[version] = {
+                'ready': True, 'kind': 'embedding', 'version': version,
+                'dimension': model.dimension, 'featureSchemaVersion': 'dish-user-v1',
+                'parameterSchema': deepcopy(model.parameter_schema),
+                'artifactDigest': identity_digest({
+                    'version': version, 'text': self.text_encoder.artifact_digest,
+                    'parameterSchema': model.parameter_schema,
+                    'implementation': source_digest(*sources),
+                    'weights': state_digest(model.model.state_dict()) if model.requires_training else None,
+                }),
+            }
+        return deepcopy(self._identities[version])

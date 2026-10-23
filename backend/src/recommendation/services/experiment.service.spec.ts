@@ -150,6 +150,71 @@ describe('ExperimentService', () => {
     });
   });
 
+  describe('requested experiment and invalid stored config', () => {
+    it('selects the requested experiment instead of the first active match', async () => {
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([
+        { ...mockExperiment, trafficRatio: 1 },
+        {
+          ...mockExperiment,
+          id: 'exp-2',
+          trafficRatio: 1,
+          groupItems: [{ id: 'group-3', name: 'Second', ratio: 1, config: {} }],
+        },
+      ]);
+      cacheService.getUserExperimentGroup.mockImplementation(
+        async (_user, id) => (id === 'exp-2' ? 'group-3' : 'group-1'),
+      );
+      const result = await service.assignUserToExperiment(
+        'user',
+        undefined,
+        'exp-2',
+      );
+      expect(result).toMatchObject({
+        experimentId: 'exp-2',
+        groupItemId: 'group-3',
+      });
+      expect(cacheService.getUserExperimentGroup).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns no assignment for an inactive explicit target', async () => {
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([
+        { ...mockExperiment, trafficRatio: 1 },
+      ]);
+      expect(
+        await service.assignUserToExperiment('user', undefined, 'missing'),
+      ).toBeNull();
+      expect(cacheService.getUserExperimentGroup).not.toHaveBeenCalled();
+    });
+
+    it('uses a complete baseline when stored quota is invalid even if weights are valid', async () => {
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([
+        {
+          ...mockExperiment,
+          trafficRatio: 1,
+          groupItems: [
+            {
+              id: 'group-1',
+              name: 'Legacy',
+              ratio: 1,
+              config: {
+                weights: { dishQuality: 99 },
+                recallQuota: { vectorQuota: 1 },
+              },
+            },
+          ],
+        },
+      ]);
+      cacheService.getUserExperimentGroup.mockResolvedValue('group-1');
+      const result = await service.assignUserToExperiment('user');
+      expect(result).toMatchObject({
+        configFallback: true,
+        resolvedWeights: service.getDefaultWeights(),
+      });
+      expect(result?.weights).toBeUndefined();
+      expect(result?.recallQuota).toBeUndefined();
+    });
+  });
+
   describe('getActiveExperiments', () => {
     it('should return empty array when no experiments', () => {
       const result = service.getActiveExperiments();

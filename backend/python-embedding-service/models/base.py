@@ -7,11 +7,15 @@ from abc import ABC, abstractmethod
 import torch.nn as nn
 from typing import Dict, Any
 import numpy as np
+from copy import deepcopy
+from model_parameters import EMPTY_PARAMETER_SCHEMA
 
 
 class BaseEmbeddingModel(ABC):
     """嵌入模型基类"""
     
+    parameter_schema = EMPTY_PARAMETER_SCHEMA
+
     def __init__(self):
         self.version = None
         self.dimension = None
@@ -26,10 +30,11 @@ class BaseEmbeddingModel(ABC):
             'dimension': self.dimension,
             'requires_training': self.requires_training,
             'description': self.description,
+            'parameterSchema': deepcopy(self.parameter_schema),
         }
     
     @abstractmethod
-    def generate_embedding(self, text_emb: np.ndarray, numeric_emb: np.ndarray) -> np.ndarray:
+    def generate_embedding(self, text_emb: np.ndarray, numeric_emb: np.ndarray, parameters: Dict = None) -> np.ndarray:
         """
         生成嵌入向量
         

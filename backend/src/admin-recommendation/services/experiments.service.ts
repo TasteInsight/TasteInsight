@@ -1,12 +1,15 @@
 import {
   Injectable,
   NotFoundException,
-  Logger,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
+import { PrismaService } from '@/prisma.service';
 import { ExperimentService } from '@/recommendation/services/experiment.service';
+import { parseRecommendationConfig } from '@/recommendation/config/recommendation-config';
+import { RecommendationCatalogService } from '@/recommendation-platform/catalog.service';
+import { controlTransaction } from '@/recommendation-platform/control-transaction';
 import {
   CreateExperimentDto,
   UpdateExperimentDto,
@@ -18,408 +21,316 @@ import {
   SuccessResponseDto,
 } from '../dto/experiment/experiment-response.dto';
 
-/**
- * 实验管理服务
- *
- * 负责 A/B 测试实验的 CRUD 操作
- */
 @Injectable()
 export class ExperimentsService {
-  private readonly logger = new Logger(ExperimentsService.name);
-
   constructor(
     private prisma: PrismaService,
-    private experimentService: ExperimentService, // 实验服务
+    private experimentService: ExperimentService,
+    private catalog: RecommendationCatalogService,
   ) {}
 
-  /**
-   * 获取所有实验
-   */
   async getAllExperiments(): Promise<ExperimentListResponseDto> {
-    const experiments = await this.prisma.experiment.findMany({
-      include: {
-        groupItems: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+    const items = await this.prisma.experiment.findMany({
+      include: { groupItems: true },
+      orderBy: { createdAt: 'desc' },
     });
-
     return {
       code: 200,
       message: 'success',
       data: {
-        items: experiments.map((exp) => this.mapToExperimentDto(exp)),
+        items: items.map((e) => this.mapToExperimentDto(e)),
         meta: {
           page: 1,
-          pageSize: experiments.length,
-          total: experiments.length,
+          pageSize: items.length,
+          total: items.length,
           totalPages: 1,
         },
       },
     };
   }
-
-  /**
-   * 获取单个实验
-   */
   async getExperiment(id: string): Promise<ExperimentResponseDto> {
-    const experiment = await this.prisma.experiment.findUnique({
+    const item = await this.prisma.experiment.findUnique({
       where: { id },
-      include: {
-        groupItems: true,
-      },
+      include: { groupItems: true },
     });
-
-    if (!experiment) {
-      throw new NotFoundException('Experiment not found');
-    }
-
+    if (!item) throw new NotFoundException('Experiment not found');
     return {
       code: 200,
       message: 'success',
-      data: this.mapToExperimentDto(experiment),
+      data: this.mapToExperimentDto(item),
     };
   }
 
-  /**
-   * 创建实验
-   */
+  private validateFields(data: CreateExperimentDto | UpdateExperimentDto) {
+    if (
+      data.trafficRatio !== undefined &&
+      (typeof data.trafficRatio !== 'number' ||
+        !Number.isFinite(data.trafficRatio) ||
+        data.trafficRatio < 0 ||
+        data.trafficRatio > 1)
+    )
+      throw new BadRequestException('实验流量比例无效');
+    if (
+      data.priority !== undefined &&
+      (!Number.isInteger(data.priority) ||
+        data.priority < 0 ||
+        data.priority > 1000)
+    )
+      throw new BadRequestException('实验优先级无效');
+    if (
+      data.scene !== undefined &&
+      !['home', 'search', 'similar', 'guess_like', 'today'].includes(data.scene)
+    )
+      throw new BadRequestException('实验场景无效');
+    if (
+      data.name !== undefined &&
+      (typeof data.name !== 'string' || !data.name.trim())
+    )
+      throw new BadRequestException('实验名称无效');
+    if (data.groups !== undefined && !Array.isArray(data.groups))
+      throw new BadRequestException('实验分组无效');
+  }
+
+  private validateGroups(
+    groups: {
+      name: string;
+      ratio: number;
+      config?: unknown;
+      strategyRevisionId?: string | null;
+    }[],
+  ) {
+    if (
+      !groups.length ||
+      Math.abs(groups.reduce((sum, g) => sum + g.ratio, 0) - 1) > 1e-6
+    )
+      throw new BadRequestException('分组占比之和必须为 1');
+    if (new Set(groups.map((g) => g.name)).size !== groups.length)
+      throw new BadRequestException('分组名称重复');
+    for (const group of groups) {
+      if (!Number.isFinite(group.ratio) || group.ratio < 0 || group.ratio > 1)
+        throw new BadRequestException('分组占比无效');
+      if (
+        group.strategyRevisionId &&
+        group.config &&
+        Object.keys(group.config).length
+      )
+        throw new BadRequestException('每组只选择策略版本或直接配置中的一种');
+      try {
+        parseRecommendationConfig(group.config);
+      } catch (e) {
+        throw new BadRequestException(e.message);
+      }
+    }
+  }
+  private async validateStrategies(
+    tx: Prisma.TransactionClient,
+    scene: string,
+    groups: { strategyRevisionId?: string | null }[],
+  ) {
+    for (const group of groups)
+      if (group.strategyRevisionId) {
+        const strategy = await tx.recommendationStrategy.findUnique({
+          where: { id: group.strategyRevisionId },
+        });
+        if (
+          !strategy ||
+          strategy.status !== 'published' ||
+          strategy.scene !== scene
+        )
+          throw new BadRequestException('实验组须选择同场景已发布策略');
+        await this.catalog.validateReferences(tx, strategy);
+      }
+  }
+  private validateTimes(start: Date, end: Date | null) {
+    if (
+      !Number.isFinite(start.getTime()) ||
+      (end && (!Number.isFinite(end.getTime()) || end <= start))
+    )
+      throw new BadRequestException('结束时间须晚于开始时间');
+  }
+
   async createExperiment(
     data: CreateExperimentDto,
   ): Promise<SuccessResponseDto> {
-    // 验证分组比例之和为 1
-    const totalRatio = data.groups.reduce((sum, g) => sum + g.ratio, 0);
-    if (Math.abs(totalRatio - 1) > 0.01) {
-      throw new BadRequestException('分组占比之和必须为 1');
-    }
-
-    // 验证分组名称不重复
-    const groupNames = data.groups.map((g) => g.name);
-    const duplicateNames = groupNames.filter(
-      (name, index) => groupNames.indexOf(name) !== index,
-    );
-    if (duplicateNames.length > 0) {
-      throw new BadRequestException(
-        `分组名称重复: ${[...new Set(duplicateNames)].join(', ')}`,
-      );
-    }
-
-    const experiment = await this.prisma.experiment.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        trafficRatio: data.trafficRatio,
-        startTime: new Date(data.startTime),
-        endTime: data.endTime ? new Date(data.endTime) : null,
-        status: 'draft',
-        groupItems: {
-          create: data.groups.map((g) => ({
-            name: g.name,
-            ratio: g.ratio,
-            config: g.config as any,
-          })),
+    this.validateFields(data);
+    this.validateGroups(data.groups);
+    const startTime = new Date(data.startTime),
+      endTime = data.endTime ? new Date(data.endTime) : null;
+    this.validateTimes(startTime, endTime);
+    const experiment = await controlTransaction(this.prisma, async (tx) => {
+      await this.validateStrategies(tx, data.scene ?? 'home', data.groups);
+      return tx.experiment.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          scene: data.scene,
+          priority: data.priority,
+          trafficRatio: data.trafficRatio,
+          startTime,
+          endTime,
+          status: 'draft',
+          groupItems: {
+            create: data.groups.map((g) => ({
+              name: g.name,
+              ratio: g.ratio,
+              strategyRevisionId: g.strategyRevisionId,
+              config: g.config ?? {},
+            })),
+          },
         },
-      },
+      });
     });
-
-    // 刷新活跃实验列表
-    await this.experimentService.refreshActiveExperiments();
-    this.logger.log(
-      `Created experiment ${experiment.id}, refreshed active experiments`,
+    return this.refreshed(
+      experiment.id,
+      201,
+      'Experiment created successfully',
     );
-
-    return {
-      code: 201,
-      message: 'Experiment created successfully',
-      data: experiment.id,
-    };
   }
 
-  /**
-   * 更新实验
-   */
   async updateExperiment(
     id: string,
     data: UpdateExperimentDto,
   ): Promise<SuccessResponseDto> {
-    // 如果包含 groups，需要验证
-    if (data.groups) {
-      // 验证分组比例之和为 1
-      const totalRatio = data.groups.reduce((sum, g) => sum + g.ratio, 0);
-      if (Math.abs(totalRatio - 1) > 0.01) {
-        throw new BadRequestException('分组占比之和必须为 1');
-      }
-
-      // 验证分组名称不重复
-      const groupNames = data.groups.map((g) => g.name);
-      const duplicateNames = groupNames.filter(
-        (name, index) => groupNames.indexOf(name) !== index,
-      );
-      if (duplicateNames.length > 0) {
-        throw new BadRequestException(
-          `分组名称重复: ${[...new Set(duplicateNames)].join(', ')}`,
+    this.validateFields(data);
+    if (data.groups) this.validateGroups(data.groups);
+    await controlTransaction(this.prisma, async (tx) => {
+      const current = await tx.experiment.findUnique({
+        where: { id },
+        include: { groupItems: true },
+      });
+      if (!current) throw new NotFoundException('Experiment not found');
+      if (current.status === 'completed')
+        throw new ConflictException('已完成实验保持只读');
+      if (
+        current.status !== 'draft' &&
+        Object.entries(data).some(
+          ([key, value]) =>
+            value !== undefined && !['trafficRatio', 'status'].includes(key),
+        )
+      )
+        throw new ConflictException(
+          '已启动实验只允许调整流量或状态；修改策略请创建新实验',
         );
+      const startTime = data.startTime
+        ? new Date(data.startTime)
+        : current.startTime;
+      const endTime =
+        data.endTime === null
+          ? null
+          : data.endTime
+            ? new Date(data.endTime)
+            : current.endTime;
+      this.validateTimes(startTime, endTime);
+      const groups = data.groups ?? current.groupItems;
+      const scene = data.scene ?? current.scene;
+      if (
+        current.status === 'draft' ||
+        data.status === 'running' ||
+        (data.trafficRatio !== undefined &&
+          data.trafficRatio > current.trafficRatio)
+      ) {
+        await this.validateStrategies(tx, scene, groups);
       }
-    }
-
-    // 提取 groups 字段
-    const { groups, ...experimentData } = data;
-
-    // 转换日期字段
-    const updateData: any = { ...experimentData };
-    if (updateData.startTime) {
-      updateData.startTime = new Date(updateData.startTime);
-    }
-    if (updateData.endTime !== undefined) {
-      updateData.endTime = updateData.endTime
-        ? new Date(updateData.endTime)
-        : null;
-    }
-
-    // 使用事务更新实验和分组
-    const experiment = await this.prisma
-      .$transaction(async (tx) => {
-        // 更新实验基本信息
-        const updatedExp = await tx.experiment.update({
-          where: { id },
-          data: updateData,
+      if (data.status) this.validateTransition(current.status, data.status);
+      if (data.status === 'running') this.validateGroups(groups);
+      if (data.groups) {
+        const ids = new Set(current.groupItems.map((g) => g.id));
+        const incoming = data.groups.filter((g) => g.id).map((g) => g.id!);
+        if (
+          new Set(incoming).size !== incoming.length ||
+          incoming.some((id) => !ids.has(id))
+        )
+          throw new BadRequestException('分组 ID 无效或重复');
+        await tx.experimentGroupItem.deleteMany({
+          where: { experimentId: id },
         });
-
-        // 如果提供了 groups，则增量更新分组
-        if (groups && groups.length > 0) {
-          // 获取现有分组ID列表
-          const existingGroups = await tx.experimentGroupItem.findMany({
-            where: { experimentId: id },
-            select: { id: true },
-          });
-          const existingGroupIds = new Set(existingGroups.map((g) => g.id));
-
-          // 分类处理：有id的更新，没id的新增
-          const groupsToUpdate = groups.filter(
-            (g) => g.id && existingGroupIds.has(g.id),
-          );
-          const groupsToCreate = groups.filter((g) => !g.id);
-
-          // 计算需要删除的分组（现有的但不在新列表中的）
-          const newGroupIds = new Set(
-            groups.filter((g) => g.id).map((g) => g.id),
-          );
-          const groupIdsToDelete = [...existingGroupIds].filter(
-            (id) => !newGroupIds.has(id),
-          );
-
-          // 1. 删除被移除的分组
-          if (groupIdsToDelete.length > 0) {
-            await tx.experimentGroupItem.deleteMany({
-              where: { id: { in: groupIdsToDelete } },
-            });
-            this.logger.log(
-              `Deleted ${groupIdsToDelete.length} groups from experiment ${id}`,
-            );
-          }
-
-          // 2. 更新现有分组
-          for (const g of groupsToUpdate) {
-            await tx.experimentGroupItem.update({
-              where: { id: g.id },
-              data: {
-                name: g.name,
-                ratio: g.ratio,
-                config: g.config as any,
-              },
-            });
-          }
-          if (groupsToUpdate.length > 0) {
-            this.logger.log(
-              `Updated ${groupsToUpdate.length} groups in experiment ${id}`,
-            );
-          }
-
-          // 3. 创建新分组
-          if (groupsToCreate.length > 0) {
-            await tx.experimentGroupItem.createMany({
-              data: groupsToCreate.map((g) => ({
-                experimentId: id,
-                name: g.name,
-                ratio: g.ratio,
-                config: g.config as any,
-              })),
-            });
-            this.logger.log(
-              `Created ${groupsToCreate.length} new groups in experiment ${id}`,
-            );
-          }
-        }
-
-        return updatedExp;
-      })
-      .catch((error: unknown) => this.handleMutationError(error));
-
-    // 刷新活跃实验列表
-    await this.experimentService.refreshActiveExperiments();
-    this.logger.log(
-      `Updated experiment ${experiment.id}, refreshed active experiments`,
-    );
-
-    return {
-      code: 200,
-      message: 'Experiment updated successfully',
-      data: experiment.id,
-    };
-  }
-
-  /**
-   * 删除实验
-   */
-  async deleteExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment
-      .delete({
+        await tx.experimentGroupItem.createMany({
+          data: data.groups.map((g) => ({
+            id: g.id,
+            experimentId: id,
+            name: g.name,
+            ratio: g.ratio,
+            strategyRevisionId: g.strategyRevisionId ?? null,
+            config: g.config ?? {},
+          })),
+        });
+      }
+      const { groups: _groups, ...rest } = data;
+      await tx.experiment.update({
         where: { id },
-      })
-      .catch((error: unknown) => this.handleMutationError(error));
-
-    // 刷新活跃实验列表
-    await this.experimentService.refreshActiveExperiments();
-    this.logger.log(
-      `Deleted experiment ${experiment.id}, refreshed active experiments`,
-    );
-
-    return {
-      code: 200,
-      message: 'Experiment deleted successfully',
-      data: experiment.id,
-    };
-  }
-
-  /**
-   * 启用实验
-   */
-  async enableExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment
-      .update({
-        where: { id },
-        data: { status: 'running' },
-      })
-      .catch((error: unknown) => this.handleMutationError(error));
-
-    // 刷新活跃实验列表
-    await this.experimentService.refreshActiveExperiments();
-    this.logger.log(
-      `Enabled experiment ${experiment.id}, refreshed active experiments`,
-    );
-
-    return {
-      code: 200,
-      message: 'Experiment enabled successfully',
-      data: experiment.id,
-    };
-  }
-
-  /**
-   * 禁用实验
-   */
-  async disableExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment
-      .update({
-        where: { id },
-        data: { status: 'paused' },
-      })
-      .catch((error: unknown) => this.handleMutationError(error));
-
-    // 刷新活跃实验列表
-    await this.experimentService.refreshActiveExperiments();
-    this.logger.log(
-      `Disabled experiment ${experiment.id}, refreshed active experiments`,
-    );
-
-    return {
-      code: 200,
-      message: 'Experiment disabled successfully',
-      data: experiment.id,
-    };
-  }
-
-  /**
-   * 完成实验
-   */
-  async completeExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment
-      .update({
-        where: { id },
-        data: { status: 'completed' },
-      })
-      .catch((error: unknown) => this.handleMutationError(error));
-
-    // 刷新活跃实验列表
-    await this.experimentService.refreshActiveExperiments();
-    this.logger.log(
-      `Completed experiment ${experiment.id}, refreshed active experiments`,
-    );
-
-    return {
-      code: 200,
-      message: 'Experiment completed successfully',
-      data: experiment.id,
-    };
-  }
-
-  /**
-   * 获取实验分组的配置
-   */
-  async getGroupConfig(groupItemId: string) {
-    const group = await this.prisma.experimentGroupItem.findUnique({
-      where: { id: groupItemId },
-      include: {
-        experiment: true,
-      },
+        data: { ...rest, startTime, endTime },
+      });
     });
+    return this.refreshed(id, 200, 'Experiment updated successfully');
+  }
 
-    if (!group) {
-      throw new NotFoundException('Group item not found');
-    }
-
-    return {
-      code: 200,
-      message: 'success',
-      data: {
-        id: group.id,
-        name: group.name,
-        ratio: group.ratio,
-        config: group.config,
-        experiment: {
-          id: group.experiment.id,
-          name: group.experiment.name,
-          status: group.experiment.status,
-        },
-      },
+  private validateTransition(from: string, to: string) {
+    const transitions: Record<string, string[]> = {
+      draft: ['running'],
+      running: ['paused', 'completed'],
+      paused: ['running', 'completed'],
+      completed: [],
     };
+    if (!transitions[from]?.includes(to))
+      throw new ConflictException('实验状态转换无效');
+  }
+  private async transition(id: string, status: string) {
+    await this.updateExperiment(id, { status });
+    return { code: 200, message: `Experiment ${status}`, data: id };
+  }
+  enableExperiment(id: string) {
+    return this.transition(id, 'running');
+  }
+  disableExperiment(id: string) {
+    return this.transition(id, 'paused');
+  }
+  completeExperiment(id: string) {
+    return this.transition(id, 'completed');
   }
 
-  private handleMutationError(error: unknown): never {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2025'
-    ) {
-      throw new NotFoundException('Experiment not found');
-    }
-    throw error;
+  async deleteExperiment(id: string): Promise<SuccessResponseDto> {
+    await controlTransaction(this.prisma, async (tx) => {
+      const experiment = await tx.experiment.findUnique({ where: { id } });
+      if (!experiment) throw new NotFoundException('Experiment not found');
+      if (experiment.status !== 'draft')
+        throw new ConflictException('已启动实验保留配置与统计，可完成后归档');
+      await tx.experiment.delete({ where: { id } });
+    });
+    return this.refreshed(id, 200, 'Experiment deleted successfully');
   }
-
+  async getGroupConfig(id: string) {
+    const group = await this.prisma.experimentGroupItem.findUnique({
+      where: { id },
+      include: { experiment: true },
+    });
+    if (!group) throw new NotFoundException('Group item not found');
+    return { code: 200, message: 'success', data: group };
+  }
+  private async refreshed(
+    id: string,
+    code: number,
+    message: string,
+  ): Promise<SuccessResponseDto> {
+    await this.experimentService.refreshActiveExperiments();
+    return { code, message, data: id };
+  }
   private mapToExperimentDto(experiment: any): ExperimentDto {
     return {
       id: experiment.id,
       name: experiment.name,
-      description: experiment.description || undefined,
+      description: experiment.description ?? undefined,
+      scene: experiment.scene,
+      priority: experiment.priority,
       trafficRatio: experiment.trafficRatio,
       startTime: experiment.startTime,
-      endTime: experiment.endTime || undefined,
+      endTime: experiment.endTime ?? undefined,
       status: experiment.status,
       groups: experiment.groupItems.map((g) => ({
         id: g.id,
         name: g.name,
         ratio: g.ratio,
-        config: g.config as Record<string, any> | undefined,
+        strategyRevisionId: g.strategyRevisionId ?? undefined,
+        config: g.config ?? {},
       })),
       createdAt: experiment.createdAt,
       updatedAt: experiment.updatedAt,
