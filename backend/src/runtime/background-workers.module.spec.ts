@@ -1,4 +1,7 @@
-import { RecommendationIndexProcessor, RECOMMENDATION_INDEX_QUEUE } from '@/recommendation-platform/index-worker.module';
+import {
+  RecommendationIndexProcessor,
+  RECOMMENDATION_INDEX_QUEUE,
+} from '@/recommendation-platform/index-worker.module';
 import { ModerationDispatcher } from '@/content-moderation/moderation-dispatcher.service';
 import { NewsSourcesProcessor } from '@/news-sources/news-sources.processor';
 import { NEWS_SYNC_QUEUE } from '@/news-sources/news-sources.queue';

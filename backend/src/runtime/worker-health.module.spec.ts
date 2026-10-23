@@ -63,7 +63,8 @@ describe('internal worker readiness', () => {
   ])('is unavailable when a dependency is %s', async (failure) => {
     if (failure === 'stopped')
       processors[0].worker.isRunning.mockReturnValue(false);
-    if (failure === 'recommendation-stopped') processors[4].worker.isRunning.mockReturnValue(false);
+    if (failure === 'recommendation-stopped')
+      processors[4].worker.isRunning.mockReturnValue(false);
     if (failure === 'paused')
       processors[1].worker.isPaused.mockReturnValue(true);
     if (failure === 'closing') processors[2].worker.closing = Promise.resolve();
