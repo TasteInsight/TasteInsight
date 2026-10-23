@@ -5,6 +5,7 @@ import { defineComponent, nextTick } from 'vue'
 
 const mocks = vi.hoisted(() => ({
   experimentApi: {
+    getMetrics: vi.fn().mockResolvedValue({ code: 200, data: { metricVersion: 2, groups: [] } }),
     getExperiments: vi.fn(),
     getExperimentById: vi.fn(),
     createExperiment: vi.fn(),
@@ -20,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmDangerMock: vi.fn(() => Promise.resolve(true)),
 }))
+
+vi.mock('@/api/modules/recommendation', () => ({ recommendationScenes: ['home', 'search', 'similar', 'guess_like', 'today'], recommendationApi: { catalog: vi.fn().mockResolvedValue({ code: 200, data: { strategies: [] } }) } }))
 
 vi.mock('@/api/modules/experiment', () => ({
   experimentApi: mocks.experimentApi,
@@ -602,7 +605,7 @@ describe('views/ExperimentManage', () => {
       await dialog.trigger('cancel')
 
       expect(wrapper.vm.showGroupConfigModal).toBe(false)
-      expect(wrapper.vm.groupConfigForm.weights.preferenceMatch).toBe(0)
+      expect(wrapper.vm.groupConfigForm.weights.preferenceMatch).toBe('')
       wrapper.unmount()
     })
 
@@ -625,6 +628,59 @@ describe('views/ExperimentManage', () => {
 
       expect(wrapper.vm.formData.groups[0].config?.weights?.preferenceMatch).toBe(0.3)
       expect(wrapper.vm.showGroupConfigModal).toBe(false)
+    })
+
+    it('preserves zero weights and zero recall routes while leaving inherited weights absent', async () => {
+      const wrapper = shallowMount(ExperimentManage, baseMountOptions)
+      await flushAll()
+      wrapper.vm.createNewExperiment()
+      wrapper.vm.formData.groups = [{ name: '对照组', ratio: 1, config: {} }]
+      wrapper.vm.editGroupConfig(wrapper.vm.formData.groups[0], 0)
+      wrapper.vm.groupConfigForm.weights.preferenceMatch = 0
+      wrapper.vm.groupConfigForm.recallQuota.vectorQuota = 0
+      wrapper.vm.groupConfigForm.recallQuota.ruleQuota = 1
+      wrapper.vm.groupConfigForm.recallQuota.collaborativeQuota = 0
+      await wrapper.vm.saveGroupConfig()
+      expect(wrapper.vm.formData.groups[0].config).toEqual({
+        weights: { preferenceMatch: 0 },
+        recallQuota: { vectorQuota: 0, ruleQuota: 1, collaborativeQuota: 0 },
+      })
+    })
+
+    it('leaves an untouched configuration empty to inherit scene defaults', async () => {
+      const wrapper = shallowMount(ExperimentManage, baseMountOptions)
+      await flushAll()
+      wrapper.vm.createNewExperiment()
+      wrapper.vm.formData.groups = [{ name: '对照组', ratio: 1, config: {} }]
+      wrapper.vm.editGroupConfig(wrapper.vm.formData.groups[0], 0)
+      await wrapper.vm.saveGroupConfig()
+      expect(wrapper.vm.formData.groups[0].config).toEqual({})
+    })
+
+    it('serializes an empty object when clearing a persisted group in the detail view', async () => {
+      const wrapper = shallowMount(ExperimentManage, baseMountOptions)
+      await flushAll()
+      const group = { id: 'group-1', name: '对照组', ratio: 1, config: { weights: { dishQuality: 80 } } }
+      mocks.experimentApi.getExperimentById.mockResolvedValue({ code: 200, data: { ...mockExperiment, groups: [group] } })
+      mocks.experimentApi.updateExperiment.mockResolvedValue({ code: 200 })
+      await wrapper.vm.viewExperiment(mockExperiment)
+      wrapper.vm.editGroupConfig(group, 0)
+      wrapper.vm.groupConfigForm.weights.dishQuality = ''
+      await wrapper.vm.saveGroupConfig()
+      const payload = mocks.experimentApi.updateExperiment.mock.calls[0][1]
+      expect(JSON.parse(JSON.stringify(payload)).groups[0].config).toEqual({})
+    })
+
+    it('rejects negative weights without silently dropping them', async () => {
+      const wrapper = shallowMount(ExperimentManage, baseMountOptions)
+      await flushAll()
+      wrapper.vm.createNewExperiment()
+      wrapper.vm.formData.groups = [{ name: '对照组', ratio: 1, config: {} }]
+      wrapper.vm.editGroupConfig(wrapper.vm.formData.groups[0], 0)
+      wrapper.vm.groupConfigForm.weights.preferenceMatch = -1
+      await wrapper.vm.saveGroupConfig()
+      expect(wrapper.vm.showGroupConfigModal).toBe(true)
+      expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('权重'), '错误')
     })
 
     it('saveGroupConfig validates recallQuota total', async () => {
@@ -767,3 +823,51 @@ describe('views/ExperimentManage', () => {
   })
 })
 
+
+describe('published experiment lifecycle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.experimentApi.getExperiments.mockResolvedValue({ code: 200, data: [mockExperiment] })
+  })
+  it.each(['running', 'paused'])('locks %s groups and sends only the traffic update', async status => {
+    mocks.experimentApi.getExperimentById.mockResolvedValue({ code: 200, data: { ...mockExperiment, status } })
+    mocks.experimentApi.updateExperiment.mockResolvedValue({ code: 200 })
+    const wrapper = mount(ExperimentManage, baseMountOptions)
+    await flushAll()
+    await wrapper.vm.editExperiment(mockExperiment)
+    await flushAll()
+    expect(wrapper.find('fieldset').attributes('disabled')).toBeDefined()
+    wrapper.vm.formData.trafficRatio = 0.2
+    await wrapper.find('form').trigger('submit')
+    await flushAll()
+    expect(mocks.experimentApi.updateExperiment).toHaveBeenCalledWith('exp1', { trafficRatio: 0.2 })
+    wrapper.unmount()
+  })
+  it.each(['running', 'paused'])('submits zero traffic for a %s experiment', async status => {
+    mocks.experimentApi.getExperimentById.mockResolvedValue({ code: 200, data: { ...mockExperiment, status } })
+    mocks.experimentApi.updateExperiment.mockResolvedValue({ code: 200 })
+    const wrapper = mount(ExperimentManage, baseMountOptions)
+    await flushAll()
+    await wrapper.vm.editExperiment(mockExperiment)
+    await flushAll()
+    const traffic = wrapper.find('input[placeholder="0.1"]')
+    expect(traffic.attributes('min')).toBe('0')
+    await traffic.setValue('0')
+    await wrapper.find('form').trigger('submit')
+    await flushAll()
+    expect(mocks.experimentApi.updateExperiment).toHaveBeenCalledWith('exp1', { trafficRatio: 0 })
+    wrapper.unmount()
+  })
+  it('replaces inline weights with a strategy reference when saving a group', async () => {
+    const wrapper = mount(ExperimentManage, baseMountOptions)
+    await flushAll()
+    wrapper.vm.createNewExperiment()
+    wrapper.vm.addGroup()
+    wrapper.vm.editGroupConfig(wrapper.vm.formData.groups[0], 0)
+    wrapper.vm.selectedStrategy = 'published-strategy'
+    await wrapper.vm.saveGroupConfig()
+    expect(wrapper.vm.formData.groups[0].strategyRevisionId).toBe('published-strategy')
+    expect(wrapper.vm.formData.groups[0].config).toBeUndefined()
+    wrapper.unmount()
+  })
+})

@@ -5,7 +5,7 @@
       <div v-if="viewMode === 'list'">
         <div class="admin-heading-row">
           <Header
-            title="推荐配置管理"
+            title="推荐实验管理"
             description="管理推荐系统的A/B测试实验配置"
             header-icon="carbon:chemistry"
           />
@@ -103,7 +103,7 @@
                       <AppIcon class="iconify" icon="carbon:view"></AppIcon>
                     </button>
                     <button
-                      v-if="authStore.hasPermission('experiment:edit')"
+                      v-if="authStore.hasPermission('experiment:edit') && experiment.status !== 'completed'"
                       class="rounded-full hover:bg-gray-200 text-tsinghua-purple admin-icon-button"
                       @click.stop="editExperiment(experiment)"
                       title="编辑"
@@ -194,6 +194,14 @@
                 </p>
               </div>
               <div>
+                <label class="font-medium text-gray-600 admin-label">推荐场景</label>
+                <p class="mt-1 text-gray-800">{{ currentExperiment.scene || 'home' }}</p>
+              </div>
+              <div>
+                <label class="font-medium text-gray-600 admin-label">优先级</label>
+                <p class="mt-1 text-gray-800">{{ currentExperiment.priority || 0 }}</p>
+              </div>
+              <div>
                 <label class="font-medium text-gray-600 admin-label">创建时间</label>
                 <p class="mt-1 text-gray-800">{{ formatDate(currentExperiment.createdAt) }}</p>
               </div>
@@ -218,7 +226,7 @@
             </div>
             <div class="mt-4 admin-actions">
               <button
-                v-if="authStore.hasPermission('experiment:edit')"
+                v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status !== 'completed'"
                 class="transition admin-button admin-button-primary"
                 @click="editExperiment(currentExperiment)"
               >
@@ -265,6 +273,7 @@
             </div>
           </div>
 
+          <ExperimentMetrics :experiment-id="currentExperiment.id" :groups="currentExperiment.groups" />
           <!-- 实验分组列表 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">
@@ -291,7 +300,7 @@
                   </div>
                   <div class="flex items-center gap-2">
                     <button
-                      v-if="authStore.hasPermission('experiment:edit')"
+                      v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'draft'"
                       class="rounded-full hover:bg-gray-200 text-tsinghua-purple admin-icon-button"
                       @click.stop="editGroup(group, index)"
                       title="编辑分组"
@@ -299,7 +308,7 @@
                       <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
-                      v-if="authStore.hasPermission('experiment:edit')"
+                      v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'draft'"
                       class="rounded-full hover:bg-gray-200 text-red-500 admin-icon-button"
                       @click.stop="deleteGroup(index)"
                       title="删除分组"
@@ -335,6 +344,7 @@
         </div>
 
         <div v-if="currentGroup" class="space-y-6">
+          <p v-if="currentGroup.strategyRevisionId">策略版本：{{ currentGroup.strategyRevisionId }}</p>
           <!-- 分组基本信息 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -357,7 +367,7 @@
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <AppIcon class="iconify text-tsinghua-purple" icon="carbon:weight"></AppIcon>
-              权重配置 (Weights)
+              相对权重 (Weights)
             </h3>
             <div v-if="currentGroup.config?.weights" class="space-y-3">
               <div
@@ -414,10 +424,14 @@
         </div>
 
         <form class="space-y-6" @submit.prevent="submitForm">
+          <p v-if="groupsLocked" role="status">实验已发布，当前可调整总流量；分组策略和分组比例通过新实验更新。</p>
+          <p v-if="sceneConflicts.length" role="status" class="text-amber-800">同场景运行实验：{{ sceneConflicts.map(item => `${item.name}（优先级 ${item.priority || 0}）`).join('、') }}。每次请求按优先级选择一个实验。</p>
           <!-- 基本信息 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">基本信息</h3>
         <div class="admin-form-grid">
+              <label class="admin-label">推荐场景<select v-model="formData.scene" :disabled="groupsLocked" class="admin-input w-full"><option v-for="scene in recommendationScenes" :key="scene" :value="scene">{{ scene }}</option></select></label>
+              <label class="admin-label">优先级<input v-model.number="formData.priority" :disabled="groupsLocked" type="number" step="1" class="admin-input w-full" /></label>
               <div>
                 <label class="block text-gray-700 font-medium mb-2 admin-label">
                   实验名称 <span class="text-red-500">*</span>
@@ -425,6 +439,7 @@
                 <input
                   type="text"
                   v-model="formData.name"
+                  :disabled="groupsLocked"
                   class="w-full admin-input"
                   :class="{ 'border-red-400 bg-red-50': errors.name }"
                   placeholder="请输入实验名称"
@@ -437,6 +452,7 @@
                 <input
                   type="text"
                   v-model="formData.description"
+                  :disabled="groupsLocked"
                   class="w-full admin-input"
                   placeholder="请输入实验描述（可选）"
                 />
@@ -468,6 +484,7 @@
                 <input
                   type="datetime-local"
                   v-model="formData.startTime"
+                  :disabled="groupsLocked"
                   class="w-full admin-input"
                   :class="{ 'border-red-400 bg-red-50': errors.startTime }"
                   required
@@ -480,6 +497,7 @@
                 <input
                   type="datetime-local"
                   v-model="formData.endTime"
+                  :disabled="groupsLocked"
                   class="w-full admin-input"
                   placeholder="可选"
                 />
@@ -489,7 +507,7 @@
           </div>
 
           <!-- 实验分组 -->
-          <div class="border border-gray-200 rounded-lg p-6">
+          <fieldset :disabled="groupsLocked" class="border border-gray-200 rounded-lg p-6">
             <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
               <div class="flex min-w-0 flex-wrap items-center gap-3">
                 <h3 class="shrink-0 text-lg font-semibold text-gray-800">实验分组</h3>
@@ -574,7 +592,7 @@
                     class="text-tsinghua-purple hover:text-tsinghua-dark admin-button"
                     @click="editGroupConfig(group, index)"
                   >
-                    配置权重和召回配额 →
+                    {{ group.strategyRevisionId ? `策略：${group.strategyRevisionId}` : '配置策略 / 权重和召回配额' }}
                   </button>
                 </div>
               </div>
@@ -582,7 +600,7 @@
             <div v-if="formData.groups.length === 0" class="admin-state">
               请至少添加一个实验分组
             </div>
-          </div>
+          </fieldset>
 
           <!-- 表单按钮 -->
           <div class="flex pt-6 border-t border-gray-200 admin-actions">
@@ -628,11 +646,14 @@
             </div>
           </div>
           <div class="space-y-6 admin-dialog-body">
+            <label class="admin-label block">配置来源<select v-model="selectedStrategy" class="admin-input w-full"><option value="">兼容配置：权重与召回配额</option><option v-for="strategy in groupStrategies" :key="strategy.id" :value="strategy.id">{{ strategy.name }} · {{ strategy.id }}</option></select></label>
+            <p class="text-sm text-gray-600">策略版本和兼容配置互斥。分配记录保持用户组别稳定；分组比例主要影响新分配用户。</p>
+            <fieldset v-if="!selectedStrategy" class="space-y-6">
             <!-- 权重配置 -->
             <div>
               <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <AppIcon class="iconify text-tsinghua-purple" icon="carbon:weight"></AppIcon>
-                权重配置 (Weights)
+                相对权重 (Weights)
               </h4>
               <div class="grid grid-cols-2 gap-4">
                 <div v-for="(label, key) in weightLabels" :key="key">
@@ -641,14 +662,14 @@
                     type="number"
                     v-model.number="groupConfigForm.weights[key]"
                     min="0"
-                    max="1"
                     step="0.01"
                     class="w-full admin-input"
-                    placeholder="0.0 - 1.0"
+                    placeholder="留空使用场景默认值"
                   />
                 </div>
               </div>
             </div>
+            <p class="mt-2 text-xs text-gray-500">权重按总和归一化；留空继承场景默认值，填写 0 关闭该项。</p>
             <!-- 召回配额配置 -->
             <div>
               <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -673,9 +694,10 @@
                 </div>
               </div>
               <p class="mt-2 text-xs text-gray-500">
-                提示：召回配额总和应为1.0（{{ recallQuotaTotal.toFixed(2) }}）
+                召回配额全部留空时使用默认值；配置时请填写全部三项，关闭某一路填 0，总和为 1（{{ recallQuotaTotal.toFixed(2) }}）。
               </p>
             </div>
+            </fieldset>
           </div>
           <div class="flex justify-end gap-3 admin-dialog-footer">
             <button
@@ -699,6 +721,8 @@
 
 <script lang="ts">
 import { reactive, ref, computed, onMounted } from 'vue'
+import ExperimentMetrics from '@/components/ExperimentMetrics.vue'
+import { recommendationApi, recommendationScenes, type RecommendationStrategy } from '@/api/modules/recommendation'
 import { experimentApi } from '@/api/modules/experiment'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
@@ -716,6 +740,7 @@ export default {
   name: 'ExperimentManage',
   components: {
     Header,
+    ExperimentMetrics,
     AdminDialog,
   },
   setup() {
@@ -731,9 +756,16 @@ export default {
     const currentGroupIndex = ref(-1)
     const editingExperiment = ref<Experiment | null>(null)
     const searchQuery = ref('')
+    const strategies = ref<RecommendationStrategy[]>([])
+    const selectedStrategy = ref('')
+    const groupsLocked = computed(() => !!editingExperiment.value && editingExperiment.value.status !== 'draft')
+    const groupStrategies = computed(() => strategies.value.filter(item => item.status === 'published' && item.scene === (viewMode.value === 'edit' ? formData.scene : currentExperiment.value?.scene || 'home')))
+    const sceneConflicts = computed(() => experimentList.value.filter(item => item.id !== editingExperiment.value?.id && item.status === 'running' && (item.scene || 'home') === formData.scene))
 
     const formData = reactive<CreateExperimentRequest>({
       name: '',
+      scene: 'home',
+      priority: 0,
       description: '',
       trafficRatio: 0.1,
       startTime: '',
@@ -753,18 +785,18 @@ export default {
     const editingGroupData = ref<ExperimentGroup | null>(null)
     const groupConfigForm = reactive({
       weights: {
-        preferenceMatch: 0,
-        favoriteSimilarity: 0,
-        browseRelevance: 0,
-        dishQuality: 0,
-        diversity: 0,
-        searchRelevance: 0,
-      } as Record<string, number>,
+        preferenceMatch: '',
+        favoriteSimilarity: '',
+        browseRelevance: '',
+        dishQuality: '',
+        diversity: '',
+        searchRelevance: '',
+      } as Record<string, number | ''>,
       recallQuota: {
-        vectorQuota: 0,
-        ruleQuota: 0,
-        collaborativeQuota: 0,
-      } as Record<string, number>,
+        vectorQuota: '',
+        ruleQuota: '',
+        collaborativeQuota: '',
+      } as Record<string, number | ''>,
     })
 
     // 权重和召回配额的标签映射
@@ -785,7 +817,7 @@ export default {
 
     // 计算召回配额总和
     const recallQuotaTotal = computed(() => {
-      return Object.values(groupConfigForm.recallQuota).reduce((sum, val) => sum + (val || 0), 0)
+      return Object.values(groupConfigForm.recallQuota).reduce<number>((sum, val) => sum + (val || 0), 0)
     })
 
     // 计算分组占比总和和状态
@@ -988,6 +1020,7 @@ export default {
 
     // 编辑实验
     const editExperiment = async (experiment: Experiment) => {
+      if (experiment.status === 'completed') return
       if (!experiment.id) {
         await notify.error('无效的实验数据', '错误')
         return
@@ -995,6 +1028,8 @@ export default {
       await loadExperimentDetail(experiment.id)
       if (currentExperiment.value) {
         editingExperiment.value = currentExperiment.value
+        formData.scene = currentExperiment.value.scene || 'home'
+        formData.priority = currentExperiment.value.priority || 0
         formData.name = currentExperiment.value.name
         formData.description = currentExperiment.value.description || ''
         formData.trafficRatio = currentExperiment.value.trafficRatio
@@ -1048,6 +1083,8 @@ export default {
 
     // 启用实验
     const enableExperiment = async (experiment: Experiment) => {
+      const conflicts = experimentList.value.filter(item => item.id !== experiment.id && item.status === 'running' && (item.scene || 'home') === (experiment.scene || 'home'))
+      if (conflicts.length && !await showConfirmDanger(`同场景已有运行实验：${conflicts.map(item => `${item.name}（优先级 ${item.priority || 0}）`).join('、')}。每次请求按优先级选择一个实验。当前实验优先级为 ${experiment.priority || 0}。`, '确认场景流量占用')) return
       try {
         const response = await experimentApi.enableExperiment(experiment.id)
         if (response.code === 200) {
@@ -1112,6 +1149,8 @@ export default {
 
     // 编辑分组（从详情页编辑已保存的分组）
     const editGroup = (group: ExperimentGroup, index: number) => {
+      if ((viewMode.value === 'detail' && currentExperiment.value?.status !== 'draft') || groupsLocked.value) return
+      selectedStrategy.value = group.strategyRevisionId || ''
       editingGroupIndex.value = index
       editingGroupData.value = group
       // 填充配置表单
@@ -1120,14 +1159,14 @@ export default {
         Object.assign(groupConfigForm.weights, group.config.weights)
       }
       if (group.config?.recallQuota) {
-        Object.assign(groupConfigForm.recallQuota, group.config.recallQuota)
+        Object.assign(groupConfigForm.recallQuota, { vectorQuota: 0, ruleQuota: 0, collaborativeQuota: 0 }, group.config.recallQuota)
       }
       showGroupConfigModal.value = true
     }
 
     // 删除分组
     const deleteGroup = async (index: number) => {
-      if (!currentExperiment.value) return
+      if (!currentExperiment.value || currentExperiment.value.status !== 'draft') return
 
       const confirmed = await showConfirmDanger(
         `确定要删除分组"${currentExperiment.value.groups[index]?.name}"吗？`,
@@ -1174,6 +1213,8 @@ export default {
 
     // 编辑分组配置（从表单中编辑）
     const editGroupConfig = (group: ExperimentGroup, index: number) => {
+      if ((viewMode.value === 'detail' && currentExperiment.value?.status !== 'draft') || groupsLocked.value) return
+      selectedStrategy.value = group.strategyRevisionId || ''
       editingGroupIndex.value = index
       editingGroupData.value = group
       // 填充配置表单
@@ -1182,7 +1223,7 @@ export default {
         Object.assign(groupConfigForm.weights, group.config.weights)
       }
       if (group.config?.recallQuota) {
-        Object.assign(groupConfigForm.recallQuota, group.config.recallQuota)
+        Object.assign(groupConfigForm.recallQuota, { vectorQuota: 0, ruleQuota: 0, collaborativeQuota: 0 }, group.config.recallQuota)
       }
       showGroupConfigModal.value = true
     }
@@ -1190,17 +1231,17 @@ export default {
     // 重置分组配置表单
     const resetGroupConfigForm = () => {
       groupConfigForm.weights = {
-        preferenceMatch: 0,
-        favoriteSimilarity: 0,
-        browseRelevance: 0,
-        dishQuality: 0,
-        diversity: 0,
-        searchRelevance: 0,
+        preferenceMatch: '',
+        favoriteSimilarity: '',
+        browseRelevance: '',
+        dishQuality: '',
+        diversity: '',
+        searchRelevance: '',
       }
       groupConfigForm.recallQuota = {
-        vectorQuota: 0,
-        ruleQuota: 0,
-        collaborativeQuota: 0,
+        vectorQuota: '',
+        ruleQuota: '',
+        collaborativeQuota: '',
       }
     }
 
@@ -1219,42 +1260,46 @@ export default {
       // 构建配置对象，只包含有值的配置
       const config: Record<string, any> = {}
       
-      // 处理权重配置
+      if (!selectedStrategy.value) {
       const weights: Record<string, number> = {}
-      let hasWeights = false
-      Object.entries(groupConfigForm.weights).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value > 0) {
-          weights[key] = value
-          hasWeights = true
+      for (const [key, value] of Object.entries(groupConfigForm.weights)) {
+        if (value === '' || value === undefined || value === null) continue
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+          await notify.error('权重须为有限非负数；留空使用场景默认值', '错误')
+          return
         }
-      })
-      if (hasWeights) {
+        weights[key] = value
+      }
+      if (Object.keys(weights).length > 0) {
+        const total = Object.values(weights).reduce((sum, value) => sum + value, 0)
+        if (!Number.isFinite(total) || (Object.keys(weights).length === Object.keys(weightLabels).length && total <= 0)) {
+          await notify.error('权重总和必须为有限正数', '错误')
+          return
+        }
         config.weights = weights
       }
 
-      // 处理召回配额配置
-      const recallQuota: Record<string, number> = {}
-      let hasRecallQuota = false
-      Object.entries(groupConfigForm.recallQuota).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value > 0) {
-          recallQuota[key] = value
-          hasRecallQuota = true
+      const quotas = Object.entries(groupConfigForm.recallQuota)
+      if (quotas.some(([, value]) => value !== '' && value !== undefined && value !== null)) {
+        if (quotas.some(([, value]) => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) {
+          await notify.error('请填写全部召回配额，范围为 0 到 1；关闭某一路请填 0', '错误')
+          return
         }
-      })
-      if (hasRecallQuota) {
-        // 验证召回配额总和
-        const total = Object.values(recallQuota).reduce((sum, val) => sum + val, 0)
-        if (Math.abs(total - 1) > 0.01) {
+        const recallQuota = Object.fromEntries(quotas) as Record<string, number>
+        const total = Object.values(recallQuota).reduce((sum, value) => sum + value, 0)
+        if (Math.abs(total - 1) > 1e-6) {
           await notify.error(`召回配额总和应为1，当前为${total.toFixed(2)}`, '错误')
           return
         }
         config.recallQuota = recallQuota
       }
 
+      }
+      const source = selectedStrategy.value ? { strategyRevisionId: selectedStrategy.value, config: undefined } : { strategyRevisionId: undefined, config }
       // 判断是在编辑表单中还是在详情页编辑
       if (viewMode.value === 'edit') {
         // 表单中编辑，更新 formData.groups
-        formData.groups[editingGroupIndex.value].config = Object.keys(config).length > 0 ? config : undefined
+        Object.assign(formData.groups[editingGroupIndex.value], source)
         closeGroupConfigModal()
         await notify.success('分组配置已保存', '成功')
       } else if (viewMode.value === 'detail' && currentExperiment.value) {
@@ -1263,7 +1308,7 @@ export default {
           const updatedGroups = [...currentExperiment.value.groups]
           updatedGroups[editingGroupIndex.value] = {
             ...updatedGroups[editingGroupIndex.value],
-            config: Object.keys(config).length > 0 ? config : undefined,
+            ...source,
           }
           const updateData: UpdateExperimentRequest = {
             groups: updatedGroups,
@@ -1285,6 +1330,8 @@ export default {
 
     // 重置表单
     const resetForm = () => {
+      formData.scene = 'home'
+      formData.priority = 0
       formData.name = ''
       formData.description = ''
       formData.trafficRatio = 0.1
@@ -1298,6 +1345,13 @@ export default {
 
     // 提交表单
     const submitForm = async () => {
+      if (editingExperiment.value?.status === 'completed') return
+      if (groupsLocked.value && editingExperiment.value) {
+        if (!Number.isFinite(formData.trafficRatio) || formData.trafficRatio < 0 || formData.trafficRatio > 1) { await notify.error('流量占比必须在 0 到 1 之间', '错误'); return }
+        isSubmitting.value = true
+        try { const response = await experimentApi.updateExperiment(editingExperiment.value.id, { trafficRatio: formData.trafficRatio }); if (response.code !== 200) throw new Error(response.message); await loadExperiments(); viewMode.value = 'list' } catch (error) { await notify.error(error instanceof Error ? error.message : '保存失败', '错误') } finally { isSubmitting.value = false }
+        return
+      }
       // 清除之前的错误
       errors.name = ''
       errors.trafficRatio = ''
@@ -1314,7 +1368,7 @@ export default {
       
       // 验证流量占比
       const trafficRatio = Number(formData.trafficRatio)
-      if (isNaN(trafficRatio) || trafficRatio <= 0 || trafficRatio > 1) {
+      if (isNaN(trafficRatio) || trafficRatio < 0 || trafficRatio > 1) {
         errors.trafficRatio = '流量占比必须在0到1之间'
         validationErrors.push('流量占比必须在0到1之间')
       }
@@ -1376,6 +1430,8 @@ export default {
         if (editingExperiment.value) {
           // 更新实验
           const updateData: UpdateExperimentRequest = {
+            scene: formData.scene,
+            priority: formData.priority,
             name: formData.name,
             description: formData.description,
             trafficRatio: formData.trafficRatio,
@@ -1394,10 +1450,13 @@ export default {
         } else {
           // 创建实验 - 构建请求数据
           const createData: CreateExperimentRequest = {
+            scene: formData.scene,
+            priority: formData.priority,
             name: formData.name.trim(),
             trafficRatio: Number(formData.trafficRatio),
             startTime: new Date(formData.startTime).toISOString(),
             groups: formData.groups.map((group) => ({
+              strategyRevisionId: group.strategyRevisionId,
               name: group.name.trim(),
               ratio: Number(group.ratio),
               ...(group.config && Object.keys(group.config).length > 0 ? { config: group.config } : {}),
@@ -1451,11 +1510,17 @@ export default {
     }
 
     onMounted(() => {
+      recommendationApi.catalog().then(response => { if (response.code === 200) strategies.value = response.data.strategies }).catch(() => notify.error('策略目录加载失败，请刷新后重试', '错误'))
       loadExperiments()
     })
 
     return {
       authStore,
+      recommendationScenes,
+      selectedStrategy,
+      groupStrategies,
+      groupsLocked,
+      sceneConflicts,
       loading,
       isSubmitting,
       viewMode,

@@ -923,6 +923,7 @@ export interface ExperimentConfig {
  * 实验分组
  */
 export interface ExperimentGroup {
+  strategyRevisionId?: string
   id?: string  // 更新时用于标识现有分组，创建时不传
   name: string
   ratio: number
@@ -938,6 +939,8 @@ export type ExperimentStatus = 'draft' | 'running' | 'paused' | 'completed' | st
  * 实验信息
  */
 export interface Experiment {
+  scene?: import('@/api/modules/recommendation').RecommendationScene
+  priority?: number
   id: string
   name: string
   description?: string
@@ -954,6 +957,8 @@ export interface Experiment {
  * 创建实验请求参数
  */
 export interface CreateExperimentRequest {
+  scene?: import('@/api/modules/recommendation').RecommendationScene
+  priority?: number
   name: string
   description?: string
   trafficRatio: number
@@ -966,6 +971,8 @@ export interface CreateExperimentRequest {
  * 更新实验请求参数
  */
 export interface UpdateExperimentRequest {
+  scene?: import('@/api/modules/recommendation').RecommendationScene
+  priority?: number
   name?: string
   description?: string
   trafficRatio?: number

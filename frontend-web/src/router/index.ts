@@ -24,6 +24,7 @@ const ReportManage = () => import('@/views/ReportManage.vue')
 const CommentManage = () => import('@/views/CommentManage.vue')
 const ReviewManage = () => import('@/views/ReviewManage.vue')
 const ConfigManage = () => import('@/views/ConfigManage.vue')
+const RecommendationManage = () => import('@/views/RecommendationManage.vue')
 const ExperimentManage = () => import('@/views/ExperimentManage.vue')
 const StudentVerificationManage = () => import('@/views/StudentVerificationManage.vue')
 const CommunityManage = () => import('@/views/CommunityManage.vue')
@@ -181,6 +182,12 @@ const routes = [
         name: 'ConfigManage',
         component: ConfigManage,
         meta: { requiresAuth: true, requiredPermissions: ['config:view', 'dish:edit'], keepAlive: true },
+      },
+      {
+        path: 'recommendation-manage',
+        name: 'RecommendationManage',
+        component: RecommendationManage,
+        meta: { requiresAuth: true, requiredPermission: 'experiment:view', globalOnly: true },
       },
       {
         path: 'experiment-manage',

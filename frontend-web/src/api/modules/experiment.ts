@@ -12,6 +12,7 @@ import type {
  * 实验管理相关 API
  */
 export const experimentApi = {
+  getMetrics: (id: string, days = 7) => request.get<ApiResponse<import('./recommendation').ExperimentMetrics>>(`/admin/experiments/${id}/metrics`, { params: { days } }),
   /**
    * 获取所有 A/B 测试实验列表
    * GET /admin/experiments
