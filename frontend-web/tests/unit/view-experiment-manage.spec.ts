@@ -469,7 +469,7 @@ describe('views/ExperimentManage', () => {
 
       await wrapper.vm.submitForm()
 
-      expect(wrapper.vm.errors.trafficRatio).toBe('流量占比必须在0到1之间')
+      expect(wrapper.vm.errors.trafficRatio).toBe('流量占比必须在 0% 到 100% 之间')
     })
 
     it('submitForm validates endTime after startTime', async () => {
@@ -843,6 +843,42 @@ describe('published experiment lifecycle', () => {
     expect(mocks.experimentApi.updateExperiment).toHaveBeenCalledWith('exp1', { trafficRatio: 0.2 })
     wrapper.unmount()
   })
+  it('displays percentages while submitting the existing fractional traffic contract', async () => {
+    mocks.experimentApi.getExperimentById.mockResolvedValue({ code: 200, data: { ...mockExperiment, status: 'running', trafficRatio: 0.1 } })
+    mocks.experimentApi.updateExperiment.mockResolvedValue({ code: 200 })
+    const wrapper = mount(ExperimentManage, baseMountOptions)
+    await flushAll()
+    await wrapper.vm.editExperiment(mockExperiment)
+    await flushAll()
+    const traffic = wrapper.get('#experiment-traffic')
+    expect((traffic.element as HTMLInputElement).value).toBe('10')
+    expect(traffic.attributes('max')).toBe('100')
+    await traffic.setValue('12.5')
+    await wrapper.find('form').trigger('submit')
+    await flushAll()
+    expect(mocks.experimentApi.updateExperiment).toHaveBeenCalledWith('exp1', { trafficRatio: 0.125 })
+    wrapper.unmount()
+  })
+  it('keeps blank traffic invalid and applies the same percentage units to experiment groups', async () => {
+    const wrapper = mount(ExperimentManage, baseMountOptions)
+    await flushAll()
+    wrapper.vm.createNewExperiment()
+    wrapper.vm.formData.name = '新实验'
+    wrapper.vm.formData.startTime = '2025-01-01T00:00'
+    wrapper.vm.formData.groups = [{ name: '对照组', ratio: 0.5 }, { name: '实验组', ratio: 0.5 }]
+    await nextTick()
+    const group = wrapper.get('#group-ratio-0')
+    expect((group.element as HTMLInputElement).value).toBe('50')
+    await group.setValue('25')
+    expect(wrapper.vm.formData.groups[0].ratio).toBe(0.25)
+    await wrapper.get('#experiment-traffic').setValue('')
+    await wrapper.find('form').trigger('submit')
+    await flushAll()
+    expect(Number.isNaN(wrapper.vm.formData.trafficRatio)).toBe(true)
+    expect(wrapper.vm.errors.trafficRatio).toBe('流量占比必须在 0% 到 100% 之间')
+    expect(mocks.experimentApi.createExperiment).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
   it.each(['running', 'paused'])('submits zero traffic for a %s experiment', async status => {
     mocks.experimentApi.getExperimentById.mockResolvedValue({ code: 200, data: { ...mockExperiment, status } })
     mocks.experimentApi.updateExperiment.mockResolvedValue({ code: 200 })
@@ -850,7 +886,7 @@ describe('published experiment lifecycle', () => {
     await flushAll()
     await wrapper.vm.editExperiment(mockExperiment)
     await flushAll()
-    const traffic = wrapper.find('input[placeholder="0.1"]')
+    const traffic = wrapper.find('#experiment-traffic')
     expect(traffic.attributes('min')).toBe('0')
     await traffic.setValue('0')
     await wrapper.find('form').trigger('submit')

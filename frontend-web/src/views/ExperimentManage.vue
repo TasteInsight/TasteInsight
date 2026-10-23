@@ -458,24 +458,29 @@
                 />
               </div>
               <div>
-                <label class="block text-gray-700 font-medium mb-2 admin-label">
+                <label for="experiment-traffic" class="block text-gray-700 font-medium mb-2 admin-label">
                   流量占比 <span class="text-red-500">*</span>
                 </label>
-                <div class="flex items-center gap-2">
+                <div class="relative">
                   <input
+                    id="experiment-traffic"
                     type="number"
-                    v-model.number="formData.trafficRatio"
+                    :value="percentageValue(formData.trafficRatio)"
+                    @input="formData.trafficRatio = readPercentage($event)"
                     min="0"
-                    max="1"
-                    step="0.01"
-                    class="w-full admin-input"
+                    max="100"
+                    step="0.1"
+                    class="w-full admin-input pr-10 percentage-input"
                     :class="{ 'border-red-400 bg-red-50': errors.trafficRatio }"
-                    placeholder="0.1"
+                    :aria-invalid="!!errors.trafficRatio"
+                    aria-describedby="experiment-traffic-help experiment-traffic-error"
+                    placeholder="例如 10"
                     required
                   />
-                  <span class="text-gray-500">(0-1之间的小数)</span>
+                  <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true">%</span>
                 </div>
-                <p v-if="errors.trafficRatio" class="mt-1 text-xs text-red-500 admin-field-error">{{ errors.trafficRatio }}</p>
+                <p id="experiment-traffic-help" class="mt-2 text-sm text-gray-500">参与实验的用户比例，0% 表示暂不分配流量。</p>
+                <p v-if="errors.trafficRatio" id="experiment-traffic-error" class="mt-1 text-xs text-red-500 admin-field-error">{{ errors.trafficRatio }}</p>
               </div>
               <div>
                 <label class="block text-gray-700 font-medium mb-2 admin-label">
@@ -571,19 +576,24 @@
                     />
                   </div>
                   <div>
-                    <label class="block font-medium text-gray-600 mb-1 admin-label">
+                    <label :for="`group-ratio-${index}`" class="block font-medium text-gray-600 mb-1 admin-label">
                       组内占比 <span class="text-red-500">*</span>
                     </label>
-                    <input
-                      type="number"
-                      v-model.number="group.ratio"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      class="w-full admin-input"
-                      placeholder="0.5"
-                      required
-                    />
+                    <div class="relative">
+                      <input
+                        :id="`group-ratio-${index}`"
+                        type="number"
+                        :value="percentageValue(group.ratio)"
+                        @input="group.ratio = readPercentage($event)"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        class="w-full admin-input pr-10 percentage-input"
+                        placeholder="例如 50"
+                        required
+                      />
+                      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true">%</span>
+                    </div>
                   </div>
                 </div>
                 <div class="mt-4">
@@ -772,6 +782,13 @@ export default {
       endTime: '',
       groups: [],
     })
+
+    const percentageValue = (ratio: number): number | string =>
+      Number.isFinite(ratio) ? Number((ratio * 100).toPrecision(12)) : ''
+    const readPercentage = (event: Event): number => {
+      const input = event.target as HTMLInputElement
+      return input.value === '' ? Number.NaN : input.valueAsNumber / 100
+    }
 
     const errors = reactive<Record<string, string>>({
       name: '',
@@ -1347,7 +1364,7 @@ export default {
     const submitForm = async () => {
       if (editingExperiment.value?.status === 'completed') return
       if (groupsLocked.value && editingExperiment.value) {
-        if (!Number.isFinite(formData.trafficRatio) || formData.trafficRatio < 0 || formData.trafficRatio > 1) { await notify.error('流量占比必须在 0 到 1 之间', '错误'); return }
+        if (!Number.isFinite(formData.trafficRatio) || formData.trafficRatio < 0 || formData.trafficRatio > 1) { await notify.error('流量占比必须在 0% 到 100% 之间', '错误'); return }
         isSubmitting.value = true
         try { const response = await experimentApi.updateExperiment(editingExperiment.value.id, { trafficRatio: formData.trafficRatio }); if (response.code !== 200) throw new Error(response.message); await loadExperiments(); viewMode.value = 'list' } catch (error) { await notify.error(error instanceof Error ? error.message : '保存失败', '错误') } finally { isSubmitting.value = false }
         return
@@ -1369,8 +1386,8 @@ export default {
       // 验证流量占比
       const trafficRatio = Number(formData.trafficRatio)
       if (isNaN(trafficRatio) || trafficRatio < 0 || trafficRatio > 1) {
-        errors.trafficRatio = '流量占比必须在0到1之间'
-        validationErrors.push('流量占比必须在0到1之间')
+        errors.trafficRatio = '流量占比必须在 0% 到 100% 之间'
+        validationErrors.push('流量占比必须在 0% 到 100% 之间')
       }
       
       // 验证开始日期
@@ -1531,6 +1548,8 @@ export default {
       editingExperiment,
       searchQuery,
       formData,
+      percentageValue,
+      readPercentage,
       errors,
       // 分组配置相关
       showGroupConfigModal,
@@ -1572,3 +1591,9 @@ export default {
 }
 </script>
 
+
+<style scoped>
+.percentage-input { appearance: textfield; }
+.percentage-input::-webkit-inner-spin-button,
+.percentage-input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+</style>
