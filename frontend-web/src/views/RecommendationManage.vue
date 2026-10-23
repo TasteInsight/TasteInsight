@@ -138,7 +138,7 @@
             创建规则基线草稿，发布后即可设置场景默认策略。
           </p>
           <form v-if="editor" class="space-y-4 border-t pt-6" @submit.prevent="saveDraft">
-            <h2 class="text-lg font-semibold">
+            <h2 ref="editorHeading" tabindex="-1" class="editor-heading text-lg font-semibold">
               {{ editor.status !== 'draft' ? '已发布版本' : '策略草稿' }}
             </h2>
             <fieldset
@@ -217,7 +217,8 @@
                   </select></label
                 ><label v-if="editor.config.ranking.type === 'model_endpoint'" class="admin-label"
                   >排序模型<select
-                    v-model="editor.config.ranking.modelVersionId"
+                    :value="editor.config.ranking.modelVersionId"
+                    @change="switchRankingModel(($event.target as HTMLSelectElement).value)"
                     required
                     class="admin-input w-full"
                   >
@@ -252,6 +253,17 @@
                       class="admin-input w-full" /></label
                 ></template>
               </div>
+              <section v-if="editor.config.ranking.type === 'model_endpoint'" class="space-y-3">
+                <h4 class="font-medium">排序模型参数</h4>
+                <ModelParameterFields
+                  v-if="rankingModel"
+                  :key="rankingModel.id"
+                  v-model="editor.config.ranking.parameters"
+                  :schema="rankingModel.parameterSchema"
+                  id-prefix="ranking-parameter"
+                />
+                <p v-else class="text-sm text-gray-500">选择排序模型后显示该模型声明的参数。</p>
+              </section>
               <label class="admin-label flex items-center gap-2"
                 ><input
                   v-model="editor.config.rerank.diversityEnabled"
@@ -334,7 +346,12 @@
               <button
                 v-if="editor.status === 'draft'"
                 type="submit"
-                :disabled="busy || !!jsonError || !(editor.id ? canEdit : canCreate)"
+                :disabled="
+                  busy ||
+                  !!jsonError ||
+                  !!rankingParameterError ||
+                  !(editor.id ? canEdit : canCreate)
+                "
                 class="admin-button admin-button-primary"
               >
                 保存草稿</button
@@ -357,8 +374,17 @@
         </section>
         <section v-if="tab === 'models'" class="space-y-6">
           <h2 class="text-lg font-semibold">模型版本与契约验证</h2>
+          <p class="text-sm text-gray-600">
+            登记后点击验证契约，从模型服务读取参数声明。已验证版本的参数声明随模型版本固定。
+          </p>
           <div class="admin-table-scroll">
-            <table class="admin-table">
+            <table class="admin-table model-catalog-table">
+              <colgroup>
+                <col style="width: 40%" />
+                <col style="width: 18%" />
+                <col style="width: 30%" />
+                <col style="width: 12%" />
+              </colgroup>
               <thead class="bg-gray-50">
                 <tr>
                   <th>模型 / 服务版本</th>
@@ -368,38 +394,52 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
-                <tr v-for="model in catalog.models" :key="model.id">
-                  <td>
-                    {{ model.name
-                    }}<small class="block"
-                      >{{ model.serviceVersion }} · {{ model.artifactDigest }}</small
-                    ><small>{{ model.featureSchemaVersion }}</small>
-                  </td>
-                  <td>{{ model.kind }} / {{ model.dimension ?? '—' }}</td>
-                  <td>
-                    <span>{{ model.deploymentId || '本地' }}</span>
-                    <span class="recommendation-status ml-2" :class="statusClass(model.status)">{{
-                      model.status === 'draft' ? '待验证' : statusLabel(model.status)
-                    }}</span>
-                    <small class="block mt-1 text-gray-500">{{
-                      model.verifiedAt ? formatDate(model.verifiedAt) : '尚未验证'
-                    }}</small>
-                  </td>
-                  <td>
-                    <button
-                      v-if="canEdit"
-                      :disabled="busy"
-                      class="admin-icon-button rounded-full hover:bg-gray-200 text-tsinghua-purple"
-                      title="验证契约"
-                      @click="verifyModel(model.id)"
-                    >
-                      <AppIcon icon="carbon:checkmark-outline" aria-hidden="true" /><span
-                        class="sr-only"
-                        >验证契约</span
+                <template v-for="model in catalog.models" :key="model.id">
+                  <tr>
+                    <td>
+                      <p class="font-medium">{{ model.name }}</p>
+                      <p class="text-sm text-gray-500">{{ model.serviceVersion }}</p>
+                      <button
+                        type="button"
+                        class="model-details-toggle text-tsinghua-purple"
+                        aria-haspopup="dialog"
+                        :aria-label="`查看 ${model.name} 的参数详情`"
+                        @click="selectedDetails = { model }"
                       >
-                    </button>
-                  </td>
-                </tr>
+                        参数详情
+                      </button>
+                    </td>
+                    <td>
+                      {{ model.kind === 'ranking' ? '排序模型' : '向量模型'
+                      }}<small v-if="model.dimension" class="block text-gray-500"
+                        >{{ model.dimension }} 维</small
+                      >
+                    </td>
+                    <td>
+                      <p>{{ model.deploymentId || '本地' }}</p>
+                      <span class="recommendation-status mt-1" :class="statusClass(model.status)">{{
+                        model.status === 'draft' ? '待验证' : statusLabel(model.status)
+                      }}</span>
+                      <small class="block mt-1 text-gray-500">{{
+                        model.verifiedAt ? formatDate(model.verifiedAt) : '尚未验证'
+                      }}</small>
+                    </td>
+                    <td>
+                      <button
+                        v-if="canEdit"
+                        :disabled="busy"
+                        class="admin-icon-button rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                        title="验证契约"
+                        @click="verifyModel(model.id)"
+                      >
+                        <AppIcon icon="carbon:checkmark-outline" aria-hidden="true" /><span
+                          class="sr-only"
+                          >验证契约</span
+                        >
+                      </button>
+                    </td>
+                  </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -482,6 +522,15 @@
                   <td>
                     {{ index.name }}<small class="block">{{ index.modelVersionId }}</small
                     ><small class="block">策略引用：{{ indexReferences(index.id) }}</small>
+                    <button
+                      type="button"
+                      class="model-details-toggle text-tsinghua-purple"
+                      aria-haspopup="dialog"
+                      :aria-label="`查看 ${index.name} 的固定参数`"
+                      @click="openIndexDetails(index)"
+                    >
+                      固定参数
+                    </button>
                   </td>
                   <td>
                     <span class="recommendation-status mr-2" :class="statusClass(index.status)">{{
@@ -539,10 +588,12 @@
               >索引名称<input v-model="indexForm.name" required class="admin-input w-full" /></label
             ><label class="admin-label"
               >已验证向量模型<select
-                v-model="indexForm.modelVersionId"
+                :value="indexForm.modelVersionId"
+                @change="switchIndexModel(($event.target as HTMLSelectElement).value)"
                 required
                 class="admin-input w-full"
               >
+                <option value="">选择已验证模型</option>
                 <option
                   v-for="model in catalog.models.filter(
                     (item) => item.kind === 'embedding' && item.status === 'ready',
@@ -553,8 +604,23 @@
                   {{ model.name }} · {{ model.serviceVersion }}
                 </option>
               </select></label
-            ><button
-              :disabled="busy || !catalog.storeConfigured"
+            >
+            <section class="space-y-3 col-span-full">
+              <h3 class="font-medium">索引模型参数</h3>
+              <ModelParameterFields
+                v-if="indexModel"
+                :key="indexModel.id"
+                v-model="indexForm.parameters"
+                :schema="indexModel.parameterSchema"
+                id-prefix="index-parameter"
+              />
+              <p v-else class="text-sm text-gray-500">选择向量模型后显示该模型声明的参数。</p>
+              <p class="text-sm text-gray-500">
+                参数在索引创建时固定，构建与在线查询使用同一配置。调整参数时创建新索引。
+              </p>
+            </section>
+            <button
+              :disabled="busy || !catalog.storeConfigured || !indexModel || !!indexParameterError"
               class="admin-button admin-button-primary"
             >
               创建并构建索引
@@ -610,7 +676,11 @@
               }}
             </p>
             <p class="mt-1 text-sm text-gray-500">
-              按最终推荐顺序展示；得分用于比较排序，详情中的各项分数为加权前评分。
+              {{
+                previewResult.rankerVersionId
+                  ? '按模型评分与重排后的最终顺序展示；模型评分用于比较候选菜品。'
+                  : '按最终推荐顺序展示；得分用于比较排序，详情中的各项分数为加权前评分。'
+              }}
             </p>
             <p v-if="previewResult.fallbackReason" class="mt-3 admin-field-error" role="status">
               已使用回退策略：{{ previewResult.fallbackReason }}
@@ -724,12 +794,23 @@
         </section>
       </template>
     </div>
+    <ParameterDetailsDrawer
+      :model="selectedDetails?.model ?? null"
+      :index="selectedDetails?.index"
+      @close="selectedDetails = null"
+    />
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
+import ParameterDetailsDrawer from '@/components/Recommendation/ParameterDetailsDrawer.vue'
 import Header from '@/components/Layout/Header.vue'
 import AppIcon from '@/components/Common/AppIcon.vue'
+import ModelParameterFields from '@/components/Recommendation/ModelParameterFields.vue'
+import {
+  modelParameterDefaults,
+  modelParameterErrors,
+} from '@/components/Recommendation/modelParameters'
 import { useNotification } from '@/composables/useNotification'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { showConfirmDanger } from '@/composables/useModal'
@@ -737,8 +818,10 @@ import {
   baselineConfig,
   recommendationApi,
   recommendationScenes,
+  type ModelParameters,
   type RecommendationCatalog,
   type RecommendationModel,
+  type RecommendationIndex,
   type RecommendationPreview,
   type RecommendationScene,
   type RecommendationStrategy,
@@ -811,6 +894,9 @@ const scoreLabels: Record<string, string> = {
   diversityScore: '多样性',
   searchScore: '搜索相关性',
 }
+const parameterTitle = (modelId: string, name: string) =>
+  catalog.value?.models.find((item) => item.id === modelId)?.parameterSchema?.properties[name]
+    ?.title || name
 const modelName = (id: string) => catalog.value?.models.find((item) => item.id === id)?.name || id
 const indexName = (id?: string) =>
   id ? catalog.value?.indexes.find((item) => item.id === id)?.name || id : '规则召回'
@@ -884,6 +970,11 @@ function comparableFields(
     })),
     { path: 'ranking.modelVersionId', label: '排序模型', value: model?.modelVersionId },
     { path: 'ranking.timeoutMs', label: '超时预算（毫秒）', value: model?.timeoutMs },
+    ...Object.entries(model?.parameters ?? {}).map(([key, value]) => ({
+      path: `ranking.parameters.${key}`,
+      label: parameterTitle(model!.modelVersionId, key),
+      value,
+    })),
     { path: 'rerank.diversityEnabled', label: '多样性重排', value: config.rerank.diversityEnabled },
     {
       path: 'fallbackStrategyRevisionId',
@@ -894,12 +985,17 @@ function comparableFields(
 }
 const configurationChanges = computed(() => {
   if (!comparisonConfig.value || !editor.value) return []
-  const before = comparableFields(comparisonConfig.value)
-  return comparableFields(editor.value.config).flatMap((field, index) =>
-    field.value === before[index].value
-      ? []
-      : [{ ...field, before: before[index].value, after: field.value }],
+  const before = new Map(
+    comparableFields(comparisonConfig.value).map((field) => [field.path, field]),
   )
+  const after = new Map(comparableFields(editor.value.config).map((field) => [field.path, field]))
+  return [...new Set([...before.keys(), ...after.keys()])].flatMap((path) => {
+    const previous = before.get(path),
+      current = after.get(path)
+    return previous?.value === current?.value
+      ? []
+      : [{ ...(current ?? previous)!, before: previous?.value, after: current?.value }]
+  })
 })
 const displayConfigValue = (value: ConfigValue) =>
   value === undefined || value === ''
@@ -913,7 +1009,7 @@ const displayConfigValue = (value: ConfigValue) =>
         : value === 'model_endpoint'
           ? '模型服务'
           : value
-const modelForm = reactive<Omit<RecommendationModel, 'id' | 'status'>>({
+const modelForm = reactive<Omit<RecommendationModel, 'id' | 'status' | 'parameterSchema'>>({
   name: '',
   kind: 'embedding',
   provider: 'local',
@@ -930,7 +1026,42 @@ watch(
     if (kind === 'ranking') modelForm.provider = 'http'
   },
 )
-const indexForm = reactive({ name: '', modelVersionId: '' })
+const indexForm = reactive({ name: '', modelVersionId: '', parameters: {} as ModelParameters })
+const indexModel = computed(() =>
+  catalog.value?.models.find((model) => model.id === indexForm.modelVersionId),
+)
+const rankingModel = computed(() => {
+  const ranking = editor.value?.config.ranking
+  return ranking?.type === 'model_endpoint'
+    ? catalog.value?.models.find((model) => model.id === ranking.modelVersionId)
+    : undefined
+})
+const rankingParameterError = computed(() => {
+  const ranking = editor.value?.config.ranking
+  return ranking?.type === 'model_endpoint'
+    ? Object.values(
+        modelParameterErrors(rankingModel.value?.parameterSchema, ranking.parameters),
+      ).join('；')
+    : ''
+})
+const indexParameterError = computed(() =>
+  Object.values(modelParameterErrors(indexModel.value?.parameterSchema, indexForm.parameters)).join(
+    '；',
+  ),
+)
+function switchIndexModel(id: string) {
+  indexForm.modelVersionId = id
+  indexForm.parameters = modelParameterDefaults(indexModel.value?.parameterSchema)
+  error.value = ''
+}
+function switchRankingModel(id: string) {
+  const ranking = editor.value?.config.ranking
+  if (ranking?.type !== 'model_endpoint') return
+  ranking.modelVersionId = id
+  ranking.parameters = modelParameterDefaults(rankingModel.value?.parameterSchema)
+  jsonError.value = ''
+  error.value = ''
+}
 const previewForm = reactive({ userId: '', strategyRevisionId: '', pageSize: 10 })
 const previewResult = ref<RecommendationPreview | null>(null)
 let poll: ReturnType<typeof setInterval> | undefined
@@ -979,13 +1110,37 @@ async function run(action: () => Promise<ApiResponse<unknown>>, success: string)
     busy.value = false
   }
 }
+const editorHeading = ref<HTMLElement | null>(null)
+const selectedDetails = ref<{ model: RecommendationModel; index?: RecommendationIndex } | null>(
+  null,
+)
+function openIndexDetails(index: RecommendationIndex) {
+  const model = catalog.value?.models.find((item) => item.id === index.modelVersionId)
+  if (model) selectedDetails.value = { model, index }
+}
+async function focusEditor() {
+  await nextTick()
+  editorHeading.value?.focus({ preventScroll: true })
+  editorHeading.value?.scrollIntoView({ block: 'start' })
+}
 function newDraft() {
   editor.value = { id: '', name: '', scene: 'home', config: baselineConfig(), status: 'draft' }
   jsonError.value = ''
+  void focusEditor()
 }
 function editDraft(strategy: RecommendationStrategy) {
-  editor.value = JSON.parse(JSON.stringify(strategy))
+  const draft = JSON.parse(JSON.stringify(strategy)) as RecommendationStrategy
+  if (draft.config.ranking.type === 'model_endpoint') {
+    const ranking = draft.config.ranking
+    const model = catalog.value?.models.find((item) => item.id === ranking.modelVersionId)
+    ranking.parameters = {
+      ...modelParameterDefaults(model?.parameterSchema),
+      ...ranking.parameters,
+    }
+  }
+  editor.value = draft
   jsonError.value = ''
+  void focusEditor()
 }
 function copyDraft() {
   if (editor.value)
@@ -995,7 +1150,7 @@ function switchRanking(type: StrategyConfig['ranking']['type']) {
   if (!editor.value || editor.value.config.ranking.type === type) return
   editor.value.config.ranking =
     type === 'model_endpoint'
-      ? { type, modelVersionId: '', timeoutMs: 1000 }
+      ? { type, modelVersionId: '', timeoutMs: 1000, parameters: {} }
       : baselineConfig().ranking
   jsonError.value = ''
 }
@@ -1016,14 +1171,24 @@ function applyJson(raw: string) {
     } else if (ranking.type === 'model_endpoint') {
       if (
         Object.keys(ranking).some(
-          (key) => !['type', 'modelVersionId', 'timeoutMs'].includes(key),
+          (key) => !['type', 'modelVersionId', 'timeoutMs', 'parameters'].includes(key),
         ) ||
         typeof ranking.modelVersionId !== 'string' ||
         !ranking.modelVersionId ||
         typeof ranking.timeoutMs !== 'number' ||
         !Number.isFinite(ranking.timeoutMs)
       )
-        throw new Error('模型排序配置仅包含 type、modelVersionId 和 timeoutMs')
+        throw new Error('模型排序配置仅包含 type、modelVersionId、timeoutMs 和 parameters')
+      const model = catalog.value?.models.find((item) => item.id === ranking.modelVersionId)
+      if (!model || model.kind !== 'ranking') throw new Error('请选择已登记的排序模型')
+      const parameterError = Object.values(
+        modelParameterErrors(model.parameterSchema, ranking.parameters),
+      ).join('；')
+      if (parameterError) throw new Error(parameterError)
+      ranking.parameters = {
+        ...modelParameterDefaults(model.parameterSchema),
+        ...ranking.parameters,
+      }
     } else throw new Error('请选择 weighted_rules 或 model_endpoint 排序类型')
     if (editor.value) editor.value.config = config
     jsonError.value = ''
@@ -1033,7 +1198,7 @@ function applyJson(raw: string) {
 }
 async function saveDraft() {
   const draft = editor.value
-  if (!draft || jsonError.value) return
+  if (!draft || jsonError.value || rankingParameterError.value) return
   await run(async () => {
     const response = draft.id
       ? await recommendationApi.updateStrategy(draft.id, { name: draft.name, config: draft.config })
@@ -1080,7 +1245,11 @@ const publishStrategy = (id: string) =>
   run(() => recommendationApi.publishStrategy(id), '策略已发布')
 const verifyModel = (id: string) => run(() => recommendationApi.verifyModel(id), '模型契约验证通过')
 const buildIndex = (id: string) => run(() => recommendationApi.buildIndex(id), '已提交构建 / 重试')
-const createIndex = () => run(() => recommendationApi.createIndex(indexForm), '索引开始构建')
+async function createIndex() {
+  if (!indexModel.value || indexParameterError.value) return
+  const data = { ...indexForm, parameters: { ...indexForm.parameters } }
+  await run(() => recommendationApi.createIndex(data), '索引开始构建')
+}
 async function retireStrategy(id: string) {
   if (
     await showConfirmDanger(
@@ -1115,6 +1284,30 @@ onScopeDispose(() => {
 </script>
 
 <style scoped>
+.model-catalog-table {
+  table-layout: fixed;
+}
+.model-catalog-table td {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.model-details-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  text-align: left;
+}
+.model-details-toggle:focus-visible,
+.editor-heading:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.editor-heading {
+  scroll-margin-top: 96px;
+}
+
 .recommendation-status {
   display: inline-flex;
   align-items: center;

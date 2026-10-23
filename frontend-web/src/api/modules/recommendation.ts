@@ -3,6 +3,20 @@ import type { ApiResponse } from '@/types/api'
 
 export const recommendationScenes = ['home', 'search', 'similar', 'guess_like', 'today'] as const
 export type RecommendationScene = (typeof recommendationScenes)[number]
+export type ModelParameters = Record<string, number | string | boolean>
+export type ModelParameterDefinition = {
+  title: string
+  description?: string
+} & (
+  | { type: 'number' | 'integer'; default: number; minimum: number; maximum: number }
+  | { type: 'boolean'; default: boolean }
+  | { type: 'string'; default: string; enum: string[] }
+)
+export interface ModelParameterSchema {
+  type: 'object'
+  additionalProperties: false
+  properties: Record<string, ModelParameterDefinition>
+}
 export interface StrategyConfig {
   schemaVersion: 1
   recall: {
@@ -22,7 +36,12 @@ export interface StrategyConfig {
           searchRelevance: number
         }
       }
-    | { type: 'model_endpoint'; modelVersionId: string; timeoutMs: number }
+    | {
+        type: 'model_endpoint'
+        modelVersionId: string
+        timeoutMs: number
+        parameters?: ModelParameters
+      }
   rerank: { diversityEnabled: boolean }
   fallbackStrategyRevisionId?: string
 }
@@ -38,8 +57,10 @@ export interface RecommendationModel {
   deploymentId?: string
   status: string
   verifiedAt?: string
+  parameterSchema?: ModelParameterSchema
 }
 export interface RecommendationIndex {
+  parameters?: ModelParameters
   id: string
   name: string
   modelVersionId: string
@@ -105,11 +126,12 @@ export interface ExperimentMetrics {
 const base = '/admin/recommendation'
 export const recommendationApi = {
   catalog: () => request.get<ApiResponse<RecommendationCatalog>>(`${base}/catalog`),
-  registerModel: (data: Omit<RecommendationModel, 'id' | 'status' | 'verifiedAt'>) =>
-    request.post<ApiResponse<RecommendationModel>>(`${base}/models`, data),
+  registerModel: (
+    data: Omit<RecommendationModel, 'id' | 'status' | 'verifiedAt' | 'parameterSchema'>,
+  ) => request.post<ApiResponse<RecommendationModel>>(`${base}/models`, data),
   verifyModel: (id: string) =>
     request.post<ApiResponse<RecommendationModel>>(`${base}/models/${id}/verify`),
-  createIndex: (data: { name: string; modelVersionId: string }) =>
+  createIndex: (data: { name: string; modelVersionId: string; parameters?: ModelParameters }) =>
     request.post<ApiResponse<RecommendationIndex>>(`${base}/indexes`, data),
   buildIndex: (id: string) =>
     request.post<ApiResponse<RecommendationIndex>>(`${base}/indexes/${id}/build`),
