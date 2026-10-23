@@ -147,7 +147,7 @@ export class RecommendationPlatformController {
       }).then((e) => e.length)
     )
       throw new BadRequestException('预览筛选参数无效');
-    return this.recommendation.getRecommendations(
+    const result = await this.recommendation.getRecommendations(
       body.userId,
       {
         scene: strategy.scene as RecommendationScene,
@@ -157,7 +157,30 @@ export class RecommendationPlatformController {
       },
       { mode: 'preview', strategyRevisionId: strategy.id },
     );
+    const dishes = await this.prisma.dish.findMany({
+      where: { id: { in: result.data.items.map((item) => item.id) } },
+      select: {
+        id: true,
+        name: true,
+        canteenName: true,
+        windowName: true,
+        price: true,
+        priceUnit: true,
+      },
+    });
+    const dishesById = new Map(dishes.map((dish) => [dish.id, dish]));
+    return {
+      ...result,
+      data: {
+        ...result.data,
+        items: result.data.items.map((item) => ({
+          ...item,
+          dish: dishesById.get(item.id),
+        })),
+      },
+    };
   }
+
   @Post('shadow')
   @HttpCode(200)
   @RequirePermissions('experiment:view')

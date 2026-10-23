@@ -15,6 +15,10 @@ vi.mock('@/api/modules/recommendation', async (original) => {
     ),
   }
 })
+const notifySuccess = vi.hoisted(() => vi.fn())
+vi.mock('@/composables/useNotification', () => ({
+  useNotification: () => ({ success: notifySuccess }),
+}))
 const api = vi.mocked(recommendationApi)
 let wrapper: ReturnType<typeof mount>
 const published = {
@@ -53,6 +57,83 @@ beforeEach(async () => {
 })
 afterEach(() => wrapper.unmount())
 describe('recommendation management', () => {
+  it('shows named dishes in final recommendation order with rounded scores and expandable explanations', async () => {
+    api.preview.mockResolvedValue({
+      code: 200,
+      message: 'ok',
+      data: {
+        mode: 'preview',
+        strategyRevisionId: 'published',
+        items: [
+          {
+            id: 'dish-a',
+            score: 0.76466993,
+            scoreBreakdown: { preferenceScore: 0.9 },
+            dish: {
+              id: 'dish-a',
+              name: '番茄炒蛋',
+              canteenName: '清风食堂',
+              windowName: '家常菜',
+              price: 12.5,
+              priceUnit: '份',
+            },
+          },
+          {
+            id: 'dish-b',
+            score: 0.82,
+            dish: {
+              id: 'dish-b',
+              name: '清蒸鲈鱼',
+              canteenName: '荷园食堂',
+              windowName: '蒸菜',
+              price: 18,
+              priceUnit: null,
+            },
+          },
+        ],
+      },
+    })
+    await button('用户预览').trigger('click')
+    await wrapper.get('#recommendation-preview-user').setValue('user-1')
+    await wrapper.get('#recommendation-preview-strategy').setValue('published')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.preview).toHaveBeenCalledWith({
+      userId: 'user-1',
+      strategyRevisionId: 'published',
+      pageSize: 10,
+    })
+    const rows = wrapper.findAll('[data-testid="preview-dish"]')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].text()).toContain('番茄炒蛋')
+    expect(rows[0].text()).toContain('清风食堂 · 家常菜')
+    expect(rows[0].text()).toContain('¥12.50 / 份')
+    expect(rows[1].text()).toContain('清蒸鲈鱼')
+    expect(rows.map((row) => row.get('[data-testid="preview-score"]').text())).toEqual([
+      '0.765',
+      '0.820',
+    ])
+    expect(rows[0].get('details').attributes('open')).toBeUndefined()
+    expect(rows[0].get('details').text()).toContain('偏好匹配')
+    expect(rows[0].get('details').text()).toContain('0.900')
+    expect(wrapper.find('pre').exists()).toBe(false)
+    expect(notifySuccess).toHaveBeenCalledWith('预览已生成')
+  })
+  it('keeps unavailable dish records and missing scores readable without inventing values', async () => {
+    api.preview.mockResolvedValue({
+      code: 200,
+      message: 'ok',
+      data: { mode: 'preview', items: [{ id: 'deleted-dish' }] },
+    })
+    await button('用户预览').trigger('click')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    const row = wrapper.get('[data-testid="preview-dish"]')
+    expect(row.text()).toContain('菜品信息暂不可用')
+    expect(row.get('[data-testid="preview-score"]').text()).toBe('—')
+    expect(row.get('details').text()).toContain('deleted-dish')
+    expect(row.text()).toContain('此排序方式未提供分项评分')
+  })
   it('saves one shared configuration from JSON and visual inputs', async () => {
     await button('编辑').trigger('click')
     const config = baselineConfig()

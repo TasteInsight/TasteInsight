@@ -11,13 +11,12 @@
         </button>
       </div>
       <p v-if="error" role="alert" class="admin-field-error mb-4">{{ error }}</p>
-      <p v-if="notice" role="status" class="text-green-700 mb-4">{{ notice }}</p>
-      <nav class="flex flex-wrap gap-2 mb-6" aria-label="推荐管理">
+      <nav class="admin-tabs mb-6" aria-label="推荐管理">
         <button
           v-for="item in tabs"
           :key="item.key"
-          class="admin-button"
-          :class="tab === item.key ? 'admin-button-primary' : 'admin-button-secondary'"
+          type="button"
+          class="admin-tab"
           :aria-pressed="tab === item.key"
           @click="tab = item.key"
         >
@@ -45,7 +44,7 @@
                   :key="strategy.id"
                   :value="strategy.id"
                 >
-                  {{ strategy.name }} · {{ strategy.id }}
+                  {{ strategy.name }}
                 </option>
               </select>
               <button
@@ -70,7 +69,7 @@
           </div>
           <div class="admin-table-scroll">
             <table class="admin-table">
-              <thead>
+              <thead class="bg-gray-50">
                 <tr>
                   <th>名称 / 版本</th>
                   <th>场景</th>
@@ -78,34 +77,58 @@
                   <th>操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-gray-200">
                 <tr v-for="strategy in catalog.strategies" :key="strategy.id">
                   <td>
                     {{ strategy.name }}<small class="block text-gray-500">{{ strategy.id }}</small>
                   </td>
                   <td>{{ sceneLabels[strategy.scene] }}</td>
-                  <td>{{ statusLabel(strategy.status) }}</td>
                   <td>
-                    <button
-                      class="admin-button admin-button-secondary"
-                      @click="editDraft(strategy)"
-                    >
-                      {{ strategy.status === 'draft' ? '编辑' : '查看 / 复制' }}</button
-                    ><button
-                      v-if="strategy.status === 'draft' && canEdit"
-                      class="admin-button admin-button-secondary"
-                      :disabled="busy"
-                      @click="publishStrategy(strategy.id)"
-                    >
-                      发布</button
-                    ><button
-                      v-if="strategy.status === 'published' && canEdit"
-                      class="admin-button admin-button-secondary"
-                      :disabled="busy"
-                      @click="retireStrategy(strategy.id)"
-                    >
-                      退役
-                    </button>
+                    <span class="recommendation-status" :class="statusClass(strategy.status)">{{
+                      statusLabel(strategy.status)
+                    }}</span>
+                  </td>
+                  <td>
+                    <div class="flex items-center gap-1">
+                      <button
+                        type="button"
+                        class="admin-icon-button rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                        :title="strategy.status === 'draft' ? '编辑' : '查看 / 复制'"
+                        @click="editDraft(strategy)"
+                      >
+                        <AppIcon
+                          :icon="strategy.status === 'draft' ? 'carbon:edit' : 'carbon:view'"
+                          aria-hidden="true"
+                        />
+                        <span class="sr-only">{{
+                          strategy.status === 'draft' ? '编辑' : '查看 / 复制'
+                        }}</span>
+                      </button>
+                      <button
+                        v-if="strategy.status === 'draft' && canEdit"
+                        type="button"
+                        class="admin-icon-button rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                        :disabled="busy"
+                        title="发布"
+                        @click="publishStrategy(strategy.id)"
+                      >
+                        <AppIcon icon="carbon:upload" aria-hidden="true" /><span class="sr-only"
+                          >发布</span
+                        >
+                      </button>
+                      <button
+                        v-if="strategy.status === 'published' && canEdit"
+                        type="button"
+                        class="admin-icon-button rounded-full hover:bg-red-50 text-red-600"
+                        :disabled="busy"
+                        title="退役"
+                        @click="retireStrategy(strategy.id)"
+                      >
+                        <AppIcon icon="carbon:archive" aria-hidden="true" /><span class="sr-only"
+                          >退役</span
+                        >
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -242,7 +265,7 @@
                 >
                   <option :value="undefined">基线自身无需回退</option>
                   <option v-for="strategy in baselines" :key="strategy.id" :value="strategy.id">
-                    {{ strategy.name }} · {{ strategy.id }}
+                    {{ strategy.name }}
                   </option>
                 </select></label
               >
@@ -251,8 +274,10 @@
                 <label class="admin-label block mt-2"
                   >完整策略配置<textarea
                     :value="JSON.stringify(editor.config, null, 2)"
-                    rows="18"
-                    class="admin-input w-full font-mono"
+                    rows="24"
+                    spellcheck="false"
+                    wrap="off"
+                    class="admin-textarea block w-full mt-2 font-mono"
                     @change="applyJson(($event.target as HTMLTextAreaElement).value)"
                   />
                 </label>
@@ -270,7 +295,7 @@
                     :key="strategy.id"
                     :value="strategy.id"
                   >
-                    {{ strategy.name }} · {{ strategy.id }}
+                    {{ strategy.name }}
                   </option>
                 </select>
               </label>
@@ -280,14 +305,14 @@
                 </p>
                 <div v-if="configurationChanges.length" class="admin-table-scroll">
                   <table class="admin-table" aria-label="策略字段差异">
-                    <thead>
+                    <thead class="bg-gray-50">
                       <tr>
                         <th>字段</th>
                         <th>基线版本</th>
                         <th>当前版本</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-gray-200">
                       <tr v-for="change in configurationChanges" :key="change.path">
                         <th scope="row">
                           {{ change.label
@@ -334,7 +359,7 @@
           <h2 class="text-lg font-semibold">模型版本与契约验证</h2>
           <div class="admin-table-scroll">
             <table class="admin-table">
-              <thead>
+              <thead class="bg-gray-50">
                 <tr>
                   <th>模型 / 服务版本</th>
                   <th>类型 / 维度</th>
@@ -342,7 +367,7 @@
                   <th>验证</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-gray-200">
                 <tr v-for="model in catalog.models" :key="model.id">
                   <td>
                     {{ model.name
@@ -352,17 +377,26 @@
                   </td>
                   <td>{{ model.kind }} / {{ model.dimension ?? '—' }}</td>
                   <td>
-                    {{ model.deploymentId || '本地' }} · {{ statusLabel(model.status)
-                    }}<small class="block">{{ model.verifiedAt || '待验证' }}</small>
+                    <span>{{ model.deploymentId || '本地' }}</span>
+                    <span class="recommendation-status ml-2" :class="statusClass(model.status)">{{
+                      model.status === 'draft' ? '待验证' : statusLabel(model.status)
+                    }}</span>
+                    <small class="block mt-1 text-gray-500">{{
+                      model.verifiedAt ? formatDate(model.verifiedAt) : '尚未验证'
+                    }}</small>
                   </td>
                   <td>
                     <button
                       v-if="canEdit"
                       :disabled="busy"
-                      class="admin-button admin-button-secondary"
+                      class="admin-icon-button rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                      title="验证契约"
                       @click="verifyModel(model.id)"
                     >
-                      验证契约
+                      <AppIcon icon="carbon:checkmark-outline" aria-hidden="true" /><span
+                        class="sr-only"
+                        >验证契约</span
+                      >
                     </button>
                   </td>
                 </tr>
@@ -434,7 +468,7 @@
           </p>
           <div class="admin-table-scroll">
             <table class="admin-table">
-              <thead>
+              <thead class="bg-gray-50">
                 <tr>
                   <th>索引 / 模型</th>
                   <th>状态与覆盖率</th>
@@ -443,44 +477,58 @@
                   <th>操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-gray-200">
                 <tr v-for="index in catalog.indexes" :key="index.id">
                   <td>
                     {{ index.name }}<small class="block">{{ index.modelVersionId }}</small
                     ><small class="block">策略引用：{{ indexReferences(index.id) }}</small>
                   </td>
                   <td>
-                    {{ statusLabel(index.status) }} ·
+                    <span class="recommendation-status mr-2" :class="statusClass(index.status)">{{
+                      statusLabel(index.status)
+                    }}</span>
                     {{
                       index.total ? ((index.applied / index.total) * 100).toFixed(1) : '0.0'
                     }}%<progress
                       :value="index.applied"
                       :max="Math.max(index.total, 1)"
-                      class="block"
+                      class="block my-2 accent-tsinghua-purple"
                       :aria-label="`${index.name} 构建进度`"
                     />{{ index.applied }} / {{ index.total }}
                   </td>
                   <td>{{ index.pending }} / {{ index.failed }}</td>
                   <td>
-                    {{ index.lastSyncedAt || '尚未同步' }}
+                    {{ index.lastSyncedAt ? formatDate(index.lastSyncedAt) : '尚未同步' }}
                     <p class="admin-field-error">{{ index.lastError }}</p>
                   </td>
                   <td>
-                    <template v-if="canEdit && index.status !== 'retired'"
-                      ><button
-                        class="admin-button admin-button-secondary"
+                    <div
+                      v-if="canEdit && index.status !== 'retired'"
+                      class="flex items-center gap-1"
+                    >
+                      <button
+                        type="button"
+                        class="admin-icon-button rounded-full hover:bg-gray-200 text-tsinghua-purple"
                         :disabled="busy"
+                        title="构建 / 重试"
                         @click="buildIndex(index.id)"
                       >
-                        构建 / 重试</button
-                      ><button
-                        class="admin-button admin-button-secondary"
+                        <AppIcon icon="carbon:renew" aria-hidden="true" /><span class="sr-only"
+                          >构建 / 重试</span
+                        >
+                      </button>
+                      <button
+                        type="button"
+                        class="admin-icon-button rounded-full hover:bg-red-50 text-red-600"
                         :disabled="busy"
+                        title="退役"
                         @click="retireIndex(index.id)"
                       >
-                        退役
-                      </button></template
-                    >
+                        <AppIcon icon="carbon:archive" aria-hidden="true" /><span class="sr-only"
+                          >退役</span
+                        >
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -515,15 +563,20 @@
         </section>
         <section v-if="tab === 'preview'" class="space-y-6">
           <h2 class="text-lg font-semibold">用户预览</h2>
-          <p class="text-sm text-gray-600">预览结果单独标记，在线实验指标仅统计生产流量。</p>
+          <p class="text-sm text-gray-600">
+            选择用户与策略，查看推荐顺序、菜品信息和评分详情。预览独立于在线实验统计。
+          </p>
           <form class="admin-form-grid" @submit.prevent="preview">
             <label class="admin-label"
               >用户 ID<input
+                id="recommendation-preview-user"
                 v-model="previewForm.userId"
+                placeholder="输入预览用户 ID"
                 required
                 class="admin-input w-full" /></label
             ><label class="admin-label"
               >策略版本<select
+                id="recommendation-preview-strategy"
                 v-model="previewForm.strategyRevisionId"
                 required
                 class="admin-input w-full"
@@ -538,41 +591,136 @@
               </select></label
             ><button :disabled="busy" class="admin-button admin-button-primary">生成预览</button>
           </form>
-          <template v-if="previewResult"
-            ><p role="status">
-              预览流量 · {{ previewResult.mode }} · 策略 {{ previewResult.strategyRevisionId }}
-            </p>
-            <p>
-              索引：{{ previewResult.indexId || '规则召回' }} · 向量模型：{{
-                previewResult.modelVersionId || '—'
-              }}
-              · 排序模型：{{ previewResult.rankerVersionId || '规则排序' }}
-            </p>
-            <p v-if="previewResult.fallbackReason" class="admin-field-error">
-              降级原因：{{ previewResult.fallbackReason }}
-            </p>
-            <div class="admin-table-scroll">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>菜品 ID</th>
-                    <th>得分</th>
-                    <th>排序依据</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="item in previewResult.items" :key="item.id">
-                    <td>{{ item.id }}</td>
-                    <td>{{ item.score }}</td>
-                    <td>
-                      <pre>{{ JSON.stringify(item.scoreBreakdown, null, 2) }}</pre>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <section v-if="previewResult" aria-label="推荐结果" class="border-t border-gray-200 pt-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-base font-semibold text-gray-900">
+                推荐结果
+                <span class="text-sm font-normal text-gray-500"
+                  >{{ previewResult.items.length }} 道菜品</span
+                >
+              </h3>
+              <span class="recommendation-status bg-purple-50 text-tsinghua-purple">预览</span>
             </div>
-            <p v-if="!previewResult.items.length">该用户当前条件下暂无推荐菜品。</p></template
-          >
+            <p class="mt-2 text-sm text-gray-600">
+              {{ previewStrategyName }} ·
+              {{
+                previewResult.rankerVersionId
+                  ? modelName(previewResult.rankerVersionId)
+                  : '规则排序'
+              }}
+            </p>
+            <p class="mt-1 text-sm text-gray-500">
+              按最终推荐顺序展示；得分用于比较排序，详情中的各项分数为加权前评分。
+            </p>
+            <p v-if="previewResult.fallbackReason" class="mt-3 admin-field-error" role="status">
+              已使用回退策略：{{ previewResult.fallbackReason }}
+            </p>
+            <details class="preview-runtime mt-3 text-sm">
+              <summary class="text-tsinghua-purple cursor-pointer">运行详情</summary>
+              <dl class="mt-3 grid gap-3 sm:grid-cols-2 text-gray-600">
+                <div>
+                  <dt class="font-medium text-gray-800">策略版本</dt>
+                  <dd>{{ previewStrategyName }}</dd>
+                  <dd class="break-all text-xs text-gray-500">
+                    {{ previewResult.strategyRevisionId || '内置规则基线' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-800">向量索引</dt>
+                  <dd>{{ indexName(previewResult.indexId) }}</dd>
+                  <dd v-if="previewResult.indexId" class="break-all text-xs text-gray-500">
+                    {{ previewResult.indexId }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-800">向量模型</dt>
+                  <dd>
+                    {{
+                      previewResult.modelVersionId
+                        ? modelName(previewResult.modelVersionId)
+                        : '规则召回'
+                    }}
+                  </dd>
+                  <dd v-if="previewResult.modelVersionId" class="break-all text-xs text-gray-500">
+                    {{ previewResult.modelVersionId }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-800">排序模型</dt>
+                  <dd>
+                    {{
+                      previewResult.rankerVersionId
+                        ? modelName(previewResult.rankerVersionId)
+                        : '规则排序'
+                    }}
+                  </dd>
+                  <dd v-if="previewResult.rankerVersionId" class="break-all text-xs text-gray-500">
+                    {{ previewResult.rankerVersionId }}
+                  </dd>
+                </div>
+              </dl>
+            </details>
+            <ol
+              v-if="previewResult.items.length"
+              class="mt-4 divide-y divide-gray-200"
+              aria-label="推荐菜品"
+            >
+              <li
+                v-for="(item, position) in previewResult.items"
+                :key="item.id"
+                class="py-4"
+                data-testid="preview-dish"
+              >
+                <div class="preview-dish-row">
+                  <span class="text-gray-500 tabular-nums" :aria-label="`第 ${position + 1} 位`">{{
+                    position + 1
+                  }}</span>
+                  <div class="min-w-0">
+                    <p class="font-medium text-gray-900 break-words">
+                      {{ item.dish?.name || '菜品信息暂不可用' }}
+                    </p>
+                    <p v-if="item.dish" class="mt-1 text-sm text-gray-500">
+                      {{ item.dish.canteenName }} · {{ item.dish.windowName }}
+                    </p>
+                    <p v-if="item.dish" class="mt-1 text-sm text-gray-600 tabular-nums">
+                      ¥{{ item.dish.price.toFixed(2)
+                      }}<span v-if="item.dish.priceUnit"> / {{ item.dish.priceUnit }}</span>
+                    </p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-xs text-gray-500">推荐得分</p>
+                    <p
+                      class="font-semibold text-tsinghua-purple tabular-nums"
+                      data-testid="preview-score"
+                    >
+                      {{ formatScore(item.score) }}
+                    </p>
+                  </div>
+                </div>
+                <details class="preview-score-details mt-2 text-sm">
+                  <summary class="text-tsinghua-purple cursor-pointer">
+                    评分详情<span class="sr-only"> · {{ item.dish?.name || item.id }}</span>
+                  </summary>
+                  <dl
+                    v-if="item.scoreBreakdown && Object.keys(item.scoreBreakdown).length"
+                    class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3"
+                  >
+                    <div
+                      v-for="(value, key) in item.scoreBreakdown"
+                      :key="key"
+                      class="flex flex-wrap items-baseline justify-between gap-2"
+                    >
+                      <dt class="text-gray-600">{{ scoreLabels[key] || key }}</dt>
+                      <dd class="tabular-nums text-gray-900">{{ formatScore(value) }}</dd>
+                    </div>
+                  </dl>
+                  <p v-else class="mt-3 text-gray-500">此排序方式未提供分项评分。</p>
+                  <p class="mt-3 break-all text-xs text-gray-500">菜品 ID：{{ item.id }}</p>
+                </details>
+              </li>
+            </ol>
+            <p v-else class="admin-state">该用户当前条件下暂无推荐菜品。</p>
+          </section>
         </section>
       </template>
     </div>
@@ -581,6 +729,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
 import Header from '@/components/Layout/Header.vue'
+import AppIcon from '@/components/Common/AppIcon.vue'
+import { useNotification } from '@/composables/useNotification'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { showConfirmDanger } from '@/composables/useModal'
 import {
@@ -596,6 +746,7 @@ import {
 } from '@/api/modules/recommendation'
 import type { ApiResponse } from '@/types/api'
 const auth = useAuthStore()
+const notify = useNotification()
 const canEdit = computed(() => auth.hasPermission('experiment:edit'))
 const canCreate = computed(() => auth.hasPermission('experiment:create'))
 const tabs = [
@@ -608,7 +759,6 @@ const tab = ref('strategies'),
   busy = ref(false),
   loading = ref(false),
   error = ref(''),
-  notice = ref(''),
   jsonError = ref('')
 const catalog = ref<RecommendationCatalog | null>(null)
 const editor = ref<RecommendationStrategy | null>(null)
@@ -642,6 +792,33 @@ const statusLabel = (status: string) =>
     retired: '已退役',
     published: '已发布',
   })[status] || status
+const statusClass = (status: string) =>
+  ({
+    draft: 'bg-gray-100 text-gray-700',
+    ready: 'bg-green-100 text-green-700',
+    published: 'bg-green-100 text-green-700',
+    building: 'bg-blue-100 text-blue-700',
+    failed: 'bg-red-100 text-red-700',
+    retired: 'bg-gray-100 text-gray-600',
+  })[status] || 'bg-gray-100 text-gray-700'
+const formatDate = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
+const formatScore = (value: number | undefined) => (value === undefined ? '—' : value.toFixed(3))
+const scoreLabels: Record<string, string> = {
+  preferenceScore: '偏好匹配',
+  favoriteScore: '收藏相似度',
+  browseScore: '浏览相关性',
+  qualityScore: '菜品质量',
+  diversityScore: '多样性',
+  searchScore: '搜索相关性',
+}
+const modelName = (id: string) => catalog.value?.models.find((item) => item.id === id)?.name || id
+const indexName = (id?: string) =>
+  id ? catalog.value?.indexes.find((item) => item.id === id)?.name || id : '规则召回'
+const previewStrategyName = computed(
+  () =>
+    catalog.value?.strategies.find((item) => item.id === previewResult.value?.strategyRevisionId)
+      ?.name || '内置规则基线',
+)
 const published = computed(
   () =>
     catalog.value?.strategies.filter(
@@ -790,10 +967,9 @@ async function run(action: () => Promise<ApiResponse<unknown>>, success: string)
   if (busy.value) return
   busy.value = true
   error.value = ''
-  notice.value = ''
   try {
     checked(await action())
-    notice.value = success
+    notify.success(success)
     await refresh()
     return true
   } catch (reason) {
@@ -937,3 +1113,34 @@ onScopeDispose(() => {
   clearInterval(poll)
 })
 </script>
+
+<style scoped>
+.recommendation-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.preview-dish-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+.preview-score-details {
+  margin-left: 36px;
+}
+.preview-runtime summary,
+.preview-score-details summary {
+  padding-block: 8px;
+}
+.preview-runtime summary:focus-visible,
+.preview-score-details summary:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+</style>

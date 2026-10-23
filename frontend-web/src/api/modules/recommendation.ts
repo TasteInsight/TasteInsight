@@ -74,7 +74,19 @@ export interface RecommendationPreview {
   modelVersionId?: string
   rankerVersionId?: string
   fallbackReason?: string
-  items: { id: string; score?: number; scoreBreakdown?: Record<string, number> }[]
+  items: {
+    id: string
+    score?: number
+    scoreBreakdown?: Record<string, number>
+    dish?: {
+      id: string
+      name: string
+      canteenName: string
+      windowName: string
+      price: number
+      priceUnit: string | null
+    }
+  }[]
 }
 export interface ExperimentMetrics {
   metricVersion: 2
