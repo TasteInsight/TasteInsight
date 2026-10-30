@@ -237,13 +237,13 @@ import dayjs from 'dayjs';
 import { useUserStore } from '@/store/modules/use-user-store';
 import UserAvatar from '@/components/UserAvatar.vue';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
-import ReportDialog from './ReportDialog.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import LongPressMenu from './LongPressMenu.vue';
 import { useReport } from '../composables/use-report';
 import { useCommentPanel } from '../composables/use-comment';
-import { useSheetKeyboard } from '../composables/use-sheet-keyboard';
+import { useSheetKeyboard } from '@/composables/use-sheet-keyboard';
 import { setCommentLike } from '@/api/modules/comment';
-import { useContentLike } from '../composables/use-content-like';
+import { useContentLike } from '@/composables/use-content-like';
 
 const props = defineProps<{ reviewId: string; isVisible: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void; (e: 'commentAdded'): void }>();
@@ -373,7 +373,7 @@ defineExpose({ requestClose: handleClose });
 </script>
 
 <style scoped>
-@import './review-sheet.css';
+@import '@/styles/review-sheet.css';
 @import './discussion.css';
 .reply-list {
   padding: 0 16px 12px;

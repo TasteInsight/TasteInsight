@@ -57,4 +57,6 @@ function goToDishDetail(dishId: string) {
   });
 }
 </script>
-<style scoped src="@/styles/dish-list-page.css"></style>
+<style scoped>
+@import '@/styles/dish-list-page.css';
+</style>

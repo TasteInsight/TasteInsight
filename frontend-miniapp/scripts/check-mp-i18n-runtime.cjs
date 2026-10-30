@@ -29,28 +29,35 @@ global.wx = {
 };
 global.Page = options => options;
 global.Component = options => options;
-global.App = options => options;
-const nativeApp = { $vm: { $locale: 'zh-Hans' } };
+let nativeApp;
+global.App = options => {
+  nativeApp = options;
+  return options;
+};
 global.getApp = () => nativeApp;
 global.getCurrentPages = () => [];
 
 try {
-  const app = require(path.join(projectPath, 'i18n/index.js'));
-  app.initializeI18n();
-  assert.equal(app.t('account.settings.language'), '语言');
-  assert.equal(app.t('common.selectedCount', { count: 3 }), '已选择 3 项');
-  app.setLanguagePreference('en');
-  assert.equal(app.t('account.settings.language'), 'Language');
-  assert.equal(app.t('nav.settings'), 'Settings');
-  assert.equal(app.t('common.selectedCount', { count: 3 }), '3 selected');
-  assert.equal(app.t('common.dish.reviews', { count: 1 }), '1 review');
-  assert.equal(app.t('common.dish.reviews', { count: 3 }), '3 reviews');
-  app.initializeI18n();
-  assert.equal(app.t('account.settings.language'), 'Language');
-  app.setLanguagePreference('zh-Hans');
-  assert.equal(app.t('account.settings.language'), '语言');
-  app.setLanguagePreference('system');
-  assert.equal(app.t('account.settings.language'), '语言');
+  const entry = require(path.join(projectPath, 'app.js'));
+  const globalProperties = nativeApp.$vm.$.appContext.config.globalProperties;
+  const translate = globalProperties.$t;
+  assert.equal(translate('account.settings.language'), '语言');
+  assert.equal(translate('common.selectedCount', { count: 3 }), '已选择 3 项');
+  globalProperties.$i18n.locale = 'en';
+  assert.equal(translate('account.settings.language'), 'Language');
+  assert.equal(translate('nav.settings'), 'Settings');
+  assert.equal(translate('common.selectedCount', { count: 3 }), '3 selected');
+  assert.equal(translate('common.dish.reviews', { count: 1 }), '1 review');
+  assert.equal(translate('common.dish.reviews', { count: 3 }), '3 reviews');
+  storage.set('tasteinsight.language', 'en');
+  entry.createApp();
+  assert.equal(translate('account.settings.language'), 'Language');
+  storage.set('tasteinsight.language', 'zh-Hans');
+  entry.createApp();
+  assert.equal(translate('account.settings.language'), '语言');
+  storage.set('tasteinsight.language', 'system');
+  entry.createApp();
+  assert.equal(translate('account.settings.language'), '语言');
   console.log('PASS built miniapp i18n initialization, formatting and language switching');
 } catch (error) {
   console.error(error.stack);

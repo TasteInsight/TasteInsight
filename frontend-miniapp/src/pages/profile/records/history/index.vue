@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { t } from '@/i18n';
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
-import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
+import DishCard from '@/pages/profile/records/components/ProfileDishCard.vue';
 import AsyncState from '@/components/AsyncState.vue';
 import LoginGate from '@/components/LoginGate.vue';
 import { useHistory } from './composables/use-history';
@@ -74,4 +74,6 @@ function goToDishDetail(dishId: string) {
   });
 }
 </script>
-<style scoped src="@/styles/dish-list-page.css"></style>
+<style scoped>
+@import '@/styles/dish-list-page.css';
+</style>

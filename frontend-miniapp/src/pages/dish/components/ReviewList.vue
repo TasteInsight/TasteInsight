@@ -175,7 +175,7 @@ import UserAvatar from '@/components/UserAvatar.vue';
 import TasteProfile from './TasteProfile.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { setReviewLike } from '@/api/modules/review';
-import { useContentLike } from '../composables/use-content-like';
+import { useContentLike } from '@/composables/use-content-like';
 
 const userStore = useUserStore();
 

@@ -492,7 +492,7 @@ import { onMounted, ref, onUnmounted, nextTick, watchEffect } from 'vue';
 import { onBackPress, onHide } from '@dcloudio/uni-app';
 import { nutritionFields, useAddDish } from './composables/use-add-dish';
 import { useUserStore } from '@/store/modules/use-user-store';
-import { useSheetKeyboard } from '@/pages/dish/composables/use-sheet-keyboard';
+import { useSheetKeyboard } from '@/composables/use-sheet-keyboard';
 import AsyncState from '@/components/AsyncState.vue';
 import UiIcon from '@/components/UiIcon.vue';
 

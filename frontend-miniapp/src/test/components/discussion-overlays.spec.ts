@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import AllCommentsPanel from '@/pages/dish/components/AllCommentsPanel.vue';
 import ReviewList from '@/pages/dish/components/ReviewList.vue';
 import TasteProfile from '@/pages/dish/components/TasteProfile.vue';
-import ReportDialog from '@/pages/dish/components/ReportDialog.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getCommentsByReview, reportComment } from '@/api/modules/comment';
 import type { Comment, Review, User } from '@/types/api';

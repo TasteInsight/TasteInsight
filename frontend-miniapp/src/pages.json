@@ -17,48 +17,6 @@
       }
     },
     {
-      "path": "pages/login/index",
-      "style": {
-        "navigationBarTitleText": "%nav.login%",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/search/index",
-      "style": {
-        "navigationBarTitleText": "%nav.search%"
-      }
-    },
-    {
-      "path": "pages/canteen/index",
-      "style": {
-        "navigationBarTitleText": "%nav.canteen%",
-        "enablePullDownRefresh": true
-      }
-    },
-    {
-      "path": "pages/window/index",
-      "style": {
-        "navigationBarTitleText": "%nav.window%"
-      }
-    },
-    {
-      "path": "pages/dish/index",
-      "style": {
-        "navigationBarTitleText": "%nav.dish%",
-        "disableScroll": false,
-        "enablePullDownRefresh": true,
-        "navigationStyle": "default"
-      }
-    },
-    {
-      "path": "pages/dish/components/TagList",
-      "style": {
-        "navigationBarTitleText": "%nav.tags%",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
       "path": "pages/news/index",
       "style": {
         "navigationBarTitleText": "%nav.news%",
@@ -102,10 +60,6 @@
     },
     // #ifdef MP-WEIXIN
     {
-      "path": "pages/login/campus-auth",
-      "style": { "navigationBarTitleText": "%nav.campusLogin%" }
-    },
-    {
       "path": "pages/profile/campus-auth",
       "style": { "navigationBarTitleText": "%nav.campusOAuth%" }
     },
@@ -130,32 +84,121 @@
     {
       "path": "pages/planning/dining",
       "style": { "navigationBarTitleText": "%nav.dining%", "enablePullDownRefresh": true }
-    },
-    // #endif
-    {
-      "path": "pages/notifications/index",
-      "style": { "navigationBarTitleText": "%nav.notifications%", "enablePullDownRefresh": true }
-    },
-    {
-      "path": "pages/notifications/weekly",
-      "style": { "navigationBarTitleText": "%nav.weekly%" }
-    },
-
-    {
-      "path": "pages/easter-egg/index",
-      "style": {
-        "navigationBarTitleText": "%nav.easterEgg%"
-      }
-    },
-    {
-      "path": "pages/add-dish/index",
-      "style": {
-        "navigationBarTitleText": "%nav.addDish%"
-      }
     }
+    // #endif
   ],
-
   "subPackages": [
+    {
+      "root": "pages/login",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.login%",
+            "navigationStyle": "custom"
+          }
+        },
+        // #ifdef MP-WEIXIN
+        {
+          "path": "campus-auth",
+          "style": { "navigationBarTitleText": "%nav.campusLogin%" }
+        }
+        // #endif
+      ]
+    },
+    {
+      "root": "pages/search",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.search%"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/canteen",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.canteen%",
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/window",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.window%"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/dish",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.dish%",
+            "disableScroll": false,
+            "enablePullDownRefresh": true,
+            "navigationStyle": "default"
+          }
+        },
+        {
+          "path": "components/TagList",
+          "style": {
+            "navigationBarTitleText": "%nav.tags%",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/add-dish",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.addDish%"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/notifications",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.notifications%",
+            "enablePullDownRefresh": true
+          }
+        },
+        {
+          "path": "weekly",
+          "style": { "navigationBarTitleText": "%nav.weekly%" }
+        }
+      ]
+    },
+    {
+      "root": "pages/easter-egg",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "%nav.easterEgg%"
+          }
+        }
+      ]
+    },
     {
       "root": "pages/settings",
       "pages": [

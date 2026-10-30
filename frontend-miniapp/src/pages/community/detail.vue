@@ -152,10 +152,10 @@ import type { ReportRequest } from '@/types/api';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { requireStudent } from '@/utils/student-access';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
-import { useContentLike } from '@/pages/dish/composables/use-content-like';
+import { useContentLike } from '@/composables/use-content-like';
 import UserAvatar from '@/components/UserAvatar.vue';
 import AsyncState from '@/components/AsyncState.vue';
-import ReportDialog from '@/pages/dish/components/ReportDialog.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import PostCard from './components/PostCard.vue';
 
 const user = useUserStore();

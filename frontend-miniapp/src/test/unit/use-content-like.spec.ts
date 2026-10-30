@@ -1,5 +1,5 @@
 import { effectScope, reactive, ref } from 'vue';
-import { useContentLike } from '@/pages/dish/composables/use-content-like';
+import { useContentLike } from '@/composables/use-content-like';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { requireStudent } from '@/utils/student-access';
 

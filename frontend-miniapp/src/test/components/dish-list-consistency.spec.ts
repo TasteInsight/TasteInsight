@@ -12,7 +12,7 @@ import DishSummaryCard from '@/components/DishSummaryCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FilterBar from '@/pages/index/components/FilterBar.vue';
 import CanteenDishCard from '@/pages/canteen/components/CanteenDishCard.vue';
-import ProfileDishCard from '@/pages/profile/components/ProfileDishCard.vue';
+import ProfileDishCard from '@/pages/profile/records/components/ProfileDishCard.vue';
 import TagList from '@/pages/dish/components/TagList.vue';
 import FavoritesPage from '@/pages/profile/records/my-favorites/index.vue';
 import HistoryPage from '@/pages/profile/records/history/index.vue';

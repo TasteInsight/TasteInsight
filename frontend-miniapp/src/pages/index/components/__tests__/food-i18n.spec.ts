@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import { locale } from '@/i18n';
 import FilterBar from '../FilterBar.vue';
 import AddDishPage from '@/pages/add-dish/index.vue';
-import ReportDialog from '@/pages/dish/components/ReportDialog.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import ReviewForm from '@/pages/dish/components/ReviewForm.vue';
 import TasteProfile from '@/pages/dish/components/TasteProfile.vue';
 import CanteenWindowList from '@/pages/canteen/components/CanteenWindowList.vue';

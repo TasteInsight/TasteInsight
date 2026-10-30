@@ -108,7 +108,7 @@ import dayjs from 'dayjs';
 import { computed } from 'vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import { setPostLike, type Post } from '@/api/modules/social';
-import { useContentLike } from '@/pages/dish/composables/use-content-like';
+import { useContentLike } from '@/composables/use-content-like';
 import { useButtonActivation } from '@/composables/use-button-activation';
 const props = withDefaults(defineProps<{ post: Post; detail?: boolean }>(), { detail: false });
 const emit = defineEmits<{ (event: 'manage'): void; (event: 'reply'): void }>();
