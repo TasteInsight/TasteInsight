@@ -91,7 +91,7 @@ import { ref, computed, onUnmounted } from 'vue';
 import UiPicker from '@/components/UiPicker.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
-import { useSheetKeyboard, useSheetInputScroll } from '../composables/use-sheet-keyboard';
+import { useSheetKeyboard, useSheetInputScroll } from '@/composables/use-sheet-keyboard';
 
 const props = withDefaults(defineProps<{ submitting?: boolean }>(), { submitting: false });
 const emit = defineEmits(['close', 'submit']);
@@ -174,7 +174,7 @@ defineExpose({ requestClose: close });
 </script>
 
 <style scoped>
-@import './review-sheet.css';
+@import '@/styles/review-sheet.css';
 .report-overlay {
   z-index: 5000;
 }

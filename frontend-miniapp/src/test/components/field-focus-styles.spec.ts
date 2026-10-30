@@ -6,13 +6,13 @@ import postcss from 'postcss';
 const fields = [
   {
     name: 'settings fields',
-    file: 'pages/settings/settings-page.css',
+    file: 'styles/settings-page.css',
     selector: '.settings-field',
     focusStates: [':focus-within'],
   },
   {
     name: 'review sheet fields',
-    file: 'pages/dish/components/review-sheet.css',
+    file: 'styles/review-sheet.css',
     selector: '.sheet-input',
     focusStates: [':focus', ':focus-within'],
   },

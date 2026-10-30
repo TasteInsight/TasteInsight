@@ -10,7 +10,7 @@ import HistoryPage from '@/pages/profile/records/history/index.vue';
 import NewsPage from '@/pages/news/components/NewsFeed.vue';
 import NewsDetailPage from '@/pages/news/components/detail.vue';
 import ReviewCard from '@/pages/profile/components/ReviewCard.vue';
-import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
+import DishCard from '@/pages/profile/records/components/ProfileDishCard.vue';
 import NewsItem from '@/pages/news/components/NewsItem.vue';
 import EmptyState from '@/components/EmptyState.vue';
 

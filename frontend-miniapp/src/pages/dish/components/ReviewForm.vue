@@ -188,7 +188,7 @@
 import { t } from '@/i18n';
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useReviewForm } from '../composables/use-review';
-import { useSheetKeyboard, useSheetInputScroll } from '../composables/use-sheet-keyboard';
+import { useSheetKeyboard, useSheetInputScroll } from '@/composables/use-sheet-keyboard';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import type { Review } from '@/types/api';
@@ -353,7 +353,7 @@ defineExpose({ requestClose: handleClose });
 </script>
 
 <style scoped>
-@import './review-sheet.css';
+@import '@/styles/review-sheet.css';
 .resume-dialog {
   align-self: center;
   width: calc(100% - 40px);

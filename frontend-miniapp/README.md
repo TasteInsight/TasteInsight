@@ -242,7 +242,9 @@ App/H5 主导航为首页、校园、规划、问 AI、我的；校园页内部�
 
 通知和显示设置保留原生 `switch`，复用 `settings-switch-control`、`settings-switch` 的尺寸与缩放；H5 外观约 36×20px，整行维持可点击范围。选项的勾选图标使用 `UiIcon` 的 `check`，同时保留原生选择语义与 `aria-checked`。确认、取消等原生弹窗动作复用 `common.modal`，中英文按钮均使用微信支持的四字符以内文案。
 
-`pages/settings` 与 `pages/profile/records` 按各自分包配置；上传、举报、收藏、浏览记录共用 `pages/profile/records` 分包。新增入口以 `pages.json` 路径为准，样式或文案复用通过组件、CSS 和语言资源完成。
+小程序按现有路由目录组织业务分包：`pages/login`（登录）、`pages/search`（搜索）、`pages/canteen`（食堂）、`pages/window`（窗口）、`pages/dish`（菜品详情与标签）、`pages/add-dish`（菜品投稿）、`pages/notifications`（通知）、`pages/easter-egg`（彩蛋）、`pages/settings`（设置）与 `pages/profile/records`（个人记录）。TabBar 页面及其主页内容保留在主包，页面 URL 保持稳定。
+
+跨业务复用的组件、组合式函数与样式分别放在 `components`、`composables` 与 `styles`，分包专用内容放在对应页面目录。微信构建使用 `@uni-ku/bundle-optimizer` 将单个分包使用的脚本归入该分包，多个业务共享的主包脚本合并到 `common/vendor`，保持 store、登录会话和国际化实例共享。新增入口以 `pages.json` 路径为准。
 
 #### 菜单规划
 - 默认安排单日，可展开日期范围安排多日
@@ -339,7 +341,11 @@ pnpm check:mp-weixin
 
 微信小程序正式版要求合法 HTTPS 请求域名。部署时可启用网关 TLS 或由外部反向代理终止 TLS，并在微信平台配置合法请求域名。详见 [环境配置与部署](../docs/环境配置与部署.md)。
 
-`build:mp-weixin` 在编译后执行产物的 i18n 初始化、文案格式化与语言切换检查，再调用微信官方 `miniprogram-ci` 进行代码质量扫描，检查未通过时返回非零退出码。运行时检查使用基础微信接口替身，并禁止从字符串动态生成代码。质量报告保存到 `dist/quality/mp-weixin.json`；此检查仅分析本地产物，无需上传密钥。JS、WXML、WXSS 压缩和组件按需注入由 `src/manifest.json` 统一配置。
+`build:mp-weixin` 从生成的 `app.js` 启动应用，验证 i18n 初始化、文案格式化、语言切换与已保存的语言偏好，再调用微信官方 `miniprogram-ci` 执行代码质量扫描与本地二次编译。运行时检查使用基础微信接口替身，并禁止从字符串动态生成代码。
+
+微信构建显式使用 Babel 编译器（`swc: false`），开发者工具与 CI 使用相同的转译方式。体积检查分别编译调试产物与发布产物：调试编译保留开发者工具质量扫描使用的未压缩 JS，发布编译使用项目压缩配置。两种产物的主包均须小于 1.5 MiB，每个分包须不超过 2 MiB。检查按 `app.json` 的分包目录统计 UTF-8 字节数，输出各包大小、上限与剩余空间；同时使用官方依赖图检查静态引用的分包边界。超限、跨分包静态引用、扫描失败或编译失败均返回非零退出码。质量报告保存在 `dist/quality/mp-weixin.json`，编译后体积报告保存在 `dist/quality/mp-weixin-compiled-size.json`。本地编译使用 SDK 标准平台属性，无需上传密钥。JS、WXML、WXSS 压缩和组件按需注入由 `src/manifest.json` 统一配置。
+
+`pnpm test:mp-build` 验证分包计量边界及 SDK 在 pnpm 下的 Babel 依赖解析。`miniprogram-ci@2.1.31` 的版本补丁让普通模块优先使用 Node 原生解析器，保留 SDK 的归档模块回退；升级 SDK 时需重新执行此测试及微信构建。
 
 `src/static` 存放需原样复制到运行包的资源。字体及其演示文件放在 `src/assets/iconfont`，通过 CSS 引入实际使用的字体；Tailwind 样式放在 `src/styles`。新增资源应按运行时引用方式选择目录，避免将演示页、原始素材或构建输入直接复制到小程序包中。
 

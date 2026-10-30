@@ -63,7 +63,7 @@ it('uses the save button as the sole status display and retains the restored dra
 
 it('gives settings-home section headings a semibold hierarchy', () => {
   const stylesheet = readFileSync(
-    resolve(__dirname, '../../pages/settings/settings-page.css'),
+    resolve(__dirname, '../../styles/settings-page.css'),
     'utf8'
   );
   const declarations: Record<string, string> = {};
@@ -78,7 +78,7 @@ it('gives settings-home section headings a semibold hierarchy', () => {
 it('keeps a pressed save button neutral as soon as it becomes disabled', async () => {
   const style = document.createElement('style');
   style.textContent = readFileSync(
-    resolve(__dirname, '../../pages/settings/settings-page.css'),
+    resolve(__dirname, '../../styles/settings-page.css'),
     'utf8'
   ).replace(/:active/g, '[data-test-active]');
   document.head.appendChild(style);

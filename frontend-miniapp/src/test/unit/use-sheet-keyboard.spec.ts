@@ -1,6 +1,6 @@
 /** @jest-environment node */
 import { nextTick } from 'vue';
-import { useSheetKeyboard, useSheetInputScroll } from '@/pages/dish/composables/use-sheet-keyboard';
+import { useSheetKeyboard, useSheetInputScroll } from '@/composables/use-sheet-keyboard';
 
 const mockMount: Array<() => void> = [];
 const mockUnmount: Array<() => void> = [];

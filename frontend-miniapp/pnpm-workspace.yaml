@@ -70,3 +70,4 @@ allowBuilds:
 patchedDependencies:
   '@dcloudio/uni-ui@1.5.12': patches/@dcloudio__uni-ui@1.5.12.patch
   '@vue/vue3-jest@29.2.6': patches/@vue__vue3-jest@29.2.6.patch
+  miniprogram-ci@2.1.31: patches/miniprogram-ci@2.1.31.patch

@@ -1,6 +1,6 @@
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import ReviewForm from '@/pages/dish/components/ReviewForm.vue';
-import ReportDialog from '@/pages/dish/components/ReportDialog.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import AllCommentsPanel from '@/pages/dish/components/AllCommentsPanel.vue';
 jest.mock('@/store/modules/use-user-store', () => ({
   useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'A' } }),

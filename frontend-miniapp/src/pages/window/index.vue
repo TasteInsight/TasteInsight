@@ -49,11 +49,11 @@
             />
 
             <view v-if="dishes.length > 0">
-              <CanteenDishCard
+              <DishSummaryCard
                 v-for="dish in dishes"
                 :key="dish.id"
                 :dish="dish"
-                @click="goToDishDetail"
+                @select="goToDishDetail"
               />
               <AsyncState
                 :loading="loadingMore"
@@ -93,7 +93,7 @@ import { useWindowData } from '@/pages/window/composables/use-window-data';
 import WindowHeader from './components/WindowHeader.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import AsyncState from '@/components/AsyncState.vue';
-import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
+import DishSummaryCard from '@/components/DishSummaryCard.vue';
 
 const {
   windowInfo,
@@ -177,7 +177,9 @@ onShow(() => {
 const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
 </script>
 
-<style scoped src="@/styles/dish-list-page.css"></style>
+<style scoped>
+@import '@/styles/dish-list-page.css';
+</style>
 <style scoped>
 .window-content {
   min-height: 100%;

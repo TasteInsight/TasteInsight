@@ -146,6 +146,10 @@ const mountPage = (component: any, props?: any) => {
           props: ['dish'],
           template: '<div class="result-dish">{{ dish.name }}</div>',
         },
+        DishSummaryCard: {
+          props: ['dish'],
+          template: '<div class="result-dish">{{ dish.name }}</div>',
+        },
         DishResultItem: {
           props: ['dish'],
           template: '<div class="result-dish">{{ dish.name }}</div>',

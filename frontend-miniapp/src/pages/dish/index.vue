@@ -355,7 +355,7 @@ import RatingBars from './components/RatingBars.vue';
 import TasteProfile from './components/TasteProfile.vue';
 import TagBadge from '@/components/TagBadge.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
-import ReportDialog from './components/ReportDialog.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import { useReport } from '@/pages/dish/composables/use-report';
 
 const dishId = ref('');

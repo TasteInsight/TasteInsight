@@ -17,11 +17,11 @@
         @retry="loadDishes(!errorIsAppend)"
       />
       <view v-if="dishes.length > 0">
-        <CanteenDishCard
+        <DishSummaryCard
           v-for="dish in dishes"
           :key="dish.id"
           :dish="dish"
-          @click="goToDishDetail"
+          @select="goToDishDetail"
         />
         <AsyncState
           :loading="loadingMore"
@@ -50,7 +50,7 @@ import { getDishes } from '@/api/modules/dish';
 import type { Dish } from '@/types/api';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getPreferredDishSort } from '@/utils/dish-sort';
-import CanteenDishCard from '@/pages/canteen/components/CanteenDishCard.vue';
+import DishSummaryCard from '@/components/DishSummaryCard.vue';
 import AsyncState from '@/components/AsyncState.vue';
 import { useSessionRefresh } from '@/composables/use-session-refresh';
 
@@ -190,4 +190,6 @@ const goToDishDetail = (id: string) => {
 };
 </script>
 
-<style scoped src="@/styles/dish-list-page.css"></style>
+<style scoped>
+@import '@/styles/dish-list-page.css';
+</style>
